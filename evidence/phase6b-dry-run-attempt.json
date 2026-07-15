@@ -1,0 +1,32 @@
+{
+  "kind": "DRY_RUN",
+  "attemptId": "phase6b-dry-6fb1a4d3-bec8-406c-903f-6f07a9140753",
+  "reservationId": "res-phase6b-usdc-0001",
+  "network": "hedera:testnet",
+  "payer": "0.0.9197513",
+  "receiver": "0.0.9215954",
+  "asset": "0.0.429274",
+  "amount": "10000",
+  "expectedTopic": "0.0.9587459",
+  "expectedPreRunTopicSequence": 4,
+  "plannedMaxPaymentSubmissions": 1,
+  "plannedMaxHcsSubmissions": 1,
+  "status": "DRY_RUN_COMPLETE",
+  "createdAt": "2026-07-15T23:06:03.950Z",
+  "paymentSubmissionClaimedAt": null,
+  "paymentSubmittedAt": null,
+  "transactionId": null,
+  "paymentConsensusTimestamp": null,
+  "hcsPublishAttemptId": null,
+  "hcsTransactionId": null,
+  "hcsSequence": null,
+  "hcsConsensusTimestamp": null,
+  "evidencePaths": {
+    "json": null,
+    "md": null,
+    "attempt": "evidence/phase6b-dry-run-attempt.json"
+  },
+  "failureCode": null,
+  "failureReason": null,
+  "updatedAt": "2026-07-15T23:06:03.970Z"
+}

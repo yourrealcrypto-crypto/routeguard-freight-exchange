@@ -19,7 +19,10 @@
     "smoke:hbar:challenge": "tsx scripts/hbar-smoke-challenge.ts",
     "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts",
     "smoke:usdc": "tsx scripts/usdc-smoke-client.ts",
-    "demo:hcs-auction": "tsx scripts/hcs-auction-demo.ts"
+    "demo:hcs-auction": "tsx scripts/hcs-auction-demo.ts",
+    "demo:phase6b-reservation": "tsx scripts/phase6b-live-reservation.ts",
+    "demo:final-auction": "tsx scripts/final-auction-demo.ts",
+    "check:secrets": "tsx scripts/check-secrets.ts"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,352 @@
+{
+  "mode": "OFFLINE_DRY_RUN",
+  "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.",
+  "historicalTopicDisclosure": "Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.",
+  "attempt": {
+    "schemaVersion": "final-demo-live-attempt-1.0",
+    "attemptId": "final-demo-dab230d0-fcfb-4cd3-8840-a055964b0d66",
+    "shortAttemptId": "964b0d66",
+    "mode": "OFFLINE_DRY_RUN",
+    "status": "DRY_RUN_COMPLETE",
+    "network": "hedera:testnet",
+    "runBaseTime": "2026-07-15T23:06:03.967Z",
+    "tenderId": "tender-final-964b0d66",
+    "reservationId": "reservation-final-964b0d66",
+    "payerAccount": "0.0.9197513",
+    "expectedWinnerAccount": "0.0.9215954",
+    "usdcToken": "0.0.429274",
+    "usdcAmount": "10000",
+    "plannedTopicCreates": 1,
+    "plannedHcsSubmissions": 5,
+    "plannedPaymentSubmissions": 1,
+    "topicCreateClaim": {
+      "claimedAt": "2026-07-15T23:06:04.215Z",
+      "claimId": "topic-claim-683856ac-2683-4b68-ad55-412a01b13acf",
+      "status": "CREATED"
+    },
+    "topicId": "0.0.9700000",
+    "topicCreateTransactionId": "0.0.9197513@1784156764.365125942",
+    "topicMemo": "routeguard-final:964b0d66",
+    "topicCreatedAt": "2026-07-15T23:06:04.967Z",
+    "messageOutbox": [
+      {
+        "logicalLabel": "AUCTION_OPEN",
+        "expectedSequence": 1,
+        "expectedTopic": "0.0.9700000",
+        "envelope": {
+          "schemaVersion": "routeguard-hcs-1.0",
+          "messageType": "AUCTION_OPEN",
+          "runId": "final-964b0d66",
+          "tenderId": "tender-final-964b0d66",
+          "tenderVersion": 1,
+          "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+          "createdAt": "2026-07-15T23:06:03.967Z",
+          "payloadHash": "sha256:584f1f2bb9aa6e570f07d74a136de42e1171d348dd629afaac2cb47357b82923",
+          "payload": {
+            "tenderId": "tender-final-964b0d66",
+            "tenderVersion": 1,
+            "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+            "auctionEndsAt": "2026-07-15T23:07:33.967Z",
+            "selectionPolicy": "LOWEST_QUALIFIED_PRICE_V1",
+            "engineVersion": "routeguard-auction-1.0",
+            "rulesHash": "sha256:51274182eb41071ddee80950a4fd3416b1453faa48486eb6e71f7780eba7c571"
+          }
+        },
+        "envelopeHash": "sha256:e568fc634d2f42fb42e79d6922a7f841109a945a5c98dea14d613e0cf97fcb47",
+        "encodedByteCount": 727,
+        "claimedAt": "2026-07-15T23:06:04.219Z",
+        "submitAttemptId": "submit-AUCTION_OPEN-0fd970b3-d33a-4fe4-b0a4-bbe1c11348f8",
+        "status": "CONFIRMED",
+        "transactionId": "0.0.9197513@1784156765.100000001",
+        "consensusTimestamp": "2026-07-15T23:06:05.137456789Z",
+        "sequence": 1,
+        "receiptStatus": "SUCCESS"
+      },
+      {
+        "logicalLabel": "BID_COMMITMENT_ALPHA",
+        "expectedSequence": 2,
+        "expectedTopic": "0.0.9700000",
+        "envelope": {
+          "schemaVersion": "routeguard-hcs-1.0",
+          "messageType": "BID_COMMITMENT",
+          "runId": "final-964b0d66",
+          "tenderId": "tender-final-964b0d66",
+          "tenderVersion": 1,
+          "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+          "createdAt": "2026-07-15T23:06:03.967Z",
+          "payloadHash": "sha256:4227f568e41516bd81cc1fb1748d661979cab5a4903dd011d7e65bfcaab83a95",
+          "payload": {
+            "bidId": "bid-alpha-final-964b0d66",
+            "carrierId": "carrier-alpha",
+            "bidHash": "sha256:9c7a31dea8d166fb35686ebaa19fd4f318d34681a355ddc725e465e6faedeaf5",
+            "acceptanceReceiptHash": "sha256:9ba481c919684ff23d271caba7658d75536ffd1d55b137029fe9c30ebf823024",
+            "bidVersion": 1,
+            "commitmentSchemaVersion": "routeguard-bid-commitment-1.0"
+          }
+        },
+        "envelopeHash": "sha256:a284b7cb9fd5f97812b7b9b85d1497ec77104dfdd116494b6ae876ed4adc73f0",
+        "encodedByteCount": 691,
+        "claimedAt": "2026-07-15T23:06:04.224Z",
+        "submitAttemptId": "submit-BID_COMMITMENT_ALPHA-5e9b186c-f567-46f1-9cf4-413582ab3b09",
+        "status": "CONFIRMED",
+        "transactionId": "0.0.9197513@1784156765.100000002",
+        "consensusTimestamp": "2026-07-15T23:06:05.257456789Z",
+        "sequence": 2,
+        "receiptStatus": "SUCCESS"
+      },
+      {
+        "logicalLabel": "BID_COMMITMENT_BETA",
+        "expectedSequence": 3,
+        "expectedTopic": "0.0.9700000",
+        "envelope": {
+          "schemaVersion": "routeguard-hcs-1.0",
+          "messageType": "BID_COMMITMENT",
+          "runId": "final-964b0d66",
+          "tenderId": "tender-final-964b0d66",
+          "tenderVersion": 1,
+          "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+          "createdAt": "2026-07-15T23:06:03.967Z",
+          "payloadHash": "sha256:5b06a7bcfae1a88ab627b5f6b1524649cb6985ee891dfbdd7c90bdc9e6f14cbd",
+          "payload": {
+            "bidId": "bid-beta-final-964b0d66",
+            "carrierId": "carrier-beta",
+            "bidHash": "sha256:2eeed5f634e3f902546cf81112f5d00d2f2eadd0171b1c304e77e846253a0a99",
+            "acceptanceReceiptHash": "sha256:9ceb9849857c6b9a4217e4d705911bc59f28a1007be48923c53f09da778c16e5",
+            "bidVersion": 1,
+            "commitmentSchemaVersion": "routeguard-bid-commitment-1.0"
+          }
+        },
+        "envelopeHash": "sha256:14cc36ab3f1ebff1fe6de0086ec0990d731ad0b49efefe9ae8a0e3f2edb07efd",
+        "encodedByteCount": 689,
+        "claimedAt": "2026-07-15T23:06:04.227Z",
+        "submitAttemptId": "submit-BID_COMMITMENT_BETA-bcd6d09b-c4b6-4f2e-9ecd-f5613aa9b425",
+        "status": "CONFIRMED",
+        "transactionId": "0.0.9197513@1784156765.100000003",
+        "consensusTimestamp": "2026-07-15T23:06:05.377456789Z",
+        "sequence": 3,
+        "receiptStatus": "SUCCESS"
+      },
+      {
+        "logicalLabel": "AUCTION_CLOSE_BARRIER",
+        "expectedSequence": 4,
+        "expectedTopic": "0.0.9700000",
+        "envelope": {
+          "schemaVersion": "routeguard-hcs-1.0",
+          "messageType": "AUCTION_CLOSE_BARRIER",
+          "runId": "final-964b0d66",
+          "tenderId": "tender-final-964b0d66",
+          "tenderVersion": 1,
+          "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+          "createdAt": "2026-07-15T23:07:38.968Z",
+          "payloadHash": "sha256:ee1d709053f90e7e849da3ee5d7e1dd78f8f30fada2c7a008dde3911560c49c2",
+          "payload": {
+            "barrierId": "barrier-final-964b0d66",
+            "tenderId": "tender-final-964b0d66",
+            "tenderVersion": 1,
+            "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+            "auctionEndsAt": "2026-07-15T23:07:33.967Z",
+            "expectedCommitmentCount": 2,
+            "commitmentEnvelopeHashes": [
+              "sha256:a284b7cb9fd5f97812b7b9b85d1497ec77104dfdd116494b6ae876ed4adc73f0",
+              "sha256:14cc36ab3f1ebff1fe6de0086ec0990d731ad0b49efefe9ae8a0e3f2edb07efd"
+            ],
+            "closePolicy": "SAME_TOPIC_BARRIER_V1"
+          }
+        },
+        "envelopeHash": "sha256:a877f4625059748650bb440448d9209f330850c61f6767a149c048dd8edb4c54",
+        "encodedByteCount": 843,
+        "claimedAt": "2026-07-15T23:06:04.231Z",
+        "submitAttemptId": "submit-AUCTION_CLOSE_BARRIER-3d85763e-84a4-42bb-911d-65ad2617a585",
+        "status": "CONFIRMED",
+        "transactionId": "0.0.9197513@1784156859.100000004",
+        "consensusTimestamp": "2026-07-15T23:07:39.088456789Z",
+        "sequence": 4,
+        "receiptStatus": "SUCCESS"
+      },
+      {
+        "logicalLabel": "ROUTE_RESERVED",
+        "expectedSequence": 5,
+        "expectedTopic": "0.0.9700000",
+        "envelope": {
+          "schemaVersion": "routeguard-hcs-1.0",
+          "messageType": "ROUTE_RESERVED",
+          "runId": "reservation-reservation-final-964b0d66",
+          "tenderId": "tender-final-964b0d66",
+          "tenderVersion": 1,
+          "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+          "createdAt": "2026-07-15T23:07:39.288Z",
+          "payloadHash": "sha256:d8785e31690ab4f44478cdc4b51d258b922dabe6b569019f921ae8c064d6a6e7",
+          "payload": {
+            "reservationId": "reservation-final-964b0d66",
+            "winningBidId": "bid-alpha-final-964b0d66",
+            "carrierId": "carrier-alpha",
+            "carrierAccount": "0.0.9215954",
+            "selectedOptionId": "USDC",
+            "paymentAsset": "0.0.429274",
+            "paymentAmountAtomic": "10000",
+            "payerAccount": "0.0.9197513",
+            "paymentTransactionId": "0.0.9197513@1784156859.555000000",
+            "paymentConsensusTimestamp": "2026-07-15T23:07:39.288456789Z",
+            "reservationRecordHash": "sha256:50998595c77a5e7b40a6308051ec8ef240f2e3268b504984346e68903bd4e622",
+            "closeBarrierSequence": 4,
+            "reservationEvidenceVersion": "rg-res-ev-1"
+          }
+        },
+        "envelopeHash": "sha256:2e43e8e8376ccf691d4a216f95010f89182ff91a84ef3d1fc6c0091185a9778c",
+        "encodedByteCount": 941,
+        "claimedAt": "2026-07-15T23:06:04.340Z",
+        "submitAttemptId": "submit-ROUTE_RESERVED-9a95ebb1-4ba8-4863-ae91-a2ef6a4e949d",
+        "status": "CONFIRMED",
+        "transactionId": "0.0.9197513@1784156859.100000005",
+        "consensusTimestamp": "2026-07-15T23:07:39.408456789Z",
+        "sequence": 5,
+        "receiptStatus": "SUCCESS"
+      }
+    ],
+    "paymentSubmissionClaim": {
+      "claimedAt": "2026-07-15T23:07:39.088Z",
+      "status": "CONFIRMED",
+      "transactionId": "0.0.9197513@1784156859.555000000"
+    },
+    "reservationServiceRecordPath": "memory:reservation-final-964b0d66",
+    "routeReservedRecordHash": "sha256:50998595c77a5e7b40a6308051ec8ef240f2e3268b504984346e68903bd4e622",
+    "finalHashes": {
+      "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+      "winningBidHash": "sha256:9c7a31dea8d166fb35686ebaa19fd4f318d34681a355ddc725e465e6faedeaf5",
+      "evaluatedBidSetHash": "sha256:f4851ed212f653e444f83afbfdeb9fe79d3eff8633faef1c200b2fde232c842e",
+      "decisionManifestHash": "sha256:cbff923b5bd19eaf7fda2053a11e83c95531b0331d44e4ebb6e05dcac3a777e7"
+    },
+    "evidencePaths": {
+      "materials": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-authoritative-materials.json",
+      "attempt": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run-attempt.json",
+      "resultJson": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run.json",
+      "resultMd": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run.md"
+    },
+    "failureCode": null,
+    "failureReason": null,
+    "createdAt": "2026-07-15T23:06:04.213Z",
+    "updatedAt": "2026-07-15T23:06:04.343Z"
+  },
+  "materials": {
+    "attemptId": "final-demo-dab230d0-fcfb-4cd3-8840-a055964b0d66",
+    "shortAttemptId": "964b0d66",
+    "tenderId": "tender-final-964b0d66",
+    "bidAlphaId": "bid-alpha-final-964b0d66",
+    "bidBetaId": "bid-beta-final-964b0d66",
+    "reservationId": "reservation-final-964b0d66",
+    "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+    "bidHashes": {
+      "alpha": "sha256:9c7a31dea8d166fb35686ebaa19fd4f318d34681a355ddc725e465e6faedeaf5",
+      "beta": "sha256:2eeed5f634e3f902546cf81112f5d00d2f2eadd0171b1c304e77e846253a0a99"
+    },
+    "receiptHashes": {
+      "alpha": "sha256:9ba481c919684ff23d271caba7658d75536ffd1d55b137029fe9c30ebf823024",
+      "beta": "sha256:9ceb9849857c6b9a4217e4d705911bc59f28a1007be48923c53f09da778c16e5"
+    },
+    "commitmentEnvelopeHashes": {
+      "alpha": "sha256:a284b7cb9fd5f97812b7b9b85d1497ec77104dfdd116494b6ae876ed4adc73f0",
+      "beta": "sha256:14cc36ab3f1ebff1fe6de0086ec0990d731ad0b49efefe9ae8a0e3f2edb07efd"
+    }
+  },
+  "topic": {
+    "topicId": "0.0.9700000",
+    "topicCreateTransactionId": "0.0.9197513@1784156764.365125942",
+    "topicMemo": "routeguard-final:964b0d66"
+  },
+  "sequences": [
+    {
+      "sequence": 1,
+      "label": "AUCTION_OPEN",
+      "envelopeHash": "sha256:e568fc634d2f42fb42e79d6922a7f841109a945a5c98dea14d613e0cf97fcb47",
+      "transactionId": "0.0.9197513@1784156765.100000001",
+      "consensusTimestamp": "2026-07-15T23:06:05.137456789Z"
+    },
+    {
+      "sequence": 2,
+      "label": "BID_COMMITMENT_ALPHA",
+      "envelopeHash": "sha256:a284b7cb9fd5f97812b7b9b85d1497ec77104dfdd116494b6ae876ed4adc73f0",
+      "transactionId": "0.0.9197513@1784156765.100000002",
+      "consensusTimestamp": "2026-07-15T23:06:05.257456789Z"
+    },
+    {
+      "sequence": 3,
+      "label": "BID_COMMITMENT_BETA",
+      "envelopeHash": "sha256:14cc36ab3f1ebff1fe6de0086ec0990d731ad0b49efefe9ae8a0e3f2edb07efd",
+      "transactionId": "0.0.9197513@1784156765.100000003",
+      "consensusTimestamp": "2026-07-15T23:06:05.377456789Z"
+    },
+    {
+      "sequence": 4,
+      "label": "AUCTION_CLOSE_BARRIER",
+      "envelopeHash": "sha256:a877f4625059748650bb440448d9209f330850c61f6767a149c048dd8edb4c54",
+      "transactionId": "0.0.9197513@1784156859.100000004",
+      "consensusTimestamp": "2026-07-15T23:07:39.088456789Z"
+    },
+    {
+      "sequence": 5,
+      "label": "ROUTE_RESERVED",
+      "envelopeHash": "sha256:2e43e8e8376ccf691d4a216f95010f89182ff91a84ef3d1fc6c0091185a9778c",
+      "transactionId": "0.0.9197513@1784156859.100000005",
+      "consensusTimestamp": "2026-07-15T23:07:39.408456789Z"
+    }
+  ],
+  "auctionEndsAt": "2026-07-15T23:07:33.967Z",
+  "barrierConsensusTimestamp": "2026-07-15T23:07:39.088456789Z",
+  "reconciliationReference": "mirror:topic:0.0.9700000:1-4",
+  "finalHashes": {
+    "tenderHash": "sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b",
+    "winningBidHash": "sha256:9c7a31dea8d166fb35686ebaa19fd4f318d34681a355ddc725e465e6faedeaf5",
+    "evaluatedBidSetHash": "sha256:f4851ed212f653e444f83afbfdeb9fe79d3eff8633faef1c200b2fde232c842e",
+    "decisionManifestHash": "sha256:cbff923b5bd19eaf7fda2053a11e83c95531b0331d44e4ebb6e05dcac3a777e7"
+  },
+  "winner": {
+    "bidId": "bid-alpha-final-964b0d66",
+    "carrierId": "carrier-alpha",
+    "carrierAccount": "0.0.9215954"
+  },
+  "payment": {
+    "selectedOptionId": "USDC",
+    "payer": "0.0.9197513",
+    "receiver": "0.0.9215954",
+    "token": "0.0.429274",
+    "amount": "10000",
+    "transactionId": "0.0.9197513@1784156859.555000000",
+    "consensusTimestamp": "2026-07-15T23:07:39.288456789Z",
+    "tokenTransfers": [
+      {
+        "account": "0.0.9197513",
+        "tokenId": "0.0.429274",
+        "amount": "-10000"
+      },
+      {
+        "account": "0.0.9215954",
+        "tokenId": "0.0.429274",
+        "amount": "10000"
+      }
+    ]
+  },
+  "reservationRecordHash": "sha256:50998595c77a5e7b40a6308051ec8ef240f2e3268b504984346e68903bd4e622",
+  "routeReserved": {
+    "sequence": 5,
+    "envelopeHash": "sha256:2e43e8e8376ccf691d4a216f95010f89182ff91a84ef3d1fc6c0091185a9778c",
+    "byteCount": 941,
+    "transactionId": "0.0.9197513@1784156859.100000005",
+    "consensusTimestamp": "2026-07-15T23:07:39.408456789Z"
+  },
+  "conservativeEnvelopeByteCount": 949,
+  "dryRunEnvelopeByteCount": 941,
+  "envelopeWithinLimit": true,
+  "networkWrites": {
+    "topicCreates": 1,
+    "hcsSubmits": 5,
+    "payments": 1,
+    "realNetwork": false
+  },
+  "evidencePaths": {
+    "materials": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-authoritative-materials.json",
+    "attempt": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run-attempt.json",
+    "json": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run.json",
+    "md": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-dry-run.md"
+  },
+  "finalState": "COMPLETED"
+}

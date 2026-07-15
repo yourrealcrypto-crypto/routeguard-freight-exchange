@@ -6,9 +6,22 @@ Carrier systems submit signed freight-capacity bids. Hedera Consensus Service es
 
 ## Current status
 
-Initial implementation shell.
+Core auction, HCS evidence, dual-asset reservation, and final-demo dry-run are implemented offline.
 
-No live payment is enabled yet.
+Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase). Default CLI modes perform **zero** network writes.
+
+### Final demonstration (Phase 6B.2)
+
+```bash
+npm run demo:final-auction   # OFFLINE_DRY_RUN by default
+npm run check:secrets        # fail closed on private-key fields in public paths
+```
+
+Public synthetic template: `demo/fixtures/final-auction-template.json`.
+
+**Historical HCS topic `0.0.9587459`:** earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration. The final live run creates a **new** HCS topic and sequences 1–5 on that topic only.
+
+All auction and carrier data in the final demonstration is deliberately synthetic and publicly disclosed for reproducibility. Hedera payment and consensus transactions are real testnet transactions when executed live under full guards.
 
 ## Target network
 

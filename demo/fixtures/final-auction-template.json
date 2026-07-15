@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "final-auction-template-1.0",
+  "dataClassification": "PUBLIC_SYNTHETIC_DEMO",
+  "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions when executed live.",
+  "network": "hedera:testnet",
+  "auction": {
+    "windowSeconds": 90,
+    "barrierSafetyMarginMs": 5000,
+    "commitmentSubmitSafetyMarginMs": 10000
+  },
+  "route": {
+    "origin": "Hamburg, DE",
+    "destination": "Istanbul, TR",
+    "shipperId": "shipper-final-demo-nordic"
+  },
+  "cargo": {
+    "type": "general-merchandise",
+    "weightKg": 7500,
+    "pallets": 10,
+    "dangerousGoods": false
+  },
+  "equipment": "Curtainsider",
+  "maximumFreightPriceCents": 420000,
+  "selectionPolicy": "LOWEST_QUALIFIED_PRICE_V1",
+  "tenderVersion": 1,
+  "relativeOffsets": {
+    "pickupEarliestAfterAuctionEndSeconds": 86400,
+    "pickupWindowDurationSeconds": 43200,
+    "deliveryAfterPickupLatestSeconds": 259200,
+    "bidValidAfterAuctionEndSeconds": 43200,
+    "alphaPickupOffsetSeconds": 3600,
+    "betaPickupOffsetSeconds": 7200,
+    "alphaDeliveryOffsetSeconds": 172800,
+    "betaDeliveryOffsetSeconds": 129600
+  },
+  "carriers": {
+    "alpha": {
+      "carrierId": "carrier-alpha",
+      "carrierAccountId": "0.0.9215954",
+      "displayName": "Synthetic Alpha Freight (fictional)",
+      "allowedEquipment": ["Curtainsider", "Box"],
+      "freightPriceCents": 350000
+    },
+    "beta": {
+      "carrierId": "carrier-beta",
+      "carrierAccountId": "0.0.9100002",
+      "displayName": "Synthetic Beta Logistics (fictional)",
+      "allowedEquipment": ["Curtainsider"],
+      "freightPriceCents": 375000
+    }
+  },
+  "reservationPayment": {
+    "usdc": {
+      "optionId": "USDC",
+      "scheme": "exact",
+      "network": "hedera:testnet",
+      "asset": "0.0.429274",
+      "amountAtomic": "10000",
+      "display": "0.01 USDC"
+    },
+    "hbarDisplayAlternative": {
+      "optionId": "HBAR",
+      "scheme": "exact",
+      "network": "hedera:testnet",
+      "asset": "0.0.0",
+      "amountAtomic": "1000000",
+      "display": "0.01 HBAR (not used by final demo)"
+    }
+  },
+  "accounts": {
+    "payerAccountId": "0.0.9197513",
+    "winnerReceiverAccountId": "0.0.9215954",
+    "carrierBetaDemoAccountId": "0.0.9100002",
+    "facilitatorFeePayer": "0.0.7162784"
+  },
+  "writeBudgets": {
+    "plannedTopicCreates": 1,
+    "plannedHcsSubmissions": 5,
+    "plannedPaymentSubmissions": 1
+  },
+  "historicalTopicNote": "Earlier exploratory Phase 5 auction run topic 0.0.9587459. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.",
+  "prohibited": {
+    "hcsTopicId": null,
+    "absoluteHistoricalTimestamps": true,
+    "signatures": true,
+    "signingSecrets": true,
+    "environmentSecrets": true
+  }
+}

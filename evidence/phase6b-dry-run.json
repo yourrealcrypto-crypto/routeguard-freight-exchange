@@ -1,0 +1,66 @@
+{
+  "status": "OFFLINE_DRY_RUN_COMPLETE",
+  "mode": "OFFLINE_DRY_RUN",
+  "network": "hedera:testnet",
+  "reservationId": "res-phase6b-usdc-0001",
+  "tenderId": "tender-ham-ist-hcs-c8b3e38a",
+  "winningBidId": "bid-a-b3e38a",
+  "winningCarrierAccount": "0.0.9215954",
+  "tenderHash": "sha256:4f15fd82ad0237eef84f1ab1f2b70f7b6f94bd17b8608bc94ca805a4d382c55f",
+  "winningBidHash": "sha256:d90b48dcdc8c9ed8995ccab379edb997ec08cf19c94f4321c13cd5a328996452",
+  "evaluatedBidSetHash": "sha256:65bdcc7a122ad87faeaa1ee28ba26c84fa9dc0218687e0b5e935213a1ba75781",
+  "decisionManifestHash": "sha256:2d13d468c7cfac7ca4b519b2a84866abaec1adb6cd00284e8cde9c532449a110",
+  "authoritativeHashes": {
+    "tenderHash": "sha256:4f15fd82ad0237eef84f1ab1f2b70f7b6f94bd17b8608bc94ca805a4d382c55f",
+    "winningBidHash": "sha256:d90b48dcdc8c9ed8995ccab379edb997ec08cf19c94f4321c13cd5a328996452",
+    "evaluatedBidSetHash": "sha256:65bdcc7a122ad87faeaa1ee28ba26c84fa9dc0218687e0b5e935213a1ba75781",
+    "decisionManifestHash": "sha256:2d13d468c7cfac7ca4b519b2a84866abaec1adb6cd00284e8cde9c532449a110"
+  },
+  "hcsTopicId": "0.0.9587459",
+  "closeBarrierSequence": 4,
+  "selectedOptionId": "USDC",
+  "payer": "0.0.9197513",
+  "receiver": "0.0.9215954",
+  "token": "0.0.429274",
+  "amountAtomic": "10000",
+  "challenge": {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "asset": "0.0.429274",
+    "amount": "10000",
+    "payTo": "0.0.9215954",
+    "resource": "/api/reservations/res-phase6b-usdc-0001/pay/usdc",
+    "maxTimeoutSeconds": 180,
+    "challengeHash": "sha256:d3e1f5aa3b326a1008cd2f062e69289de0de2f1bf2787825d48903045b504a3b"
+  },
+  "conservativeEnvelopeByteCount": 933,
+  "dryRunEnvelopeByteCount": 931,
+  "conservativeMargin": 91,
+  "hcsMaxMessageBytes": 1024,
+  "envelopeWithinLimit": true,
+  "topicPreflight": {
+    "topicId": "0.0.9587459",
+    "messageCount": 4,
+    "maxSequence": 4,
+    "hasOpen": true,
+    "hasBarrierAt4": true,
+    "sequences1to4Valid": true,
+    "hasRouteReservedForReservation": false,
+    "nextSequence": 5,
+    "source": "OFFLINE_SYNTHETIC"
+  },
+  "networkWrites": {
+    "facilitatorVerify": 0,
+    "facilitatorSettle": 0,
+    "hcsPublish": 0,
+    "externalWebhook": 0
+  },
+  "notes": [
+    "OFFLINE_DRY_RUN only — not live evidence.",
+    "No payment payload, facilitator settle, HCS submit, or external webhook.",
+    "Dry-run attempt file is separate from live attempt file.",
+    "Authoritative hashes reproduced from sealed phase5-authoritative-source.json via createAuctionClosureProof.",
+    "No public-identity-only validation path exists."
+  ]
+}
