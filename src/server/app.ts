@@ -1,8 +1,21 @@
 import { Hono } from "hono";
+
 import { config } from "../config";
+import { registerHbarSmokeRoute } from "../x402/hbar-smoke";
 import { renderDevelopmentPage } from "./page";
 
 const app = new Hono();
+
+app.onError((error, context) => {
+  console.error(error);
+
+  return context.json(
+    {
+      error: "Internal server error",
+    },
+    500,
+  );
+});
 
 app.get("/", (context) => {
   return context.html(renderDevelopmentPage());
@@ -13,11 +26,16 @@ app.get("/api/health", (context) => {
     status: "ok",
     service: "routeguard-freight-exchange",
     network: config.network,
+
     livePaymentsEnabled:
       config.liveHederaEnabled &&
-      (config.liveHbarPaymentsEnabled ||
-        config.liveUsdcPaymentsEnabled),
+      (
+        config.liveHbarPaymentsEnabled ||
+        config.liveUsdcPaymentsEnabled
+      ),
   });
 });
+
+registerHbarSmokeRoute(app);
 
 export default app;

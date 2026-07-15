@@ -29,6 +29,10 @@
   "dependencies": {
     "@hiero-ledger/sdk": "^2.85.0",
     "@hono/node-server": "^1.13.0",
+    "@x402/core": "^2.16.0",
+    "@x402/fetch": "^2.16.0",
+    "@x402/hedera": "^2.16.0",
+    "@x402/hono": "^2.16.0",
     "dotenv": "^16.4.0",
     "hono": "^4.6.0"
   },
