@@ -1,0 +1,113 @@
+{
+  "status": "SUCCESS",
+  "runId": "hcs-demo-1784141815865-c8b3e38a",
+  "network": "hedera:testnet",
+  "topicId": "0.0.9587459",
+  "topicCreateTransactionId": "0.0.9197513@1784141808.133452179",
+  "topicMemo": "RouteGuard Freight Exchange Phase 5 HCS auction demo",
+  "hashScanTopicLink": "https://hashscan.io/testnet/topic/0.0.9587459",
+  "hashScanTopicCreateTransactionLink": "https://hashscan.io/testnet/transaction/0.0.9197513@1784141808.133452179",
+  "tenderId": "tender-ham-ist-hcs-c8b3e38a",
+  "tenderVersion": 1,
+  "tenderHash": "sha256:4f15fd82ad0237eef84f1ab1f2b70f7b6f94bd17b8608bc94ca805a4d382c55f",
+  "auctionEndsAt": "2026-07-15T18:58:10.865Z",
+  "engineVersion": "routeguard-auction-1.0",
+  "selectionPolicy": "LOWEST_QUALIFIED_PRICE_V1",
+  "rulesHash": "sha256:51274182eb41071ddee80950a4fd3416b1453faa48486eb6e71f7780eba7c571",
+  "operatorAccount": "0.0.9197513",
+  "operatorPublicKeyMatch": "PASS",
+  "parserUsed": "PrivateKey.fromStringECDSA",
+  "topicCreates": 1,
+  "messagesSubmitted": 4,
+  "messages": {
+    "open": {
+      "type": "AUCTION_OPEN",
+      "label": "AUCTION_OPEN",
+      "envelopeHash": "sha256:b442130145fa6f33647b362de296081f11d64ce05ff33e310c918c34b4f344a0",
+      "transactionId": "0.0.9197513@1784141813.573718714",
+      "sequence": 1,
+      "consensusTimestamp": "2026-07-15T18:57:01.181811722Z",
+      "hashScanTransactionLink": "https://hashscan.io/testnet/transaction/0.0.9197513@1784141813.573718714"
+    },
+    "commitmentA": {
+      "type": "BID_COMMITMENT",
+      "label": "BID_COMMITMENT A",
+      "envelopeHash": "sha256:9a2ff0618e93060ffb29ce09c9e9552a8338e624fc1f5b47960ef27a44d2f128",
+      "transactionId": "0.0.9197513@1784141818.206393084",
+      "sequence": 2,
+      "consensusTimestamp": "2026-07-15T18:57:05.556924104Z",
+      "hashScanTransactionLink": "https://hashscan.io/testnet/transaction/0.0.9197513@1784141818.206393084"
+    },
+    "commitmentB": {
+      "type": "BID_COMMITMENT",
+      "label": "BID_COMMITMENT B",
+      "envelopeHash": "sha256:c9746b7aa932382f7d3b7a6ee7d6af6efd7d8e68643ca62088bb13fe5e504db8",
+      "transactionId": "0.0.9197513@1784141822.496758686",
+      "sequence": 3,
+      "consensusTimestamp": "2026-07-15T18:57:10.421468801Z",
+      "hashScanTransactionLink": "https://hashscan.io/testnet/transaction/0.0.9197513@1784141822.496758686"
+    },
+    "barrier": {
+      "type": "AUCTION_CLOSE_BARRIER",
+      "label": "AUCTION_CLOSE_BARRIER",
+      "envelopeHash": "sha256:35deff931437088383f868d8ad91a5d8e840a7bdb88df695dd5adabac11e1655",
+      "transactionId": "0.0.9197513@1784141892.323715892",
+      "sequence": 4,
+      "consensusTimestamp": "2026-07-15T18:58:17.944297247Z",
+      "hashScanTransactionLink": "https://hashscan.io/testnet/transaction/0.0.9197513@1784141892.323715892"
+    }
+  },
+  "barrierId": "barrier-c8b3e38a",
+  "barrierSequence": 4,
+  "barrierConsensusTimestamp": "2026-07-15T18:58:17.944297247Z",
+  "completeSequenceRange": {
+    "start": 1,
+    "end": 4
+  },
+  "observedSequences": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "completenessResult": true,
+  "commitmentCount": 2,
+  "commitmentEnvelopeHashes": [
+    "sha256:9a2ff0618e93060ffb29ce09c9e9552a8338e624fc1f5b47960ef27a44d2f128",
+    "sha256:c9746b7aa932382f7d3b7a6ee7d6af6efd7d8e68643ca62088bb13fe5e504db8"
+  ],
+  "reconciledBidIds": [
+    "bid-a-b3e38a",
+    "bid-b-b3e38a"
+  ],
+  "timelyStatus": [
+    {
+      "bidId": "bid-a-b3e38a",
+      "timely": true,
+      "consensusTimestamp": "2026-07-15T18:57:05.556924104Z"
+    },
+    {
+      "bidId": "bid-b-b3e38a",
+      "timely": true,
+      "consensusTimestamp": "2026-07-15T18:57:10.421468801Z"
+    }
+  ],
+  "winnerBidId": "bid-a-b3e38a",
+  "winnerBidHash": "sha256:5864999e92f3cfa91605805209449d94e717f854981a1f3219b584c6c4b2635a",
+  "winnerCarrierId": "carrier-alpha",
+  "winnerCarrierAccount": "0.0.9215954",
+  "evaluatedBidSetHash": "sha256:6ea347e8fccd4f703b0b36cd524c506748030cc7d41393a81886074115785e23",
+  "decisionManifestHash": "sha256:2d4eb6abac3ea3924289996e31cae0804a9c021984bbbf829b0342d64dcba523",
+  "manifestVerificationResult": "PASS",
+  "closureProofResult": "PASS",
+  "finalAuctionState": "WINNER_SELECTED",
+  "paymentsExecuted": 0,
+  "tokenAssociationsExecuted": 0,
+  "evidenceGeneratedAt": "2026-07-15T18:58:18.974Z",
+  "notes": [
+    "The full bids remained private. HCS contains only hashes and public evidence references. Mirror Node consensus order and timestamps determine timeliness.",
+    "No HBAR or USDC payment was executed.",
+    "No token association was executed.",
+    "Barrier consensus timestamp is authoritative for close; createdAt is informational only."
+  ]
+}

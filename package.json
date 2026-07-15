@@ -18,7 +18,8 @@
     "smoke:hbar": "tsx scripts/hbar-smoke-client.ts",
     "smoke:hbar:challenge": "tsx scripts/hbar-smoke-challenge.ts",
     "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts",
-    "smoke:usdc": "tsx scripts/usdc-smoke-client.ts"
+    "smoke:usdc": "tsx scripts/usdc-smoke-client.ts",
+    "demo:hcs-auction": "tsx scripts/hcs-auction-demo.ts"
   },
   "repository": {
     "type": "git",
