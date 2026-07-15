@@ -27,15 +27,11 @@ const HBAR_ASSET_ID = "0.0.0";
 const HBAR_SMOKE_PRICE_TINYBARS = "1000000";
 
 export function registerHbarSmokeRoute(app: Hono): void {
-  const liveHbarEnabled =
-    config.liveHederaEnabled &&
-    config.liveHbarPaymentsEnabled;
-
-  if (!liveHbarEnabled) {
+  if (!config.hbarSmokeChallengeEnabled) {
     app.get(HBAR_SMOKE_PATH, (context) => {
       return context.json(
         {
-          error: "Live HBAR payments are disabled.",
+          error: "HBAR smoke challenge publication is disabled.",
           code: "LIVE_HBAR_DISABLED",
           network: config.network,
         },
@@ -82,6 +78,29 @@ export function registerHbarSmokeRoute(app: Hono): void {
       },
     },
   };
+
+  app.use(HBAR_SMOKE_PATH, async (context, next) => {
+    const hasPaymentPayload = Boolean(
+      context.req.header("PAYMENT-SIGNATURE") ||
+      context.req.header("X-PAYMENT"),
+    );
+    const livePaymentSubmissionEnabled =
+      config.liveHederaEnabled &&
+      config.liveHbarPaymentsEnabled;
+
+    if (hasPaymentPayload && !livePaymentSubmissionEnabled) {
+      return context.json(
+        {
+          error: "Live HBAR payment submission is disabled.",
+          code: "LIVE_HBAR_DISABLED",
+          network: config.network,
+        },
+        503,
+      );
+    }
+
+    await next();
+  });
 
   app.use(
     HBAR_SMOKE_PATH,

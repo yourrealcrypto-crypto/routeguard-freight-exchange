@@ -17,6 +17,9 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const liveHederaEnabled =
   process.env.ENABLE_LIVE_HEDERA === "true";
 
+const hbarSmokeChallengeEnabled =
+  process.env.ENABLE_HBAR_SMOKE_CHALLENGE === "true";
+
 const liveHbarPaymentsEnabled =
   process.env.ENABLE_LIVE_HBAR_PAYMENTS === "true";
 
@@ -39,12 +42,14 @@ if (liveUsdcPaymentsEnabled && !liveHederaEnabled) {
 }
 
 if (
-  liveHederaEnabled &&
-  liveHbarPaymentsEnabled &&
+  (
+    hbarSmokeChallengeEnabled ||
+    (liveHederaEnabled && liveHbarPaymentsEnabled)
+  ) &&
   !carrierAccountId
 ) {
   throw new Error(
-    "CARRIER_ACCOUNT_ID is required for live HBAR payments.",
+    "CARRIER_ACCOUNT_ID is required for the HBAR smoke challenge or live HBAR payments.",
   );
 }
 
@@ -59,6 +64,7 @@ export const config = Object.freeze({
   carrierAccountId,
 
   liveHederaEnabled,
+  hbarSmokeChallengeEnabled,
   liveHbarPaymentsEnabled,
   liveUsdcPaymentsEnabled,
 });

@@ -26,7 +26,7 @@ it("keeps the HBAR x402 smoke route disabled by default", async () => {
   const body = await response.json();
 
   expect(body).toEqual({
-    error: "Live HBAR payments are disabled.",
+    error: "HBAR smoke challenge publication is disabled.",
     code: "LIVE_HBAR_DISABLED",
     network: "hedera:testnet",
   });
