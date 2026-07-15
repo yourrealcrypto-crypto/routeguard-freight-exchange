@@ -15,6 +15,7 @@ export {
 };
 
 export async function main(): Promise<void> {
+  await import("dotenv/config");
   await runHbarSmokeClient();
 }
 

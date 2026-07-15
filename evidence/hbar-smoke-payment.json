@@ -1,5 +1,5 @@
 {
-  "status": "FAILED_NO_SETTLEMENT",
+  "status": "SUCCESS",
   "x402Version": 2,
   "scheme": "exact",
   "network": "hedera:testnet",
@@ -9,41 +9,61 @@
   "payerAccount": "0.0.9197513",
   "receiverAccount": "0.0.9215954",
   "facilitatorUrl": "https://api.testnet.blocky402.com",
-  "transactionId": null,
-  "consensusTimestamp": null,
-  "mirrorNodeVerification": {
-    "verified": false,
-    "result": "NO_AUTHORITATIVE_TRANSACTION_ID",
-    "payerTransactionsAfterPrePaymentTimestamp": 0,
-    "receiverTransactionsAfterPrePaymentTimestamp": 0,
-    "queryLowerBound": "1784081866.000000000"
+  "feePayerAccount": "0.0.7162784",
+  "publicKeyMatch": "PASS",
+  "expectedPayerPublicKey": "02c07aaa7bc004c9c44186395f496639cf46741b6bc8092c024156e5ac68d5fde5",
+  "parserUsed": "PrivateKey.fromStringECDSA",
+  "ambiguousParsersInActiveHbarPath": 0,
+  "clientFrozenTransactionId": "0.0.7162784@1784123744.752811412",
+  "facilitatorTransactionId": "0.0.7162784@1784123744.752811412",
+  "transactionIdMatch": true,
+  "consensusTimestamp": "1784123752.301455419",
+  "mirrorNodeResult": "SUCCESS",
+  "chargedTxFee": "296505",
+  "hashScanLink": "https://hashscan.io/testnet/transaction/0.0.7162784@1784123744.752811412",
+  "initialHttpStatus": 402,
+  "finalHttpStatus": 200,
+  "successfulPayments": 1,
+  "oneSettlementAttempt": true,
+  "validatedChallenge": {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "asset": "0.0.0",
+    "amount": "1000000",
+    "payTo": "0.0.9215954",
+    "feePayer": "0.0.7162784",
+    "maxTimeoutSeconds": 180
   },
-  "hashScanLink": null,
-  "hashScanLinkStatus": "UNAVAILABLE_WITHOUT_TRANSACTION_ID",
+  "timing": {
+    "challengeFetch": "2026-07-15T13:55:47.192Z",
+    "payloadCreation": "2026-07-15T13:55:48.784Z",
+    "signedRetry": "2026-07-15T13:55:49.245Z",
+    "facilitatorResponse": "2026-07-15T13:55:51.410Z"
+  },
   "prePaymentBalances": {
-    "timestamp": "2026-07-15T02:17:46.3833308Z",
-    "payerHbar": "999.70763675",
-    "payerTinybars": "99970763675",
+    "payerHbar": "999.70614797",
+    "payerTinybars": "99970614797",
     "receiverHbar": "1000.10000000",
     "receiverTinybars": "100010000000"
   },
   "postPaymentBalances": {
-    "timestamp": "2026-07-15T02:28:35.6878117Z",
-    "payerHbar": "999.70763675",
-    "payerTinybars": "99970763675",
-    "receiverHbar": "1000.10000000",
-    "receiverTinybars": "100010000000"
+    "payerHbar": "999.69614797",
+    "payerTinybars": "99969614797",
+    "receiverHbar": "1000.11000000",
+    "receiverTinybars": "100011000000"
   },
   "observedBalanceDeltas": {
-    "payerHbar": "0.00000000",
-    "payerTinybars": "0",
-    "receiverHbar": "0.00000000",
-    "receiverTinybars": "0"
+    "payerHbar": "-0.01000000",
+    "payerTinybars": "-1000000",
+    "receiverHbar": "+0.01000000",
+    "receiverTinybars": "+1000000",
+    "note": "fee of 296505 tinybars was charged to facilitator fee payer 0.0.7162784, not the x402 payer"
   },
-  "initialHttpStatus": 402,
-  "finalHttpStatus": 402,
-  "livePaymentAttempts": 1,
-  "successfulPayments": 0,
-  "failure": "The signed retry received HTTP 402 and no facilitator settlement transaction ID.",
-  "evidenceGenerationTimestamp": "2026-07-15T02:28:35.6878117Z"
+  "paymentTransfers": {
+    "payer": -1000000,
+    "receiver": 1000000,
+    "feePayerFee": -296505
+  },
+  "evidenceGenerationTimestamp": "2026-07-15T13:56:40Z"
 }

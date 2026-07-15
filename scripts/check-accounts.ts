@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const shipperPrivateKey = PrivateKey.fromString(
+  const shipperPrivateKey = PrivateKey.fromStringECDSA(
     shipperPrivateKeyText,
   );
 

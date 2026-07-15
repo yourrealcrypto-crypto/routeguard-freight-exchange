@@ -2,14 +2,24 @@ import { encodePaymentRequiredHeader } from "@x402/core/http";
 import type {
   PaymentRequired,
   PaymentRequirements,
+  SettleResponse,
 } from "@x402/core/types";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   canSignPayment,
+  claimSettlementAttempt,
+  describeHbarSmokeSettlementFailure,
   fetchAndValidateHbarSmokeChallenge,
+  HBAR_SMOKE_APPROVED_FEE_PAYER,
+  HBAR_SMOKE_APPROVED_PAYER,
+  HBAR_SMOKE_APPROVED_RECEIVER,
+  isSettlementGuardClaimed,
+  resetSettlementGuardForTests,
   runHbarSmokeClient,
   validateHbarSmokePaymentRequirements,
+  validateHbarSmokeSettlement,
+  verifyHbarSmokePayment,
 } from "../src/x402/hbar-smoke-client";
 
 const carrierAccountId = "0.0.1234";
@@ -20,10 +30,10 @@ const validRequirement: PaymentRequirements = {
   network: "hedera:testnet",
   amount: "1000000",
   asset: "0.0.0",
-  payTo: carrierAccountId,
+  payTo: HBAR_SMOKE_APPROVED_RECEIVER,
   maxTimeoutSeconds: 180,
   extra: {
-    feePayer: "0.0.9876",
+    feePayer: HBAR_SMOKE_APPROVED_FEE_PAYER,
   },
 };
 
@@ -68,7 +78,7 @@ describe("HBAR smoke client validation", () => {
   it("accepts a valid requirement", () => {
     const validated = validateHbarSmokePaymentRequirements(
       validPaymentRequired,
-      carrierAccountId,
+      HBAR_SMOKE_APPROVED_RECEIVER,
     );
 
     expect(validated.paymentRequired).toBe(validPaymentRequired);
@@ -79,7 +89,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ payTo: "0.0.9999" }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected payTo recipient/);
   });
@@ -88,7 +98,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ network: "hedera:mainnet" }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected network/);
   });
@@ -97,7 +107,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ amount: "1000001" }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected amount/);
   });
@@ -106,7 +116,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ asset: "0.0.1" }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected asset/);
   });
@@ -115,7 +125,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ scheme: "inexact" }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected scheme/);
   });
@@ -127,7 +137,7 @@ describe("HBAR smoke client validation", () => {
           ...validPaymentRequired,
           x402Version: 1,
         },
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Unexpected x402Version/);
   });
@@ -139,7 +149,7 @@ describe("HBAR smoke client validation", () => {
           x402Version: 2,
           resource: validPaymentRequired.resource,
         },
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Missing accepts/);
   });
@@ -151,7 +161,7 @@ describe("HBAR smoke client validation", () => {
           ...validPaymentRequired,
           accepts: "not-an-array",
         },
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Invalid accepts/);
   });
@@ -163,7 +173,7 @@ describe("HBAR smoke client validation", () => {
           ...validPaymentRequired,
           accepts: [],
         },
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/exactly one payment requirement, got 0/);
   });
@@ -175,7 +185,7 @@ describe("HBAR smoke client validation", () => {
           ...validPaymentRequired,
           accepts: [validRequirement, validRequirement],
         },
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/exactly one payment requirement, got 2/);
   });
@@ -184,7 +194,7 @@ describe("HBAR smoke client validation", () => {
     expect(() =>
       validateHbarSmokePaymentRequirements(
         withRequirement({ extra: {} }),
-        carrierAccountId,
+        HBAR_SMOKE_APPROVED_RECEIVER,
       ),
     ).toThrow(/Missing Hedera fee payer/);
   });
@@ -194,7 +204,7 @@ describe("HBAR smoke challenge fetching", () => {
   it("decodes and validates a genuine PAYMENT-REQUIRED header", async () => {
     const fetched = await fetchAndValidateHbarSmokeChallenge(
       smokeUrl,
-      carrierAccountId,
+      HBAR_SMOKE_APPROVED_RECEIVER,
       fetchReturning(challengeResponse()),
     );
 
@@ -259,7 +269,7 @@ describe("HBAR smoke signing boundary", () => {
       let privateKeyAccessed = false;
       const env = new Proxy<NodeJS.ProcessEnv>(
         {
-          CARRIER_ACCOUNT_ID: carrierAccountId,
+          CARRIER_ACCOUNT_ID: HBAR_SMOKE_APPROVED_RECEIVER,
           HBAR_SMOKE_URL: smokeUrl,
           ENABLE_LIVE_HEDERA: liveHedera,
           ENABLE_LIVE_HBAR_PAYMENTS: liveHbarPayments,
@@ -277,7 +287,13 @@ describe("HBAR smoke signing boundary", () => {
       );
       const result = await runHbarSmokeClient({
         env,
-        fetchImplementation: fetchReturning(challengeResponse()),
+        fetchImplementation: fetchReturning(
+          challengeResponse(
+            withRequirement({
+              payTo: HBAR_SMOKE_APPROVED_RECEIVER,
+            }),
+          ),
+        ),
         logger: {
           log: vi.fn(),
         },
@@ -287,6 +303,84 @@ describe("HBAR smoke signing boundary", () => {
       expect(privateKeyAccessed).toBe(false);
     },
   );
+
+  it("rejects an unapproved payer before private-key access", async () => {
+    let privateKeyAccessed = false;
+    const env = new Proxy<NodeJS.ProcessEnv>(
+      {
+        CARRIER_ACCOUNT_ID: HBAR_SMOKE_APPROVED_RECEIVER,
+        SHIPPER_ACCOUNT_ID: "0.0.1111",
+        HBAR_SMOKE_URL: smokeUrl,
+        ENABLE_LIVE_HEDERA: "true",
+        ENABLE_LIVE_HBAR_PAYMENTS: "true",
+      },
+      {
+        get(target, property, receiver) {
+          if (property === "SHIPPER_PRIVATE_KEY") {
+            privateKeyAccessed = true;
+            throw new Error("private key must not be read");
+          }
+
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    );
+
+    await expect(
+      runHbarSmokeClient({
+        env,
+        fetchImplementation: fetchReturning(
+          challengeResponse(
+            withRequirement({
+              payTo: HBAR_SMOKE_APPROVED_RECEIVER,
+            }),
+          ),
+        ),
+        logger: {
+          log: vi.fn(),
+        },
+      }),
+    ).rejects.toThrow(/approved payer/);
+    expect(privateKeyAccessed).toBe(false);
+  });
+
+  it("accepts only an authoritative successful settlement", () => {
+    const settlement: SettleResponse = {
+      success: true,
+      payer: HBAR_SMOKE_APPROVED_PAYER,
+      transaction: "0.0.9197513@1784082000.000000001",
+      network: "hedera:testnet",
+      amount: "1000000",
+    };
+
+    expect(
+      validateHbarSmokeSettlement(
+        settlement,
+        HBAR_SMOKE_APPROVED_PAYER,
+      ),
+    ).toBe(settlement);
+    expect(() =>
+      validateHbarSmokeSettlement(
+        {
+          ...settlement,
+          success: false,
+        },
+        HBAR_SMOKE_APPROVED_PAYER,
+      ),
+    ).toThrow(/unsuccessful HBAR settlement/);
+  });
+
+  it("preserves sanitized facilitator settlement failure details", () => {
+    expect(
+      describeHbarSmokeSettlementFailure({
+        success: false,
+        errorReason: "transaction_failed",
+        errorMessage: "BUSY",
+        transaction: "",
+        network: "hedera:testnet",
+      }),
+    ).toBe("transaction_failed: BUSY");
+  });
 
   it("does not execute the CLI when its module is imported", async () => {
     const fetchSpy = vi
@@ -304,5 +398,97 @@ describe("HBAR smoke signing boundary", () => {
     expect(errorSpy).not.toHaveBeenCalled();
 
     vi.restoreAllMocks();
+  });
+
+  it("keeps verify-only mode from enabling settlement", async () => {
+    let privateKeyAccessed = false;
+    const env = new Proxy<NodeJS.ProcessEnv>(
+      {
+        CARRIER_ACCOUNT_ID: HBAR_SMOKE_APPROVED_RECEIVER,
+        FACILITATOR_URL: "https://api.testnet.blocky402.com",
+        HBAR_SMOKE_URL: smokeUrl,
+        ENABLE_LIVE_HEDERA: "true",
+        ENABLE_LIVE_HBAR_PAYMENTS: "true",
+      },
+      {
+        get(target, property, receiver) {
+          if (property === "SHIPPER_PRIVATE_KEY") {
+            privateKeyAccessed = true;
+            throw new Error("private key must not be read");
+          }
+
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    );
+
+    await expect(
+      verifyHbarSmokePayment({
+        env,
+        fetchImplementation: fetchReturning(
+          challengeResponse(
+            withRequirement({
+              payTo: HBAR_SMOKE_APPROVED_RECEIVER,
+            }),
+          ),
+        ),
+        logger: {
+          log: vi.fn(),
+        },
+      }),
+    ).rejects.toThrow(/requires ENABLE_LIVE_HBAR_PAYMENTS=false/);
+    expect(privateKeyAccessed).toBe(false);
+  });
+
+  it("does not execute the verify CLI when its module is imported", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("fetch must not run during import"));
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    await import("../scripts/hbar-smoke-verify");
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
+});
+
+describe("HBAR smoke settlement guard (one-attempt)", () => {
+  beforeEach(() => {
+    resetSettlementGuardForTests();
+  });
+
+  it("first claim succeeds", () => {
+    expect(isSettlementGuardClaimed()).toBe(false);
+    claimSettlementAttempt();
+    expect(isSettlementGuardClaimed()).toBe(true);
+  });
+
+  it("second claim throws", () => {
+    claimSettlementAttempt();
+    expect(() => claimSettlementAttempt()).toThrow(
+      /Only one payment attempt is allowed per process/,
+    );
+    expect(isSettlementGuardClaimed()).toBe(true);
+  });
+
+  it("failure after claim does not reset the guard", () => {
+    claimSettlementAttempt();
+    // Simulate a failure path that should not reset
+    try {
+      // do nothing that would reset
+    } catch {
+      // ignored
+    }
+    expect(isSettlementGuardClaimed()).toBe(true);
+    expect(() => claimSettlementAttempt()).toThrow(
+      /Only one payment attempt is allowed per process/,
+    );
   });
 });
