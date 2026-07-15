@@ -14,6 +14,7 @@
     "preflight": "tsx scripts/preflight.ts",
     "check:accounts": "tsx scripts/check-accounts.ts",
     "check:usdc": "tsx scripts/check-usdc-readiness.ts",
+    "associate:usdc": "tsx scripts/associate-usdc.ts",
     "smoke:hbar": "tsx scripts/hbar-smoke-client.ts",
     "smoke:hbar:challenge": "tsx scripts/hbar-smoke-challenge.ts",
     "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts",
