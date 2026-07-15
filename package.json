@@ -11,7 +11,8 @@
     "dev": "tsx watch src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
-    "preflight": "tsx scripts/preflight.ts"
+    "preflight": "tsx scripts/preflight.ts",
+    "check:accounts": "tsx scripts/check-accounts.ts"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
   },
   "homepage": "https://github.com/yourrealcrypto-crypto/routeguard-freight-exchange#readme",
   "dependencies": {
+    "@hiero-ledger/sdk": "^2.85.0",
     "@hono/node-server": "^1.13.0",
     "dotenv": "^16.4.0",
     "hono": "^4.6.0"
