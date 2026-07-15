@@ -16,21 +16,38 @@ describe("RouteGuard server", () => {
       livePaymentsEnabled: false,
     });
   });
-it("keeps the HBAR x402 smoke route disabled by default", async () => {
-  const response = await app.request(
-    "/api/x402/hbar-smoke",
-  );
+  it("keeps the HBAR x402 smoke route disabled by default", async () => {
+    const response = await app.request(
+      "/api/x402/hbar-smoke",
+    );
 
-  expect(response.status).toBe(503);
+    expect(response.status).toBe(503);
 
-  const body = await response.json();
+    const body = await response.json();
 
-  expect(body).toEqual({
-    error: "HBAR smoke challenge publication is disabled.",
-    code: "LIVE_HBAR_DISABLED",
-    network: "hedera:testnet",
+    expect(body).toEqual({
+      error: "HBAR smoke challenge publication is disabled.",
+      code: "LIVE_HBAR_DISABLED",
+      network: "hedera:testnet",
+    });
   });
-});
+
+  it("keeps the USDC x402 smoke route disabled by default", async () => {
+    const response = await app.request(
+      "/api/x402/usdc-smoke",
+    );
+
+    expect(response.status).toBe(503);
+
+    const body = await response.json();
+
+    expect(body).toEqual({
+      error: "USDC smoke challenge publication is disabled.",
+      code: "LIVE_USDC_DISABLED",
+      network: "hedera:testnet",
+    });
+  });
+
   it("serves the initial development page", async () => {
     const response = await app.request("/");
 

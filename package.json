@@ -13,9 +13,11 @@
     "typecheck": "tsc --noEmit",
     "preflight": "tsx scripts/preflight.ts",
     "check:accounts": "tsx scripts/check-accounts.ts",
+    "check:usdc": "tsx scripts/check-usdc-readiness.ts",
     "smoke:hbar": "tsx scripts/hbar-smoke-client.ts",
     "smoke:hbar:challenge": "tsx scripts/hbar-smoke-challenge.ts",
-    "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts"
+    "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts",
+    "smoke:usdc": "tsx scripts/usdc-smoke-client.ts"
   },
   "repository": {
     "type": "git",

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { config } from "../config";
 import { registerHbarSmokeRoute } from "../x402/hbar-smoke";
+import { registerUsdcSmokeRoute } from "../x402/usdc-smoke";
 import { renderDevelopmentPage } from "./page";
 
 const app = new Hono();
@@ -37,5 +38,6 @@ app.get("/api/health", (context) => {
 });
 
 registerHbarSmokeRoute(app);
+registerUsdcSmokeRoute(app);
 
 export default app;

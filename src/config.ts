@@ -1,5 +1,12 @@
 import "dotenv/config";
 
+import { displayAmountToSmallestUnits } from "./x402/usdc-amount";
+import {
+  DEFAULT_USDC_SMOKE_AMOUNT_DISPLAY,
+  VERIFIED_USDC_DECIMALS,
+  VERIFIED_USDC_TOKEN_ID,
+} from "./x402/usdc-constants";
+
 const network = process.env.HEDERA_NETWORK ?? "hedera:testnet";
 
 if (network !== "hedera:testnet") {
@@ -23,11 +30,41 @@ const hbarSmokeChallengeEnabled =
 const liveHbarPaymentsEnabled =
   process.env.ENABLE_LIVE_HBAR_PAYMENTS === "true";
 
+const usdcSmokeChallengeEnabled =
+  process.env.ENABLE_USDC_SMOKE_CHALLENGE === "true";
+
 const liveUsdcPaymentsEnabled =
   process.env.ENABLE_LIVE_USDC_PAYMENTS === "true";
 
 const carrierAccountId =
   process.env.CARRIER_ACCOUNT_ID?.trim() || null;
+
+/**
+ * Configured USDC HTS token ID. Defaults to the Mirror Node + Circle-verified
+ * Hedera Testnet USDC token. Override only when intentionally targeting a
+ * different documented test asset.
+ */
+const usdcTokenId =
+  process.env.USDC_TOKEN_ID?.trim() || VERIFIED_USDC_TOKEN_ID;
+
+if (!/^\d+\.\d+\.\d+$/.test(usdcTokenId)) {
+  throw new Error(`Invalid USDC_TOKEN_ID: ${usdcTokenId}`);
+}
+
+/**
+ * Token decimals for the verified Testnet USDC asset.
+ * Validated via Mirror Node metadata (decimals=6); not assumed blindly.
+ */
+const usdcDecimals = VERIFIED_USDC_DECIMALS;
+
+const usdcSmokeAmountDisplay =
+  process.env.USDC_SMOKE_AMOUNT_DISPLAY?.trim() ||
+  DEFAULT_USDC_SMOKE_AMOUNT_DISPLAY;
+
+const usdcSmokeAmountSmallestUnits = displayAmountToSmallestUnits(
+  usdcSmokeAmountDisplay,
+  usdcDecimals,
+);
 
 if (liveHbarPaymentsEnabled && !liveHederaEnabled) {
   throw new Error(
@@ -44,12 +81,14 @@ if (liveUsdcPaymentsEnabled && !liveHederaEnabled) {
 if (
   (
     hbarSmokeChallengeEnabled ||
-    (liveHederaEnabled && liveHbarPaymentsEnabled)
+    usdcSmokeChallengeEnabled ||
+    (liveHederaEnabled && liveHbarPaymentsEnabled) ||
+    (liveHederaEnabled && liveUsdcPaymentsEnabled)
   ) &&
   !carrierAccountId
 ) {
   throw new Error(
-    "CARRIER_ACCOUNT_ID is required for the HBAR smoke challenge or live HBAR payments.",
+    "CARRIER_ACCOUNT_ID is required for smoke challenges or live Hedera payments.",
   );
 }
 
@@ -66,5 +105,11 @@ export const config = Object.freeze({
   liveHederaEnabled,
   hbarSmokeChallengeEnabled,
   liveHbarPaymentsEnabled,
+
+  usdcSmokeChallengeEnabled,
   liveUsdcPaymentsEnabled,
+  usdcTokenId,
+  usdcDecimals,
+  usdcSmokeAmountDisplay,
+  usdcSmokeAmountSmallestUnits,
 });
