@@ -1,0 +1,49 @@
+{
+  "status": "FAILED_NO_SETTLEMENT",
+  "x402Version": 2,
+  "scheme": "exact",
+  "network": "hedera:testnet",
+  "asset": "0.0.0",
+  "amountTinybars": "1000000",
+  "amountHbar": "0.01",
+  "payerAccount": "0.0.9197513",
+  "receiverAccount": "0.0.9215954",
+  "facilitatorUrl": "https://api.testnet.blocky402.com",
+  "transactionId": null,
+  "consensusTimestamp": null,
+  "mirrorNodeVerification": {
+    "verified": false,
+    "result": "NO_AUTHORITATIVE_TRANSACTION_ID",
+    "payerTransactionsAfterPrePaymentTimestamp": 0,
+    "receiverTransactionsAfterPrePaymentTimestamp": 0,
+    "queryLowerBound": "1784081866.000000000"
+  },
+  "hashScanLink": null,
+  "hashScanLinkStatus": "UNAVAILABLE_WITHOUT_TRANSACTION_ID",
+  "prePaymentBalances": {
+    "timestamp": "2026-07-15T02:17:46.3833308Z",
+    "payerHbar": "999.70763675",
+    "payerTinybars": "99970763675",
+    "receiverHbar": "1000.10000000",
+    "receiverTinybars": "100010000000"
+  },
+  "postPaymentBalances": {
+    "timestamp": "2026-07-15T02:28:35.6878117Z",
+    "payerHbar": "999.70763675",
+    "payerTinybars": "99970763675",
+    "receiverHbar": "1000.10000000",
+    "receiverTinybars": "100010000000"
+  },
+  "observedBalanceDeltas": {
+    "payerHbar": "0.00000000",
+    "payerTinybars": "0",
+    "receiverHbar": "0.00000000",
+    "receiverTinybars": "0"
+  },
+  "initialHttpStatus": 402,
+  "finalHttpStatus": 402,
+  "livePaymentAttempts": 1,
+  "successfulPayments": 0,
+  "failure": "The signed retry received HTTP 402 and no facilitator settlement transaction ID.",
+  "evidenceGenerationTimestamp": "2026-07-15T02:28:35.6878117Z"
+}
