@@ -16,4 +16,16 @@ describe("RouteGuard server", () => {
       livePaymentsEnabled: false,
     });
   });
+
+  it("serves the initial development page", async () => {
+    const response = await app.request("/");
+
+    expect(response.status).toBe(200);
+
+    const html = await response.text();
+
+    expect(html).toContain("RouteGuard Freight Exchange");
+    expect(html).toContain("DEVELOPMENT SHELL");
+    expect(html).toContain("LIVE PAYMENTS DISABLED");
+  });
 });
