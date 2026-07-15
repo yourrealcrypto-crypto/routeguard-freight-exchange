@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalSha256 } from "../src/domain/canonical-hash";
 import {
   createRouteReservedWebhookPayload,
+  rebuildSignedWebhook,
   reservationWebhookEventId,
   signWebhook,
   verifyWebhook,
@@ -12,6 +13,11 @@ import {
   RESERVATION_TEST_WEBHOOK_PRIVATE_KEY,
   RESERVATION_TEST_WEBHOOK_PUBLIC_KEY,
 } from "./fixtures/reservation-fixtures";
+import {
+  buildService,
+  createAndSelect,
+  defaultMirrorSuccess,
+} from "./reservation-helpers";
 
 describe("Reservation webhooks", () => {
   const payload = createRouteReservedWebhookPayload({
@@ -121,5 +127,109 @@ describe("Reservation webhooks", () => {
     // never reversed to pre-reservation
     expect(final.state).not.toBe("PAYMENT_CONFIRMED");
     expect(final.state).not.toBe("OFFER_CREATED");
+  });
+});
+
+describe("Stable webhook event semantics (M3)", () => {
+  async function reserveWithFailedWebhooks() {
+    const ctx = buildService({ now: "2026-07-15T19:01:00.000Z" });
+    const { service, controls, bundle } = ctx;
+    controls.webhookOk = false; // first delivery fails
+    const { reservationId, paymentPayloadHash } = await createAndSelect(
+      service,
+      bundle,
+      "HBAR",
+      "res-wh-stable",
+    );
+    const sel = (await service.getReservation(reservationId))!.selected!;
+    controls.mirrorResult = defaultMirrorSuccess(
+      sel,
+      controls.settleResult.transactionId!,
+    );
+    const final = await service.submitPayment({
+      reservationId,
+      optionId: "HBAR",
+      paymentPayloadHash,
+    });
+    expect(final.routeReserved).not.toBeNull();
+    return { ...ctx, reservationId };
+  }
+
+  it("retry reuses the immutable event: same eventId, payload, emittedAt, payloadHash, signature", async () => {
+    const { service, controls, reservationId, setNow } =
+      await reserveWithFailedWebhooks();
+
+    const before = (await service.getReservation(reservationId))!;
+    expect(before.webhookEvents).toHaveLength(2);
+    const failedDeliveries = before.webhooks;
+    expect(failedDeliveries.every((d) => !d.delivered)).toBe(true);
+
+    // Retry at a different wall-clock time with delivery now succeeding.
+    controls.webhookOk = true;
+    setNow("2026-07-15T19:45:00.000Z");
+    const after = await service.retryWebhooks(reservationId);
+
+    // No duplicate semantic events were generated.
+    expect(after.webhookEvents).toHaveLength(2);
+
+    for (const recipient of ["shipper", "carrier"] as const) {
+      const b = before.webhookEvents.find((e) => e.recipient === recipient)!;
+      const a = after.webhookEvents.find((e) => e.recipient === recipient)!;
+      expect(a.eventId).toBe(b.eventId);
+      expect(a.emittedAt).toBe(b.emittedAt);
+      expect(a.emittedAt).toBe("2026-07-15T19:01:00.000Z");
+      expect(a.payloadHash).toBe(b.payloadHash);
+      expect(a.signature).toBe(b.signature);
+      expect(a.signedTimestamp).toBe(b.signedTimestamp);
+      // Signature still verifies against the reconstructed signed webhook.
+      expect(
+        verifyWebhook(rebuildSignedWebhook(a), RESERVATION_TEST_WEBHOOK_PUBLIC_KEY),
+      ).toBe(true);
+    }
+
+    // Operational metadata changes independently.
+    for (const recipient of ["shipper", "carrier"] as const) {
+      const priorD = before.webhooks.find((d) => d.recipient === recipient)!;
+      const nowD = after.webhooks.find((d) => d.recipient === recipient)!;
+      expect(nowD.delivered).toBe(true);
+      expect(nowD.attemptedAt).toBe("2026-07-15T19:45:00.000Z");
+      expect(nowD.attemptedAt).not.toBe(priorD.attemptedAt);
+      expect(nowD.deliveryAttemptNumber).toBe(priorD.deliveryAttemptNumber + 1);
+      // The semantic payload hash is unchanged on the operational record too.
+      expect(nowD.payloadHash).toBe(priorD.payloadHash);
+    }
+  });
+
+  it("restart reloads the same persisted webhook events (no regeneration)", async () => {
+    const { service, reservationId } = await reserveWithFailedWebhooks();
+    const first = (await service.getReservation(reservationId))!;
+    // Simulate a restart: reload from the store.
+    const reloaded = (await service.getReservation(reservationId))!;
+    for (const recipient of ["shipper", "carrier"] as const) {
+      const f = first.webhookEvents.find((e) => e.recipient === recipient)!;
+      const r = reloaded.webhookEvents.find((e) => e.recipient === recipient)!;
+      expect(r.eventId).toBe(f.eventId);
+      expect(r.emittedAt).toBe(f.emittedAt);
+      expect(r.payloadHash).toBe(f.payloadHash);
+      expect(r.signature).toBe(f.signature);
+    }
+  });
+
+  it("tampered reconstructed webhook fails verification", async () => {
+    const { service, reservationId } = await reserveWithFailedWebhooks();
+    const rec = (await service.getReservation(reservationId))!;
+    const event = rec.webhookEvents[0]!;
+    const signed = rebuildSignedWebhook(event);
+    const tampered = {
+      ...signed,
+      payload: { ...signed.payload, paymentAmountAtomic: "1" },
+      payloadHash: canonicalSha256({
+        ...signed.payload,
+        paymentAmountAtomic: "1",
+      }),
+    };
+    expect(
+      verifyWebhook(tampered, RESERVATION_TEST_WEBHOOK_PUBLIC_KEY),
+    ).toBe(false);
   });
 });

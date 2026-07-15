@@ -15,6 +15,7 @@ import {
   WEBHOOK_SIGNATURE_VERSION,
   type RouteReservedRecord,
   type SignedWebhook,
+  type WebhookEvent,
   type WebhookEventPayload,
 } from "./types";
 
@@ -141,4 +142,52 @@ export function reservationWebhookEventId(
   recipient: "shipper" | "carrier",
 ): string {
   return `evt-route-reserved-${reservationId}-${recipient}`;
+}
+
+/**
+ * Create the immutable semantic webhook event exactly once. The eventId,
+ * payload, emittedAt, payloadHash, signature and signed timestamp are fixed
+ * here and must never be regenerated on retry.
+ */
+export function createWebhookEvent(input: {
+  eventId: string;
+  recipient: "shipper" | "carrier";
+  payload: WebhookEventPayload;
+  privateKeyHex: string;
+}): WebhookEvent {
+  if (input.payload.eventId !== input.eventId) {
+    throw new ReservationError(
+      "EVENT_ID_MISMATCH",
+      "payload.eventId must equal eventId",
+    );
+  }
+  const signed = signWebhook(input.payload, input.privateKeyHex);
+  return Object.freeze({
+    eventId: input.eventId,
+    recipient: input.recipient,
+    eventType: ROUTE_RESERVED_EVENT_TYPE,
+    payload: input.payload,
+    payloadHash: signed.payloadHash,
+    emittedAt: input.payload.emittedAt,
+    signatureVersion: WEBHOOK_SIGNATURE_VERSION,
+    signature: signed.headers["X-RouteGuard-Signature"],
+    signedTimestamp: signed.headers["X-RouteGuard-Timestamp"],
+  });
+}
+
+/**
+ * Reconstruct the signed webhook for delivery from a stored immutable event.
+ * Pure reuse — never re-signs, never regenerates emittedAt or payloadHash.
+ */
+export function rebuildSignedWebhook(event: WebhookEvent): SignedWebhook {
+  return {
+    payload: event.payload,
+    payloadHash: event.payloadHash,
+    headers: {
+      "X-RouteGuard-Event-Id": event.eventId,
+      "X-RouteGuard-Timestamp": event.signedTimestamp,
+      "X-RouteGuard-Signature": event.signature,
+      "X-RouteGuard-Signature-Version": event.signatureVersion,
+    },
+  };
 }

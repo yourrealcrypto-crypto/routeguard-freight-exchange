@@ -22,13 +22,25 @@ export type ValidatedWinnerReservation = CreateReservationInput & {
 
 /**
  * Validate reservation creation input against authentic auction proof.
- * Plain/spread/JSON proof objects fail closed via WeakSet identity.
+ *
+ * The full tender is MANDATORY: the decision manifest is always fully
+ * reconstructed from the authoritative tender + evaluation results and compared
+ * to the proof's manifest. There is no alternate path that trusts only WeakSet
+ * authenticity, caller-supplied hashes, or stored booleans.
+ *
+ * Plain/spread/JSON proof objects additionally fail closed via WeakSet identity.
  */
 export function validateWinnerReservationInput(
   input: CreateReservationInput,
   registry: CarrierRegistry,
-  tender?: FreightTender,
+  tender: FreightTender,
 ): ValidatedWinnerReservation {
+  if (!tender || typeof tender !== "object") {
+    throw new ReservationError(
+      "TENDER_REQUIRED",
+      "Full tender is mandatory for reservation creation",
+    );
+  }
   if (!isVerifiedAuctionClosureProof(input.closureProof)) {
     throw new ReservationError(
       "FORGED_PROOF",
@@ -104,27 +116,26 @@ export function validateWinnerReservationInput(
     throw new ReservationError("PROOF_INTEGRITY", "Proof integrityOk is false");
   }
 
-  if (tender) {
-    if (tender.tenderId !== input.tenderId || tender.version !== input.tenderVersion) {
-      throw new ReservationError(
-        "TENDER_MISMATCH",
-        "Provided tender does not match reservation identity",
-      );
-    }
-    const integrity = verifyDecisionManifestIntegrity({
-      tender,
-      results: proof.results,
-      evaluationTimestamp: proof.evaluationTimestamp,
-      barrierSequence: proof.closeBarrierSequence,
-      reconciliationReference: proof.reconciliationReference,
-      manifest: proof.manifest,
-    });
-    if (!integrity.ok) {
-      throw new ReservationError(
-        "MANIFEST_INTEGRITY",
-        integrity.errors.join("; "),
-      );
-    }
+  // Full, mandatory manifest re-verification against the authoritative tender.
+  if (tender.tenderId !== input.tenderId || tender.version !== input.tenderVersion) {
+    throw new ReservationError(
+      "TENDER_MISMATCH",
+      "Provided tender does not match reservation identity",
+    );
+  }
+  const integrity = verifyDecisionManifestIntegrity({
+    tender,
+    results: proof.results,
+    evaluationTimestamp: proof.evaluationTimestamp,
+    barrierSequence: proof.closeBarrierSequence,
+    reconciliationReference: proof.reconciliationReference,
+    manifest: proof.manifest,
+  });
+  if (!integrity.ok) {
+    throw new ReservationError(
+      "MANIFEST_INTEGRITY",
+      integrity.errors.join("; "),
+    );
   }
 
   const ranked = selectWinner(proof.results);

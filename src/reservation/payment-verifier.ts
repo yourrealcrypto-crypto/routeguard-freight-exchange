@@ -1,6 +1,9 @@
 /**
- * Exact transfer verification from Mirror Node shaped confirmation data.
- * HTTP 200 alone is never accepted.
+ * Exact transfer-shape verification from Mirror Node confirmation data.
+ *
+ * Payment is NEVER accepted by summing arbitrary duplicate/split legs to a net
+ * amount. The payer and carrier payment legs must each be a single exact raw
+ * transfer entry. HTTP 200 alone is never accepted.
  */
 
 import {
@@ -13,6 +16,7 @@ import {
   ReservationError,
   USDC_RESERVATION_OPTION,
   type MirrorConfirmation,
+  type MirrorTransfer,
   type ReservationOptionId,
   type SelectedPaymentOption,
 } from "./types";
@@ -26,36 +30,30 @@ export type VerifiedPaymentResult = {
   readonly amountAtomic: string;
   readonly payerAccount: string;
   readonly payTo: string;
+  /**
+   * Unrelated HBAR entries (facilitator/network/node/assessed fees) recorded
+   * separately. They never affect payer/carrier payment semantics.
+   */
+  readonly feeTransfers: readonly MirrorTransfer[];
 };
 
-function sumTransfers(
-  transfers: readonly { account: string; amount: string; tokenId?: string }[],
+/** HBAR-native transfer entries (no tokenId). */
+function hbarEntries(
+  transfers: readonly MirrorTransfer[],
   account: string,
-  tokenId?: string,
-): bigint {
-  let sum = 0n;
-  for (const t of transfers) {
-    if (t.account !== account) continue;
-    if (tokenId !== undefined && t.tokenId !== tokenId) continue;
-    if (tokenId === undefined && t.tokenId) continue;
-    sum += BigInt(t.amount);
-  }
-  return sum;
+): MirrorTransfer[] {
+  return transfers.filter((t) => t.account === account && !t.tokenId);
 }
 
-function countTransfers(
-  transfers: readonly { account: string; amount: string; tokenId?: string }[],
+/** Token entries for a specific tokenId. */
+function tokenEntries(
+  transfers: readonly MirrorTransfer[],
   account: string,
-  tokenId?: string,
-): number {
-  let n = 0;
-  for (const t of transfers) {
-    if (t.account !== account) continue;
-    if (tokenId !== undefined && t.tokenId !== tokenId) continue;
-    if (tokenId === undefined && t.tokenId) continue;
-    n += 1;
-  }
-  return n;
+  tokenId: string,
+): MirrorTransfer[] {
+  return transfers.filter(
+    (t) => t.account === account && t.tokenId === tokenId,
+  );
 }
 
 /**
@@ -100,6 +98,13 @@ export function verifyMirrorPayment(
     );
   }
 
+  if (selected.payerAccount === selected.payTo) {
+    throw new ReservationError(
+      "SELF_PAYMENT",
+      "Payer and carrier accounts must differ",
+    );
+  }
+
   if (selected.optionId === "HBAR") {
     return verifyHbar(selected, confirmation, expectedTransactionId);
   }
@@ -122,56 +127,59 @@ function verifyHbar(
   }
 
   const expected = BigInt(HBAR_RESERVATION_OPTION.amountAtomic);
-  const payerDelta = sumTransfers(
-    confirmation.hbarTransfers,
-    selected.payerAccount,
-  );
-  const receiverDelta = sumTransfers(
-    confirmation.hbarTransfers,
-    selected.payTo,
-  );
 
-  // Payer must be exactly -amount (fees may appear as extra negative on fee payer, not shipper)
-  if (payerDelta !== -expected) {
+  // Payer leg: exactly one raw HBAR entry, exactly -amount. No split/duplicate.
+  const payerLegs = hbarEntries(confirmation.hbarTransfers, selected.payerAccount);
+  if (payerLegs.length !== 1) {
+    throw new ReservationError(
+      "HBAR_PAYER_SHAPE",
+      `Payer HBAR must be exactly one transfer entry, found ${payerLegs.length} (no split/duplicate legs)`,
+    );
+  }
+  if (BigInt(payerLegs[0]!.amount) !== -expected) {
     throw new ReservationError(
       "HBAR_PAYER_AMOUNT",
-      `Payer HBAR transfer ${payerDelta.toString()} !== -${expected.toString()}`,
+      `Payer HBAR transfer ${payerLegs[0]!.amount} !== -${expected.toString()}`,
     );
   }
-  if (receiverDelta !== expected) {
+
+  // Receiver leg: exactly one raw HBAR entry, exactly +amount.
+  const carrierLegs = hbarEntries(confirmation.hbarTransfers, selected.payTo);
+  if (carrierLegs.length !== 1) {
+    throw new ReservationError(
+      "HBAR_RECEIVER_SHAPE",
+      `Receiver HBAR must be exactly one transfer entry, found ${carrierLegs.length} (no split/duplicate legs)`,
+    );
+  }
+  if (BigInt(carrierLegs[0]!.amount) !== expected) {
     throw new ReservationError(
       "HBAR_RECEIVER_AMOUNT",
-      `Receiver HBAR transfer ${receiverDelta.toString()} !== ${expected.toString()}`,
+      `Receiver HBAR transfer ${carrierLegs[0]!.amount} !== ${expected.toString()}`,
     );
   }
 
-  // Reject duplicate primary transfer legs for payer/receiver demo amounts
-  // (allow single net entry per account)
-  if (countTransfers(confirmation.hbarTransfers, selected.payerAccount) > 1) {
-    // Multiple entries summing correctly is ok if net matches; duplicate same-direction fail
-    const amounts = confirmation.hbarTransfers
-      .filter((t) => t.account === selected.payerAccount && !t.tokenId)
-      .map((t) => t.amount);
-    if (amounts.length > 1 && amounts.every((a) => a === `-${expected}`)) {
-      throw new ReservationError(
-        "DUPLICATE_TRANSFER",
-        "Duplicate payer HBAR transfer of full amount",
-      );
-    }
-  }
-
-  // No USDC token movement required; reject unexpected full USDC transfer of demo amount
-  const usdcPayer = sumTransfers(
-    confirmation.tokenTransfers,
-    selected.payerAccount,
-    USDC_TESTNET_ASSET,
+  // HBAR payment must not include any USDC movement for the parties.
+  const partyUsdc = confirmation.tokenTransfers.filter(
+    (t) =>
+      (t.account === selected.payerAccount || t.account === selected.payTo) &&
+      t.amount !== "0" &&
+      BigInt(t.amount) !== 0n,
   );
-  if (usdcPayer !== 0n) {
+  if (partyUsdc.length > 0) {
     throw new ReservationError(
       "UNEXPECTED_TOKEN_TRANSFER",
-      "HBAR payment must not include USDC transfer",
+      "HBAR payment must not include token transfers for payer/carrier",
     );
   }
+
+  // Unrelated HBAR entries (facilitator/network/node/assessed fees) are allowed
+  // and recorded separately; they never alter payer/carrier semantics.
+  const feeTransfers = confirmation.hbarTransfers.filter(
+    (t) =>
+      !t.tokenId &&
+      t.account !== selected.payerAccount &&
+      t.account !== selected.payTo,
+  );
 
   return {
     ok: true,
@@ -182,6 +190,7 @@ function verifyHbar(
     amountAtomic: selected.amountAtomic,
     payerAccount: selected.payerAccount,
     payTo: selected.payTo,
+    feeTransfers,
   };
 }
 
@@ -200,57 +209,79 @@ function verifyUsdc(
   const expected = BigInt(USDC_RESERVATION_OPTION.amountAtomic);
   const tokenId = USDC_TESTNET_ASSET;
 
-  const payerDelta = sumTransfers(
-    confirmation.tokenTransfers,
-    selected.payerAccount,
-    tokenId,
-  );
-  const receiverDelta = sumTransfers(
-    confirmation.tokenTransfers,
-    selected.payTo,
-    tokenId,
-  );
-
-  if (payerDelta !== -expected) {
-    throw new ReservationError(
-      "USDC_PAYER_AMOUNT",
-      `Payer USDC transfer ${payerDelta.toString()} !== -${expected.toString()}`,
-    );
-  }
-  if (receiverDelta !== expected) {
-    throw new ReservationError(
-      "USDC_RECEIVER_AMOUNT",
-      `Receiver USDC transfer ${receiverDelta.toString()} !== ${expected.toString()}`,
-    );
-  }
-
-  // Wrong token rejection: any other token transfer of non-zero amount involving parties
+  // Reject any wrong-token substitute involving the parties.
   for (const t of confirmation.tokenTransfers) {
     if (
       (t.account === selected.payerAccount || t.account === selected.payTo) &&
       t.tokenId &&
       t.tokenId !== tokenId &&
-      t.amount !== "0"
+      BigInt(t.amount) !== 0n
     ) {
       throw new ReservationError(
         "WRONG_TOKEN",
-        `Unexpected token ${t.tokenId}`,
+        `Unexpected token ${t.tokenId} for payer/carrier`,
       );
     }
   }
 
-  const dupPayer = confirmation.tokenTransfers.filter(
-    (t) =>
-      t.account === selected.payerAccount &&
-      t.tokenId === tokenId &&
-      t.amount === `-${expected}`,
+  // Payer leg: exactly one selected-token entry, exactly -amount. No split.
+  const payerLegs = tokenEntries(
+    confirmation.tokenTransfers,
+    selected.payerAccount,
+    tokenId,
   );
-  if (dupPayer.length > 1) {
+  if (payerLegs.length !== 1) {
     throw new ReservationError(
-      "DUPLICATE_TRANSFER",
-      "Duplicate payer USDC transfer of full amount",
+      "USDC_PAYER_SHAPE",
+      `Payer USDC must be exactly one transfer entry, found ${payerLegs.length} (no split/duplicate legs)`,
     );
   }
+  if (BigInt(payerLegs[0]!.amount) !== -expected) {
+    throw new ReservationError(
+      "USDC_PAYER_AMOUNT",
+      `Payer USDC transfer ${payerLegs[0]!.amount} !== -${expected.toString()}`,
+    );
+  }
+
+  // Receiver leg: exactly one selected-token entry, exactly +amount.
+  const carrierLegs = tokenEntries(
+    confirmation.tokenTransfers,
+    selected.payTo,
+    tokenId,
+  );
+  if (carrierLegs.length !== 1) {
+    throw new ReservationError(
+      "USDC_RECEIVER_SHAPE",
+      `Receiver USDC must be exactly one transfer entry, found ${carrierLegs.length} (no split/duplicate legs)`,
+    );
+  }
+  if (BigInt(carrierLegs[0]!.amount) !== expected) {
+    throw new ReservationError(
+      "USDC_RECEIVER_AMOUNT",
+      `Receiver USDC transfer ${carrierLegs[0]!.amount} !== ${expected.toString()}`,
+    );
+  }
+
+  // No other non-zero selected-token entry (e.g. a third-party USDC leg).
+  for (const t of confirmation.tokenTransfers) {
+    if (t.tokenId !== tokenId) continue;
+    if (t.account === selected.payerAccount || t.account === selected.payTo) {
+      continue;
+    }
+    if (BigInt(t.amount) !== 0n) {
+      throw new ReservationError(
+        "USDC_THIRD_PARTY_TRANSFER",
+        `Unexpected third-party USDC transfer for ${t.account}`,
+      );
+    }
+  }
+
+  const feeTransfers = confirmation.hbarTransfers.filter(
+    (t) =>
+      !t.tokenId &&
+      t.account !== selected.payerAccount &&
+      t.account !== selected.payTo,
+  );
 
   return {
     ok: true,
@@ -261,6 +292,7 @@ function verifyUsdc(
     amountAtomic: selected.amountAtomic,
     payerAccount: selected.payerAccount,
     payTo: selected.payTo,
+    feeTransfers,
   };
 }
 

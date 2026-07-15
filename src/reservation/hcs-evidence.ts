@@ -1,183 +1,62 @@
 /**
- * Public HCS ROUTE_RESERVED evidence — hashes and public identifiers only.
+ * Public HCS ROUTE_RESERVED evidence built on the shared HCS message system.
+ *
+ * ROUTE_RESERVED is a first-class member of the shared HcsEnvelope union. This
+ * module only maps a RouteReservedRecord to the compact public payload and
+ * delegates envelope construction, canonical payloadHash verification, and the
+ * standard single-message byte-limit check to src/hcs/message-envelope.
  */
 
-import { z } from "zod";
-
-import {
-  assertSha256Hash,
-  canonicalize,
-  canonicalSha256,
-} from "../domain/canonical-hash";
-import { isSafePositiveInteger } from "../domain/money";
-import { isValidHederaAccountId } from "../domain/payment-option";
+import { canonicalSha256 } from "../domain/canonical-hash";
 import { isUtcIsoTimestamp } from "../domain/time";
-import { HcsEnvelopeError } from "../hcs/message-envelope";
-import { HCS_MAX_MESSAGE_BYTES, HCS_SCHEMA_VERSION } from "../hcs/types";
 import {
-  RESERVATION_EVIDENCE_VERSION,
-  RESERVATION_NETWORK,
-  ReservationError,
-  type ReservationOptionId,
-  type RouteReservedRecord,
-} from "./types";
+  assertNoProhibitedRouteReservedFields,
+  createRouteReservedEnvelope,
+  decodeHcsEnvelope,
+  encodeHcsEnvelopeUtf8,
+  envelopeHash,
+  PROHIBITED_ROUTE_RESERVED_PAYLOAD_FIELDS,
+} from "../hcs/message-envelope";
+import {
+  HCS_MAX_MESSAGE_BYTES,
+  ROUTE_RESERVED_EVIDENCE_VERSION,
+  type RouteReservedEnvelope,
+  type RouteReservedPayload,
+} from "../hcs/types";
+import { ReservationError, type RouteReservedRecord } from "./types";
 
-export const PROHIBITED_ROUTE_RESERVED_FIELDS = [
-  "freightPriceCents",
-  "commitmentSalt",
-  "salt",
-  "nonce",
-  "signature",
-  "signedBid",
-  "privateKey",
-  "paymentPayload",
-  "signedPaymentPayload",
-  "fullBid",
-] as const;
+/** Backwards-compatible re-exports. */
+export const PROHIBITED_ROUTE_RESERVED_FIELDS =
+  PROHIBITED_ROUTE_RESERVED_PAYLOAD_FIELDS;
+export type RouteReservedHcsPayload = RouteReservedPayload;
+export type RouteReservedHcsEnvelope = RouteReservedEnvelope;
 
-export type RouteReservedHcsPayload = {
-  reservationId: string;
-  tenderId: string;
-  tenderVersion: number;
-  winningBidId: string;
-  winningBidHash: string;
-  carrierId: string;
-  carrierAccount: string;
-  selectedOptionId: ReservationOptionId;
-  paymentNetwork: typeof RESERVATION_NETWORK;
-  paymentAsset: string;
-  paymentAmountAtomic: string;
-  payerAccount: string;
-  paymentTransactionId: string;
-  paymentConsensusTimestamp: string;
-  reservationRecordHash: string;
-  decisionManifestHash: string;
-  closeBarrierSequence: number;
-  reservationEvidenceVersion: typeof RESERVATION_EVIDENCE_VERSION;
-};
-
-const RouteReservedPayloadSchema = z
-  .object({
-    reservationId: z.string().min(1).max(128),
-    tenderId: z.string().min(1).max(128),
-    tenderVersion: z.number(),
-    winningBidId: z.string().min(1).max(128),
-    winningBidHash: z.string().min(1).max(80),
-    carrierId: z.string().min(1).max(128),
-    carrierAccount: z.string().min(1).max(64),
-    selectedOptionId: z.enum(["USDC", "HBAR"]),
-    paymentNetwork: z.literal(RESERVATION_NETWORK),
-    paymentAsset: z.string().min(1).max(64),
-    paymentAmountAtomic: z.string().min(1).max(32),
-    payerAccount: z.string().min(1).max(64),
-    paymentTransactionId: z.string().min(1).max(128),
-    paymentConsensusTimestamp: z.string().min(1).max(64),
-    reservationRecordHash: z.string().min(1).max(80),
-    decisionManifestHash: z.string().min(1).max(80),
-    closeBarrierSequence: z.number(),
-    reservationEvidenceVersion: z.literal(RESERVATION_EVIDENCE_VERSION),
-  })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (!isSafePositiveInteger(value.tenderVersion)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "tenderVersion must be positive safe integer",
-        path: ["tenderVersion"],
-      });
-    }
-    if (!isSafePositiveInteger(value.closeBarrierSequence)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "closeBarrierSequence must be positive safe integer",
-        path: ["closeBarrierSequence"],
-      });
-    }
-    for (const [field, hash] of [
-      ["winningBidHash", value.winningBidHash],
-      ["reservationRecordHash", value.reservationRecordHash],
-      ["decisionManifestHash", value.decisionManifestHash],
-    ] as const) {
-      try {
-        assertSha256Hash(hash);
-      } catch {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${field} must be sha256 hash`,
-          path: [field],
-        });
-      }
-    }
-    if (!isValidHederaAccountId(value.carrierAccount)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "carrierAccount invalid",
-        path: ["carrierAccount"],
-      });
-    }
-    if (!isValidHederaAccountId(value.payerAccount)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "payerAccount invalid",
-        path: ["payerAccount"],
-      });
-    }
-    if (!isUtcIsoTimestamp(value.paymentConsensusTimestamp)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "paymentConsensusTimestamp must be UTC",
-        path: ["paymentConsensusTimestamp"],
-      });
-    }
-  });
-
-export type RouteReservedHcsEnvelope = {
-  schemaVersion: typeof HCS_SCHEMA_VERSION;
-  messageType: "ROUTE_RESERVED";
-  runId: string;
-  tenderId: string;
-  tenderVersion: number;
-  tenderHash: string;
-  createdAt: string;
-  payloadHash: string;
-  payload: RouteReservedHcsPayload;
-};
-
+/**
+ * Compact public payload. `reservationRecordHash` is the master commitment to
+ * the full RouteReservedRecord (which binds tenderHash, winningBidHash,
+ * decisionManifestHash, evaluatedBidSetHash and every payment field), so the
+ * omitted hashes stay cryptographically committed while the envelope fits one
+ * standard HCS message. tenderId/tenderVersion are carried in the shell.
+ */
 export function buildRouteReservedPayload(
   record: RouteReservedRecord,
   carrierId: string,
-): RouteReservedHcsPayload {
+): RouteReservedPayload {
   return {
     reservationId: record.reservationId,
-    tenderId: record.tenderId,
-    tenderVersion: record.tenderVersion,
     winningBidId: record.winningBidId,
-    winningBidHash: record.winningBidHash,
     carrierId,
     carrierAccount: record.carrierAccount,
     selectedOptionId: record.selectedOptionId,
-    paymentNetwork: RESERVATION_NETWORK,
     paymentAsset: record.paymentAsset,
     paymentAmountAtomic: record.paymentAmountAtomic,
     payerAccount: record.payerAccount,
     paymentTransactionId: record.transactionId,
     paymentConsensusTimestamp: record.consensusTimestamp,
     reservationRecordHash: record.reservationRecordHash,
-    decisionManifestHash: record.decisionManifestHash,
     closeBarrierSequence: record.closeBarrierSequence,
-    reservationEvidenceVersion: RESERVATION_EVIDENCE_VERSION,
+    reservationEvidenceVersion: ROUTE_RESERVED_EVIDENCE_VERSION,
   };
-}
-
-function assertNoPrivateFields(payload: object): void {
-  for (const field of PROHIBITED_ROUTE_RESERVED_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(payload, field)) {
-      throw new ReservationError(
-        "PRIVATE_FIELD",
-        `ROUTE_RESERVED payload must not contain ${field}`,
-      );
-    }
-  }
 }
 
 export function createRouteReservedHcsEnvelope(input: {
@@ -186,106 +65,183 @@ export function createRouteReservedHcsEnvelope(input: {
   tenderVersion: number;
   tenderHash: string;
   createdAt: string;
-  payload: RouteReservedHcsPayload;
+  payload: RouteReservedPayload;
 }): RouteReservedHcsEnvelope {
-  assertNoPrivateFields(input.payload as object);
-
-  const payload = RouteReservedPayloadSchema.parse(input.payload);
-  if (payload.tenderId !== input.tenderId) {
-    throw new ReservationError("TENDER_MISMATCH", "payload tenderId mismatch");
-  }
-  if (payload.tenderVersion !== input.tenderVersion) {
-    throw new ReservationError(
-      "TENDER_MISMATCH",
-      "payload tenderVersion mismatch",
-    );
-  }
-  if (!isUtcIsoTimestamp(input.createdAt)) {
-    throw new ReservationError("INVALID_TIMESTAMP", "createdAt must be UTC");
-  }
-  assertSha256Hash(input.tenderHash);
-
-  const payloadHash = canonicalSha256(payload);
-  const envelope: RouteReservedHcsEnvelope = {
-    schemaVersion: HCS_SCHEMA_VERSION,
-    messageType: "ROUTE_RESERVED",
-    runId: input.runId,
-    tenderId: input.tenderId,
-    tenderVersion: input.tenderVersion,
-    tenderHash: input.tenderHash,
-    createdAt: input.createdAt,
-    payloadHash,
-    payload,
-  };
-
-  // ROUTE_RESERVED carries multiple sha256 digests; allow up to 2× base HCS
-  // limit for this evidence type (mocked publisher in Phase 6A; live publish
-  // may use chunking in a later milestone if needed).
-  const maxBytes = HCS_MAX_MESSAGE_BYTES * 2;
-  const size = measureRouteReservedEnvelope(envelope);
-  if (size > maxBytes) {
-    throw new HcsEnvelopeError(
-      `ROUTE_RESERVED message size ${size} exceeds ${maxBytes}`,
-    );
-  }
-
-  return Object.freeze(envelope) as RouteReservedHcsEnvelope;
+  return createRouteReservedEnvelope(input);
 }
 
 export function measureRouteReservedEnvelope(
   envelope: RouteReservedHcsEnvelope,
 ): number {
-  return new TextEncoder().encode(canonicalize(envelope)).byteLength;
+  return encodeHcsEnvelopeUtf8(envelope).byteLength;
 }
 
 export function routeReservedEnvelopeHash(
   envelope: RouteReservedHcsEnvelope,
 ): string {
-  return canonicalSha256(envelope);
+  return envelopeHash(envelope);
 }
 
 export function decodeRouteReservedEnvelope(
   raw: unknown,
 ): RouteReservedHcsEnvelope {
-  let parsed: unknown = raw;
-  if (typeof raw === "string") {
-    try {
-      parsed = JSON.parse(raw) as unknown;
-    } catch {
-      throw new HcsEnvelopeError("Invalid ROUTE_RESERVED JSON");
+  const decoded = decodeHcsEnvelope(raw);
+  if (decoded.messageType !== "ROUTE_RESERVED") {
+    throw new Error(
+      `Expected ROUTE_RESERVED envelope, got ${decoded.messageType}`,
+    );
+  }
+  return decoded;
+}
+
+/** Exposed for callers that need the payload commitment hash directly. */
+export function routeReservedPayloadHash(payload: RouteReservedPayload): string {
+  assertNoProhibitedRouteReservedFields(
+    payload as unknown as Record<string, unknown>,
+  );
+  return canonicalSha256(payload);
+}
+
+/**
+ * Pre-publish checks for a durable HCS publication claim. Fails closed if the
+ * envelope is invalid, oversized, mis-bound to the reservation topic, or does
+ * not match the durable RouteReservedRecord commitment.
+ */
+export function assertClaimableRouteReservedPublication(input: {
+  envelope: RouteReservedHcsEnvelope;
+  expectedTopicId: string;
+  reservation: RouteReservedRecord;
+  reservationHcsTopicId: string;
+}): {
+  envelopeHash: string;
+  encodedByteCount: number;
+} {
+  const { envelope, expectedTopicId, reservation, reservationHcsTopicId } =
+    input;
+
+  if (envelope.messageType !== "ROUTE_RESERVED") {
+    throw new ReservationError(
+      "HCS_MESSAGE_TYPE_MISMATCH",
+      `Expected ROUTE_RESERVED, got ${envelope.messageType}`,
+    );
+  }
+  if (expectedTopicId !== reservationHcsTopicId) {
+    throw new ReservationError(
+      "HCS_TOPIC_MISMATCH",
+      `expectedTopicId ${expectedTopicId} !== record.hcsTopicId ${reservationHcsTopicId}`,
+    );
+  }
+  if (expectedTopicId !== reservation.hcsAuctionTopicId) {
+    throw new ReservationError(
+      "HCS_TOPIC_MISMATCH",
+      `expectedTopicId ${expectedTopicId} !== routeReserved.hcsAuctionTopicId ${reservation.hcsAuctionTopicId}`,
+    );
+  }
+  if (
+    envelope.payload.reservationRecordHash !== reservation.reservationRecordHash
+  ) {
+    throw new ReservationError(
+      "HCS_RESERVATION_RECORD_HASH_MISMATCH",
+      "envelope reservationRecordHash does not match durable RouteReservedRecord",
+    );
+  }
+  // Round-trip through shared decoder to re-verify payloadHash and schema.
+  decodeRouteReservedEnvelope(JSON.parse(JSON.stringify(envelope)));
+
+  const bytes = encodeHcsEnvelopeUtf8(envelope);
+  if (bytes.byteLength > HCS_MAX_MESSAGE_BYTES) {
+    throw new ReservationError(
+      "HCS_MESSAGE_TOO_LARGE",
+      `ROUTE_RESERVED envelope is ${bytes.byteLength} bytes (limit ${HCS_MAX_MESSAGE_BYTES})`,
+    );
+  }
+
+  return {
+    envelopeHash: routeReservedEnvelopeHash(envelope),
+    encodedByteCount: bytes.byteLength,
+  };
+}
+
+/** Authoritative publication result from publisher or resolver — fail closed. */
+export function assertValidHcsPublicationResult(input: {
+  topicId: unknown;
+  expectedTopicId: string;
+  transactionId: unknown;
+  sequence: unknown;
+  consensusTimestamp: unknown;
+  envelopeHash?: unknown;
+  expectedEnvelopeHash?: string;
+  /** When true, transactionId may be null (resolver FOUND without tx id). */
+  allowMissingTransactionId?: boolean;
+}): {
+  topicId: string;
+  transactionId: string | null;
+  sequence: number;
+  consensusTimestamp: string;
+} {
+  if (
+    typeof input.topicId !== "string" ||
+    input.topicId.length === 0 ||
+    input.topicId !== input.expectedTopicId
+  ) {
+    throw new ReservationError(
+      "HCS_TOPIC_MISMATCH",
+      `Returned topicId must equal expectedTopicId ${input.expectedTopicId}`,
+    );
+  }
+
+  let transactionId: string | null;
+  if (
+    typeof input.transactionId === "string" &&
+    input.transactionId.length > 0
+  ) {
+    transactionId = input.transactionId;
+  } else if (input.allowMissingTransactionId && input.transactionId == null) {
+    transactionId = null;
+  } else {
+    throw new ReservationError(
+      "HCS_MISSING_TRANSACTION_ID",
+      "HCS publication result requires a non-empty transactionId",
+    );
+  }
+
+  if (
+    typeof input.sequence !== "number" ||
+    !Number.isSafeInteger(input.sequence) ||
+    input.sequence <= 0
+  ) {
+    throw new ReservationError(
+      "HCS_INVALID_SEQUENCE",
+      "HCS publication sequence must be a positive safe integer",
+    );
+  }
+
+  if (
+    typeof input.consensusTimestamp !== "string" ||
+    !isUtcIsoTimestamp(input.consensusTimestamp)
+  ) {
+    throw new ReservationError(
+      "HCS_INVALID_CONSENSUS_TIMESTAMP",
+      "HCS publication consensusTimestamp must be valid UTC",
+    );
+  }
+
+  if (input.expectedEnvelopeHash !== undefined) {
+    if (
+      typeof input.envelopeHash !== "string" ||
+      input.envelopeHash !== input.expectedEnvelopeHash
+    ) {
+      throw new ReservationError(
+        "HCS_ENVELOPE_HASH_MISMATCH",
+        "Resolved envelopeHash does not match the durable publication claim",
+      );
     }
   }
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new HcsEnvelopeError("Invalid ROUTE_RESERVED envelope");
-  }
-  const o = parsed as Record<string, unknown>;
-  if (o.schemaVersion !== HCS_SCHEMA_VERSION) {
-    throw new HcsEnvelopeError(
-      `Unsupported schema: ${String(o.schemaVersion)}`,
-    );
-  }
-  if (o.messageType !== "ROUTE_RESERVED") {
-    throw new HcsEnvelopeError(
-      `Expected ROUTE_RESERVED, got ${String(o.messageType)}`,
-    );
-  }
-  if (o.payload && typeof o.payload === "object") {
-    assertNoPrivateFields(o.payload as object);
-  }
-  const payload = RouteReservedPayloadSchema.parse(o.payload);
-  const payloadHash = canonicalSha256(payload);
-  if (payloadHash !== o.payloadHash) {
-    throw new HcsEnvelopeError("payloadHash mismatch");
-  }
+
   return {
-    schemaVersion: HCS_SCHEMA_VERSION,
-    messageType: "ROUTE_RESERVED",
-    runId: String(o.runId),
-    tenderId: String(o.tenderId),
-    tenderVersion: Number(o.tenderVersion),
-    tenderHash: String(o.tenderHash),
-    createdAt: String(o.createdAt),
-    payloadHash,
-    payload,
+    topicId: input.topicId,
+    transactionId,
+    sequence: input.sequence,
+    consensusTimestamp: input.consensusTimestamp,
   };
 }

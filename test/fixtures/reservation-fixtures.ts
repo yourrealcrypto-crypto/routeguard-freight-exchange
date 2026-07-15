@@ -74,7 +74,12 @@ export type WinnerBundle = {
   auctionEndsAt: string;
 };
 
-export function buildVerifiedWinnerBundle(): WinnerBundle {
+export function buildVerifiedWinnerBundle(opts?: {
+  bidAPriceCents?: number;
+  bidBPriceCents?: number;
+}): WinnerBundle {
+  const bidAPriceCents = opts?.bidAPriceCents ?? 350_000;
+  const bidBPriceCents = opts?.bidBPriceCents ?? 375_000;
   const auctionEndsAt = "2026-07-15T18:58:10.865Z";
   const evaluationTimestamp = "2026-07-15T18:58:17.944297247Z";
   const tender = parseFreightTender({
@@ -125,7 +130,7 @@ export function buildVerifiedWinnerBundle(): WinnerBundle {
     tenderId: tender.tenderId,
     carrierId: CARRIER_KEYS.alpha.carrierId,
     carrierAccountId: DEMO_WINNER_ACCOUNT,
-    freightPriceCents: 350_000,
+    freightPriceCents: bidAPriceCents,
     equipment: "Curtainsider",
     proposedPickupAt: "2026-07-17T10:00:00.000Z",
     estimatedDelivery: "2026-07-19T12:00:00.000Z",
@@ -141,7 +146,7 @@ export function buildVerifiedWinnerBundle(): WinnerBundle {
     tenderId: tender.tenderId,
     carrierId: CARRIER_KEYS.beta.carrierId,
     carrierAccountId: CARRIER_KEYS.beta.accountId,
-    freightPriceCents: 375_000,
+    freightPriceCents: bidBPriceCents,
     equipment: "Curtainsider",
     proposedPickupAt: "2026-07-17T11:00:00.000Z",
     estimatedDelivery: "2026-07-19T10:00:00.000Z",
@@ -237,6 +242,19 @@ export function buildVerifiedWinnerBundle(): WinnerBundle {
     evaluationTimestamp,
     auctionEndsAt,
   };
+}
+
+/**
+ * Authentic closure proof where BOTH bids exceed the tender maximum price, so
+ * the auction has NO qualified winner (manifest.winningBidId === null). Used to
+ * prove reservation creation fails closed with NO_WINNER.
+ */
+export function buildNoQualifiedBidBundle(): WinnerBundle {
+  // Tender maximumFreightPriceCents is 400_000; both bids priced above it.
+  return buildVerifiedWinnerBundle({
+    bidAPriceCents: 450_000,
+    bidBPriceCents: 475_000,
+  });
 }
 
 export function createReservationInputFromBundle(

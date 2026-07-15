@@ -3,10 +3,15 @@
  */
 
 import { canonicalSha256 } from "../src/domain/canonical-hash";
-import { InMemoryReservationStore } from "../src/reservation/attempt-store";
+import {
+  InMemoryReservationStore,
+  type ReservationStore,
+} from "../src/reservation/attempt-store";
 import { ReservationService } from "../src/reservation/reservation-service";
 import type {
   FacilitatorTransport,
+  HcsPublicationResolveResult,
+  HcsPublicationResolver,
   HcsPublisherTransport,
   MirrorConfirmationTransport,
   WebhookDeliveryTransport,
@@ -19,7 +24,10 @@ import type {
   PaymentChallenge,
   SelectedPaymentOption,
 } from "../src/reservation/types";
+import { DEMO_RESERVATION_FEE_NOTE } from "../src/reservation/types";
+import type { HcsEnvelope } from "../src/hcs/types";
 import {
+  DEMO_HCS_TOPIC,
   DEMO_PAYER_ACCOUNT,
   RESERVATION_TEST_WEBHOOK_PRIVATE_KEY,
   buildVerifiedWinnerBundle,
@@ -29,12 +37,28 @@ import {
 
 export type MockControls = {
   verifyResult: FacilitatorVerifyResult;
+  verifyImpl?: FacilitatorTransport["verify"];
   settleResult: FacilitatorSettleResult;
   settleImpl?: FacilitatorTransport["settle"];
   mirrorResult: MirrorConfirmation;
   mirrorImpl?: MirrorConfirmationTransport["getTransaction"];
+  mirrorCallCount: number;
+  challengeCallCount: number;
+  challengeImpl?: X402ChallengeTransport["createChallenge"];
   webhookOk: boolean;
+  webhookImpl?: WebhookDeliveryTransport["deliver"];
+  webhookDeliveries: Array<{
+    recipient: "shipper" | "carrier";
+    eventId: string;
+    payloadHash: string;
+  }>;
   hcsOk: boolean;
+  hcsImpl?: HcsPublisherTransport["publish"];
+  hcsPublishCallCount: number;
+  hcsPublishedEnvelopes: HcsEnvelope[];
+  hcsResolveResult: HcsPublicationResolveResult;
+  hcsResolveImpl?: HcsPublicationResolver["resolvePublication"];
+  hcsResolveCallCount: number;
   settleCallCount: number;
   verifyCallCount: number;
 };
@@ -102,29 +126,45 @@ export function createMockControls(
       tokenTransfers: [],
     },
     webhookOk: true,
+    webhookDeliveries: [],
     hcsOk: true,
+    hcsPublishCallCount: 0,
+    hcsPublishedEnvelopes: [],
+    hcsResolveResult: { status: "NOT_FOUND_CONCLUSIVE" },
+    hcsResolveCallCount: 0,
     settleCallCount: 0,
     verifyCallCount: 0,
+    mirrorCallCount: 0,
+    challengeCallCount: 0,
     ...overrides,
   };
 }
 
-export function buildService(opts?: {
+export function buildService<S extends ReservationStore = InMemoryReservationStore>(opts?: {
   controls?: MockControls;
   bundle?: WinnerBundle;
   now?: string;
+  store?: S;
+  confirmationTimeoutMs?: number;
+  mirrorPollIntervalMs?: number;
 }): {
   service: ReservationService;
-  store: InMemoryReservationStore;
+  store: S;
   controls: MockControls;
   bundle: WinnerBundle;
+  setNow: (iso: string) => void;
+  advanceMs: (ms: number) => void;
 } {
   const bundle = opts?.bundle ?? buildVerifiedWinnerBundle();
   const controls = opts?.controls ?? createMockControls();
-  const store = new InMemoryReservationStore();
+  const store = (opts?.store ?? new InMemoryReservationStore()) as S;
 
   const challenge: X402ChallengeTransport = {
     async createChallenge(selected) {
+      controls.challengeCallCount += 1;
+      if (controls.challengeImpl) {
+        return controls.challengeImpl(selected);
+      }
       const c: PaymentChallenge = {
         x402Version: 2,
         scheme: selected.scheme,
@@ -134,15 +174,18 @@ export function buildService(opts?: {
         payTo: selected.payTo,
         resource: selected.resourcePath,
         maxTimeoutSeconds: 180,
-        description: "Demo reservation fee",
+        description: DEMO_RESERVATION_FEE_NOTE,
       };
       return c;
     },
   };
 
   const facilitator: FacilitatorTransport = {
-    async verify() {
+    async verify(input) {
       controls.verifyCallCount += 1;
+      if (controls.verifyImpl) {
+        return controls.verifyImpl(input);
+      }
       return controls.verifyResult;
     },
     async settle(input) {
@@ -160,6 +203,7 @@ export function buildService(opts?: {
 
   const mirror: MirrorConfirmationTransport = {
     async getTransaction(transactionId) {
+      controls.mirrorCallCount += 1;
       if (controls.mirrorImpl) {
         return controls.mirrorImpl(transactionId);
       }
@@ -183,7 +227,15 @@ export function buildService(opts?: {
   };
 
   const webhooks: WebhookDeliveryTransport = {
-    async deliver() {
+    async deliver(recipient, webhook) {
+      controls.webhookDeliveries.push({
+        recipient,
+        eventId: webhook.headers["X-RouteGuard-Event-Id"],
+        payloadHash: webhook.payloadHash,
+      });
+      if (controls.webhookImpl) {
+        return controls.webhookImpl(recipient, webhook);
+      }
       return controls.webhookOk
         ? { ok: true }
         : { ok: false, error: "webhook down" };
@@ -191,12 +243,18 @@ export function buildService(opts?: {
   };
 
   const hcs: HcsPublisherTransport = {
-    async publish() {
+    async publish(envelope) {
+      controls.hcsPublishCallCount += 1;
+      controls.hcsPublishedEnvelopes.push(envelope);
+      if (controls.hcsImpl) {
+        return controls.hcsImpl(envelope);
+      }
       if (!controls.hcsOk) {
         throw new Error("HCS publish failed");
       }
       return {
-        topicId: "0.0.9999999",
+        // Bind to the reservation auction topic used by fixtures (not a universal constant).
+        topicId: DEMO_HCS_TOPIC,
         sequence: 5,
         transactionId: "0.0.9197513@1784142100.1",
         consensusTimestamp: "2026-07-15T19:06:00.000000001Z",
@@ -204,7 +262,22 @@ export function buildService(opts?: {
     },
   };
 
+  const hcsResolver: HcsPublicationResolver = {
+    async resolvePublication(input) {
+      controls.hcsResolveCallCount += 1;
+      if (controls.hcsResolveImpl) {
+        return controls.hcsResolveImpl(input);
+      }
+      return controls.hcsResolveResult;
+    },
+  };
+
   let clock = opts?.now ?? "2026-07-15T19:01:00.000Z";
+  let clockMs = Date.parse(clock);
+  if (!Number.isFinite(clockMs)) {
+    clockMs = Date.parse("2026-07-15T19:01:00.000Z");
+  }
+
   const service = new ReservationService({
     store,
     registry: bundle.registry,
@@ -213,12 +286,34 @@ export function buildService(opts?: {
     mirror,
     webhooks,
     hcs,
+    hcsResolver,
     webhookSigningPrivateKey: RESERVATION_TEST_WEBHOOK_PRIVATE_KEY,
     now: () => clock,
-    confirmationTimeoutMs: 1000,
+    nowMs: () => clockMs,
+    // Injected sleep advances the fake clock — no wall-clock waits.
+    sleep: async (ms: number) => {
+      clockMs += ms;
+      clock = new Date(clockMs).toISOString();
+    },
+    confirmationTimeoutMs: opts?.confirmationTimeoutMs ?? 1000,
+    mirrorPollIntervalMs: opts?.mirrorPollIntervalMs ?? 100,
   });
 
-  return { service, store, controls, bundle };
+  return {
+    service,
+    store,
+    controls,
+    bundle,
+    setNow: (iso: string) => {
+      clock = iso;
+      const parsed = Date.parse(iso);
+      if (Number.isFinite(parsed)) clockMs = parsed;
+    },
+    advanceMs: (ms: number) => {
+      clockMs += ms;
+      clock = new Date(clockMs).toISOString();
+    },
+  };
 }
 
 export async function createAndSelect(
@@ -248,4 +343,9 @@ export async function createAndSelect(
   };
 }
 
-export { DEMO_PAYER_ACCOUNT, createReservationInputFromBundle, buildVerifiedWinnerBundle };
+export {
+  DEMO_HCS_TOPIC,
+  DEMO_PAYER_ACCOUNT,
+  createReservationInputFromBundle,
+  buildVerifiedWinnerBundle,
+};

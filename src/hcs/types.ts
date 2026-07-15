@@ -16,9 +16,15 @@ export const HCS_MESSAGE_TYPES = [
   "AUCTION_OPEN",
   "BID_COMMITMENT",
   "AUCTION_CLOSE_BARRIER",
+  "ROUTE_RESERVED",
 ] as const;
 
 export type HcsMessageType = (typeof HCS_MESSAGE_TYPES)[number];
+
+/** Public reservation-evidence schema version tag (kept short for byte budget). */
+export const ROUTE_RESERVED_EVIDENCE_VERSION = "rg-res-ev-1" as const;
+/** Reservation payment network literal. */
+export const RESERVATION_PAYMENT_NETWORK = "hedera:testnet" as const;
 
 export type AuctionOpenPayload = {
   tenderId: string;
@@ -50,10 +56,36 @@ export type AuctionCloseBarrierPayload = {
   closePolicy: typeof CLOSE_POLICY;
 };
 
+/**
+ * Public ROUTE_RESERVED evidence payload. Compact public-only fields that fit a
+ * single standard HCS message. `reservationRecordHash` is the master commitment
+ * to the full RouteReservedRecord (which binds tenderHash, winningBidHash,
+ * decisionManifestHash, evaluatedBidSetHash and every payment field), so the
+ * dropped hashes remain cryptographically committed. tenderId/tenderVersion are
+ * carried in the envelope shell. Never carries private bid/price/salt/signature
+ * data.
+ */
+export type RouteReservedPayload = {
+  reservationId: string;
+  winningBidId: string;
+  carrierId: string;
+  carrierAccount: string;
+  selectedOptionId: "USDC" | "HBAR";
+  paymentAsset: string;
+  paymentAmountAtomic: string;
+  payerAccount: string;
+  paymentTransactionId: string;
+  paymentConsensusTimestamp: string;
+  reservationRecordHash: string;
+  closeBarrierSequence: number;
+  reservationEvidenceVersion: typeof ROUTE_RESERVED_EVIDENCE_VERSION;
+};
+
 export type HcsPayload =
   | AuctionOpenPayload
   | BidCommitmentPayload
-  | AuctionCloseBarrierPayload;
+  | AuctionCloseBarrierPayload
+  | RouteReservedPayload;
 
 export type HcsEnvelopeBase = {
   schemaVersion: typeof HCS_SCHEMA_VERSION;
@@ -81,10 +113,16 @@ export type AuctionCloseBarrierEnvelope = HcsEnvelopeBase & {
   payload: AuctionCloseBarrierPayload;
 };
 
+export type RouteReservedEnvelope = HcsEnvelopeBase & {
+  messageType: "ROUTE_RESERVED";
+  payload: RouteReservedPayload;
+};
+
 export type HcsEnvelope =
   | AuctionOpenEnvelope
   | BidCommitmentEnvelope
-  | AuctionCloseBarrierEnvelope;
+  | AuctionCloseBarrierEnvelope
+  | RouteReservedEnvelope;
 
 /** Mirror-authoritative observation of one HCS message. */
 export type ObservedHcsMessage = {

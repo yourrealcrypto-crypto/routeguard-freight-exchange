@@ -43,6 +43,14 @@ const LEGAL: ReadonlyMap<ReservationState, readonly ReservationState[]> =
     [
       "FACILITATOR_VERIFIED",
       [
+        "FACILITATOR_SETTLE_CLAIMED",
+        "SETTLEMENT_FAILED",
+        "MANUAL_REVIEW_REQUIRED",
+      ],
+    ],
+    [
+      "FACILITATOR_SETTLE_CLAIMED",
+      [
         "FACILITATOR_SETTLED",
         "SETTLEMENT_FAILED",
         "MANUAL_REVIEW_REQUIRED",
@@ -64,7 +72,12 @@ const LEGAL: ReadonlyMap<ReservationState, readonly ReservationState[]> =
     ["PAYMENT_CONFIRMED", ["ROUTE_RESERVED"]],
     [
       "ROUTE_RESERVED",
-      ["WEBHOOKS_DISPATCHED", "WEBHOOK_DELIVERY_FAILED", "HCS_EVIDENCE_FAILED"],
+      [
+        "WEBHOOKS_DISPATCHED",
+        "WEBHOOK_DELIVERY_FAILED",
+        "HCS_EVIDENCE_RECORDED",
+        "HCS_EVIDENCE_FAILED",
+      ],
     ],
     [
       "WEBHOOKS_DISPATCHED",
@@ -145,6 +158,7 @@ export function isPostReservation(state: ReservationState): boolean {
 export function isPaymentSubmissionLocked(state: ReservationState): boolean {
   if (state === "PAYMENT_SUBMISSION_STARTED") return true;
   if (state === "FACILITATOR_VERIFIED") return true;
+  if (state === "FACILITATOR_SETTLE_CLAIMED") return true;
   if (state === "FACILITATOR_SETTLED") return true;
   if (state === "MIRROR_CONFIRMATION_PENDING") return true;
   if (state === "PAYMENT_CONFIRMED") return true;

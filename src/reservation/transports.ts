@@ -51,3 +51,30 @@ export interface HcsPublisherTransport {
     consensusTimestamp: string;
   }>;
 }
+
+/**
+ * Read-only authoritative HCS publication resolver (Mirror-backed in production;
+ * mocked in this milestone). Used when a CLAIMED publication has no recorded
+ * result so the service never auto-resubmits.
+ */
+export type HcsPublicationResolveResult =
+  | {
+      readonly status: "FOUND";
+      readonly topicId: string;
+      readonly sequence: number;
+      /** May be null when Mirror does not surface a transaction id. */
+      readonly transactionId: string | null;
+      readonly consensusTimestamp: string;
+      readonly envelopeHash: string;
+    }
+  | { readonly status: "NOT_FOUND_CONCLUSIVE" }
+  | { readonly status: "AMBIGUOUS" };
+
+export interface HcsPublicationResolver {
+  resolvePublication(input: {
+    topicId: string;
+    envelopeHash: string;
+    messageType: "ROUTE_RESERVED";
+    reservationId: string;
+  }): Promise<HcsPublicationResolveResult>;
+}

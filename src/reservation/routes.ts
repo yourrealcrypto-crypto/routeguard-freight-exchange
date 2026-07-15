@@ -1,17 +1,33 @@
 /**
  * Testable Hono reservation routes with dependency injection.
+ * Strict request schemas and sanitized responses (Phase 6A.2C).
  */
 
 import { Hono } from "hono";
+import { ZodError } from "zod";
 
 import {
   publicReservationView,
   type ReservationService,
 } from "./reservation-service";
-import { ReservationError, type ReservationOptionId } from "./types";
+import {
+  CorruptReservationRecordError,
+  PayReservationBodySchema,
+  SelectReservationBodySchema,
+} from "./record-schema";
+import {
+  ReservationError,
+  ReservationVersionConflictError,
+  type ReservationOptionId,
+} from "./types";
 
 export type ReservationRouteDeps = {
   service: ReservationService;
+  /**
+   * Optional injected logger for sanitized internal errors (tests may hook).
+   * Never log raw payloads containing secrets.
+   */
+  onInternalError?: (info: { code: string; message: string }) => void;
 };
 
 function errorStatus(code: string): number {
@@ -23,6 +39,7 @@ function errorStatus(code: string): number {
     case "WRONG_ASSET_ROUTE":
     case "SETTLE_ONCE":
     case "TERMINAL_FAILURE":
+    case "VERSION_CONFLICT":
       return 409;
     case "OFFER_EXPIRED":
     case "STALE_OFFER":
@@ -31,7 +48,13 @@ function errorStatus(code: string): number {
     case "NO_CHALLENGE":
     case "FORGED_PROOF":
     case "WRONG_WINNER":
+    case "INVALID_BODY":
+    case "CHALLENGE_MISMATCH":
       return 400;
+    case "CORRUPT_RESERVATION_RECORD":
+    case "INVALID_PERSISTED_RECORD":
+    case "STORE_CORRUPT":
+      return 500;
     default:
       return 400;
   }
@@ -58,7 +81,7 @@ export function registerReservationRoutes(
       }
       return c.json(publicReservationView(record) as Record<string, unknown>);
     } catch (e) {
-      return handleError(c, e);
+      return handleError(c, e, deps);
     }
   });
 
@@ -72,30 +95,18 @@ export function registerReservationRoutes(
       return c.json({
         reservationId: record.reservationId,
         offer: record.offer,
-        // immutable offer only — no private bid data
+        // immutable public offer only — no private bid data
       });
     } catch (e) {
-      return handleError(c, e);
+      return handleError(c, e, deps);
     }
   });
 
   app.post("/api/reservations/:reservationId/select", async (c) => {
     try {
       const id = c.req.param("reservationId");
-      const body = (await c.req.json()) as {
-        optionId?: ReservationOptionId;
-        offerHash?: string;
-        offerVersion?: number;
-        payerAccount?: string;
-      };
-      if (
-        !body.optionId ||
-        !body.offerHash ||
-        body.offerVersion === undefined ||
-        !body.payerAccount
-      ) {
-        return c.json({ error: "INVALID_BODY" }, 400);
-      }
+      const raw = await parseJsonBody(c);
+      const body = SelectReservationBodySchema.parse(raw);
       const record = await service.selectOption({
         reservationId: id,
         optionId: body.optionId,
@@ -106,27 +117,37 @@ export function registerReservationRoutes(
       return c.json({
         reservationId: record.reservationId,
         state: record.state,
-        selected: record.selected,
+        selected: record.selected
+          ? {
+              optionId: record.selected.optionId,
+              asset: record.selected.asset,
+              amountAtomic: record.selected.amountAtomic,
+              payTo: record.selected.payTo,
+              network: record.selected.network,
+              payerAccount: record.selected.payerAccount,
+              resourcePath: record.selected.resourcePath,
+            }
+          : null,
       });
     } catch (e) {
-      return handleError(c, e);
+      return handleError(c, e, deps);
     }
   });
 
   app.get("/api/reservations/:reservationId/pay/usdc", async (c) => {
-    return payChallenge(c, service, "USDC");
+    return payChallenge(c, service, "USDC", deps);
   });
 
   app.post("/api/reservations/:reservationId/pay/usdc", async (c) => {
-    return paySubmit(c, service, "USDC");
+    return paySubmit(c, service, "USDC", deps);
   });
 
   app.get("/api/reservations/:reservationId/pay/hbar", async (c) => {
-    return payChallenge(c, service, "HBAR");
+    return payChallenge(c, service, "HBAR", deps);
   });
 
   app.post("/api/reservations/:reservationId/pay/hbar", async (c) => {
-    return paySubmit(c, service, "HBAR");
+    return paySubmit(c, service, "HBAR", deps);
   });
 
   app.get("/api/reservations/:reservationId/status", async (c) => {
@@ -136,7 +157,6 @@ export function registerReservationRoutes(
       if (!record) {
         return c.json({ error: "NOT_FOUND" }, 404);
       }
-      // Status is read-only — no writes
       return c.json({
         reservationId: record.reservationId,
         state: record.state,
@@ -146,9 +166,19 @@ export function registerReservationRoutes(
         failureCode: record.failureCode,
       });
     } catch (e) {
-      return handleError(c, e);
+      return handleError(c, e, deps);
     }
   });
+}
+
+async function parseJsonBody(c: {
+  req: { json(): Promise<unknown> };
+}): Promise<unknown> {
+  try {
+    return await c.req.json();
+  } catch {
+    throw new ReservationError("INVALID_BODY", "Malformed JSON body");
+  }
 }
 
 async function payChallenge(
@@ -158,19 +188,33 @@ async function payChallenge(
   },
   service: ReservationService,
   optionId: ReservationOptionId,
+  deps: ReservationRouteDeps,
 ): Promise<Response> {
   try {
     const id = c.req.param("reservationId");
     const { challenge, record } = await service.issueChallenge(id, optionId);
+    // Safe public challenge fields only (no private material).
     return c.json({
       reservationId: record.reservationId,
       state: record.state,
       optionId,
-      challenge,
+      challenge: {
+        x402Version: challenge.x402Version,
+        scheme: challenge.scheme,
+        network: challenge.network,
+        asset: challenge.asset,
+        amount: challenge.amount,
+        payTo: challenge.payTo,
+        resource: challenge.resource,
+        maxTimeoutSeconds: challenge.maxTimeoutSeconds,
+        description: challenge.description,
+        challengeHash: challenge.challengeHash,
+        issuedAt: challenge.issuedAt,
+      },
       note: "Demo reservation fee challenge — not freight price",
     });
   } catch (e) {
-    return handleError(c, e);
+    return handleError(c, e, deps);
   }
 }
 
@@ -184,16 +228,12 @@ async function paySubmit(
   },
   service: ReservationService,
   optionId: ReservationOptionId,
+  deps: ReservationRouteDeps,
 ): Promise<Response> {
   try {
     const id = c.req.param("reservationId");
-    const body = (await c.req.json()) as {
-      paymentPayloadHash?: string;
-      httpStatus?: number;
-    };
-    if (!body.paymentPayloadHash) {
-      return c.json({ error: "INVALID_BODY" }, 400);
-    }
+    const raw = await parseJsonBody(c);
+    const body = PayReservationBodySchema.parse(raw);
     const record = await service.submitPayment({
       reservationId: id,
       optionId,
@@ -206,21 +246,60 @@ async function paySubmit(
       reservationId: record.reservationId,
       state: record.state,
       transactionId: record.transactionId,
-      routeReserved: record.routeReserved,
+      routeReserved: record.routeReserved
+        ? {
+            reservationId: record.routeReserved.reservationId,
+            selectedOptionId: record.routeReserved.selectedOptionId,
+            transactionId: record.routeReserved.transactionId,
+            consensusTimestamp: record.routeReserved.consensusTimestamp,
+            reservedAt: record.routeReserved.reservedAt,
+            reservationRecordHash: record.routeReserved.reservationRecordHash,
+          }
+        : null,
       failureCode: record.failureCode,
     });
   } catch (e) {
-    return handleError(c, e);
+    return handleError(c, e, deps);
   }
 }
 
 function handleError(
   c: { json: (body: unknown, status?: number) => Response },
   e: unknown,
+  deps?: ReservationRouteDeps,
 ): Response {
-  if (e instanceof ReservationError) {
-    return c.json({ error: e.code, message: e.message }, errorStatus(e.code));
+  if (e instanceof ZodError) {
+    return c.json(
+      {
+        error: "INVALID_BODY",
+        message: "Request body failed validation",
+      },
+      400,
+    );
   }
-  const message = e instanceof Error ? e.message : String(e);
-  return c.json({ error: "INTERNAL", message }, 500);
+  if (e instanceof CorruptReservationRecordError) {
+    deps?.onInternalError?.({
+      code: e.code,
+      message: "corrupt reservation record",
+    });
+    return c.json({ error: "INTERNAL_ERROR" }, 500);
+  }
+  if (e instanceof ReservationVersionConflictError) {
+    return c.json(
+      { error: "VERSION_CONFLICT", message: "Reservation version conflict" },
+      409,
+    );
+  }
+  if (e instanceof ReservationError) {
+    return c.json(
+      { error: e.code, message: e.message },
+      errorStatus(e.code) as 400,
+    );
+  }
+  deps?.onInternalError?.({
+    code: "INTERNAL_ERROR",
+    message: e instanceof Error ? e.name : "unknown",
+  });
+  // Never return stack traces or implementation detail.
+  return c.json({ error: "INTERNAL_ERROR" }, 500);
 }

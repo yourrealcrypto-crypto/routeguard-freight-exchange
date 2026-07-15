@@ -273,17 +273,105 @@ describe("Reservation service", () => {
 
   it("recovery from in-progress states is fail-closed", async () => {
     const { service, store, bundle } = buildService();
-    const input = createReservationInputFromBundle(bundle, "res-recover");
-    await service.createReservation(input, bundle.tender);
-    const rec = await store.get("res-recover");
-    await store.put({
-      ...rec!,
+    const { reservationId, paymentPayloadHash } = await createAndSelect(
+      service,
+      bundle,
+      "HBAR",
+      "res-recover",
+    );
+    const rec = (await store.get(reservationId))!;
+    // Valid PAYMENT_SUBMISSION_STARTED snapshot: selection + challenge present.
+    await store.compareAndSet(reservationId, rec.recordVersion, {
+      ...rec,
       state: "PAYMENT_SUBMISSION_STARTED",
       attemptNumber: 1,
-      paymentPayloadHash: "sha256:" + "ab".repeat(32),
+      paymentPayloadHash,
     });
-    const recovered = await service.recover("res-recover");
+    const recovered = await service.recover(reservationId);
     expect(recovered.state).toBe("MANUAL_REVIEW_REQUIRED");
+  });
+
+  it("reservedAt equals the Mirror consensus timestamp; clock changes do not alter the record hash", async () => {
+    async function reserve(nowClock: string): Promise<{
+      reservedAt: string;
+      consensusTimestamp: string;
+      recordHash: string;
+    }> {
+      const { service, controls, bundle } = buildService({ now: nowClock });
+      const { reservationId, paymentPayloadHash } = await createAndSelect(
+        service,
+        bundle,
+        "USDC",
+        "res-clock-fixed",
+      );
+      const sel = (await service.getReservation(reservationId))!.selected!;
+      controls.mirrorResult = defaultMirrorSuccess(
+        sel,
+        controls.settleResult.transactionId!,
+      );
+      const final = await service.submitPayment({
+        reservationId,
+        optionId: "USDC",
+        paymentPayloadHash,
+      });
+      const rr = final.routeReserved!;
+      return {
+        reservedAt: rr.reservedAt,
+        consensusTimestamp: rr.consensusTimestamp,
+        recordHash: rr.reservationRecordHash,
+      };
+    }
+
+    const consensus = "2026-07-15T19:05:00.123456789Z";
+    // Two very different local service clocks, both within the offer window.
+    const a = await reserve("2026-07-15T19:01:00.000Z");
+    const b = await reserve("2026-07-15T19:58:30.500Z");
+
+    expect(a.reservedAt).toBe(consensus);
+    expect(a.reservedAt).toBe(a.consensusTimestamp);
+    expect(b.reservedAt).toBe(consensus);
+    // Same authoritative payment ⇒ identical record hash regardless of clock.
+    expect(a.recordHash).toBe(b.recordHash);
+  });
+
+  it("missing consensus timestamp cannot reserve", async () => {
+    const { service, controls, bundle } = buildService();
+    const { reservationId, paymentPayloadHash } = await createAndSelect(
+      service,
+      bundle,
+      "HBAR",
+      "res-no-consensus",
+    );
+    const sel = (await service.getReservation(reservationId))!.selected!;
+    const ok = defaultMirrorSuccess(sel, controls.settleResult.transactionId!);
+    controls.mirrorResult = { ...ok, consensusTimestamp: null };
+    const final = await service.submitPayment({
+      reservationId,
+      optionId: "HBAR",
+      paymentPayloadHash,
+    });
+    expect(final.routeReserved).toBeNull();
+    expect(final.state).toBe("CONFIRMATION_FAILED");
+  });
+
+  it("malformed consensus timestamp cannot reserve", async () => {
+    const { service, controls, bundle } = buildService();
+    const { reservationId, paymentPayloadHash } = await createAndSelect(
+      service,
+      bundle,
+      "HBAR",
+      "res-bad-consensus",
+    );
+    const sel = (await service.getReservation(reservationId))!.selected!;
+    const ok = defaultMirrorSuccess(sel, controls.settleResult.transactionId!);
+    controls.mirrorResult = { ...ok, consensusTimestamp: "not-a-timestamp" };
+    const final = await service.submitPayment({
+      reservationId,
+      optionId: "HBAR",
+      paymentPayloadHash,
+    });
+    expect(final.routeReserved).toBeNull();
+    expect(final.state).toBe("CONFIRMATION_FAILED");
   });
 
   it("HTTP 200 alone is never treated as settlement proof", async () => {

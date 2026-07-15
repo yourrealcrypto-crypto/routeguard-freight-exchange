@@ -11,6 +11,7 @@ import {
   canonicalize,
 } from "../domain/canonical-hash";
 import { isSafePositiveInteger } from "../domain/money";
+import { isValidHederaAccountId } from "../domain/payment-option";
 import { isUtcIsoTimestamp } from "../domain/time";
 import { ENGINE_VERSION, SELECTION_POLICY } from "../auction/types";
 import {
@@ -18,6 +19,7 @@ import {
   COMMITMENT_SCHEMA_VERSION,
   HCS_MAX_MESSAGE_BYTES,
   HCS_SCHEMA_VERSION,
+  ROUTE_RESERVED_EVIDENCE_VERSION,
   type AuctionCloseBarrierEnvelope,
   type AuctionCloseBarrierPayload,
   type AuctionOpenEnvelope,
@@ -26,6 +28,8 @@ import {
   type BidCommitmentPayload,
   type HcsEnvelope,
   type HcsMessageType,
+  type RouteReservedEnvelope,
+  type RouteReservedPayload,
 } from "./types";
 
 /** Fields that must never appear in a BID_COMMITMENT payload. */
@@ -49,6 +53,22 @@ export const PROHIBITED_COMMITMENT_PAYLOAD_FIELDS = [
 const BoundedId = z.string().min(1).max(128);
 const BoundedHash = z.string().min(1).max(80);
 const BoundedString = z.string().min(1).max(256);
+
+/** Fields that must never appear in a ROUTE_RESERVED payload. */
+export const PROHIBITED_ROUTE_RESERVED_PAYLOAD_FIELDS = [
+  "freightPriceCents",
+  "commitmentSalt",
+  "salt",
+  "nonce",
+  "signature",
+  "signedBid",
+  "signedBidEnvelope",
+  "privateKey",
+  "paymentPayload",
+  "signedPaymentPayload",
+  "fullBid",
+  "bid",
+] as const;
 
 function assertUtc(field: string, value: string, ctx: z.RefinementCtx): void {
   if (!isUtcIsoTimestamp(value)) {
@@ -164,12 +184,62 @@ export const AuctionCloseBarrierPayloadSchema = z
     }
   });
 
+export const RouteReservedPayloadSchema = z
+  .object({
+    reservationId: BoundedId,
+    winningBidId: BoundedId,
+    carrierId: BoundedId,
+    carrierAccount: z.string().min(1).max(64),
+    selectedOptionId: z.enum(["USDC", "HBAR"]),
+    paymentAsset: z.string().min(1).max(64),
+    paymentAmountAtomic: z.string().min(1).max(32),
+    payerAccount: z.string().min(1).max(64),
+    paymentTransactionId: z.string().min(1).max(128),
+    paymentConsensusTimestamp: z.string().min(1).max(64),
+    reservationRecordHash: BoundedHash,
+    closeBarrierSequence: z.number(),
+    reservationEvidenceVersion: z.literal(ROUTE_RESERVED_EVIDENCE_VERSION),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!isSafePositiveInteger(value.closeBarrierSequence)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "closeBarrierSequence must be a positive safe integer",
+        path: ["closeBarrierSequence"],
+      });
+    }
+    assertHash("reservationRecordHash", value.reservationRecordHash, ctx);
+    if (!isValidHederaAccountId(value.carrierAccount)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "carrierAccount invalid",
+        path: ["carrierAccount"],
+      });
+    }
+    if (!isValidHederaAccountId(value.payerAccount)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "payerAccount invalid",
+        path: ["payerAccount"],
+      });
+    }
+    if (!isUtcIsoTimestamp(value.paymentConsensusTimestamp)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paymentConsensusTimestamp must be UTC",
+        path: ["paymentConsensusTimestamp"],
+      });
+    }
+  });
+
 const EnvelopeShellSchema = z.object({
   schemaVersion: z.string().min(1).max(64),
   messageType: z.enum([
     "AUCTION_OPEN",
     "BID_COMMITMENT",
     "AUCTION_CLOSE_BARRIER",
+    "ROUTE_RESERVED",
   ]),
   runId: BoundedId,
   tenderId: BoundedId,
@@ -226,6 +296,18 @@ function assertNoProhibitedCommitmentFields(
     if (Object.prototype.hasOwnProperty.call(payload, field)) {
       throw new HcsEnvelopeError(
         `BID_COMMITMENT payload must not contain private field: ${field}`,
+      );
+    }
+  }
+}
+
+export function assertNoProhibitedRouteReservedFields(
+  payload: Record<string, unknown>,
+): void {
+  for (const field of PROHIBITED_ROUTE_RESERVED_PAYLOAD_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      throw new HcsEnvelopeError(
+        `ROUTE_RESERVED payload must not contain private field: ${field}`,
       );
     }
   }
@@ -391,6 +473,33 @@ export function createCloseBarrierEnvelope(input: {
   return envelope;
 }
 
+export function createRouteReservedEnvelope(input: {
+  runId: string;
+  tenderId: string;
+  tenderVersion: number;
+  tenderHash: string;
+  createdAt: string;
+  payload: RouteReservedPayload;
+}): RouteReservedEnvelope {
+  assertNoProhibitedRouteReservedFields(
+    input.payload as unknown as Record<string, unknown>,
+  );
+  const payload = RouteReservedPayloadSchema.parse(input.payload);
+  const shell = buildEnvelopeShell({
+    messageType: "ROUTE_RESERVED",
+    runId: input.runId,
+    tenderId: input.tenderId,
+    tenderVersion: input.tenderVersion,
+    tenderHash: input.tenderHash,
+    createdAt: input.createdAt,
+    payload: payload as unknown as Record<string, unknown>,
+  });
+  const envelope = shell as RouteReservedEnvelope;
+  // Standard single-message limit — no doubled allowance, no chunking.
+  assertMessageSize(envelope);
+  return envelope;
+}
+
 /**
  * Decode and strictly validate a UTF-8 HCS message body.
  * Verifies payloadHash against the payload. Fail closed.
@@ -500,6 +609,24 @@ export function decodeHcsEnvelope(raw: unknown): HcsEnvelope {
     const envelope: AuctionCloseBarrierEnvelope = {
       schemaVersion: HCS_SCHEMA_VERSION,
       messageType: "AUCTION_CLOSE_BARRIER",
+      runId: shell.runId,
+      tenderId: shell.tenderId,
+      tenderVersion: shell.tenderVersion,
+      tenderHash: shell.tenderHash,
+      createdAt: shell.createdAt,
+      payloadHash: shell.payloadHash,
+      payload,
+    };
+    assertMessageSize(envelope);
+    return envelope;
+  }
+
+  if (shell.messageType === "ROUTE_RESERVED") {
+    assertNoProhibitedRouteReservedFields(shell.payload);
+    const payload = RouteReservedPayloadSchema.parse(shell.payload);
+    const envelope: RouteReservedEnvelope = {
+      schemaVersion: HCS_SCHEMA_VERSION,
+      messageType: "ROUTE_RESERVED",
       runId: shell.runId,
       tenderId: shell.tenderId,
       tenderVersion: shell.tenderVersion,
