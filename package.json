@@ -23,7 +23,9 @@
     "demo:phase6b-reservation": "tsx scripts/phase6b-live-reservation.ts",
     "demo:final-auction": "tsx scripts/final-auction-demo.ts",
     "reconcile:payment": "tsx scripts/reconcile-payment.ts",
-    "check:secrets": "tsx scripts/check-secrets.ts"
+    "check:secrets": "tsx scripts/check-secrets.ts",
+    "report:final-demo": "tsx scripts/render-final-demo-report.ts",
+    "verify": "tsx scripts/verify.ts"
   },
   "repository": {
     "type": "git",

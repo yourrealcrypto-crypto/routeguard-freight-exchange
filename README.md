@@ -21,7 +21,12 @@ Public synthetic template: `demo/fixtures/final-auction-template.json`.
 
 **Historical HCS topic `0.0.9587459`:** earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration. The final live run creates a **new** HCS topic and sequences 1–5 on that topic only.
 
-All auction and carrier data in the final demonstration is deliberately synthetic and publicly disclosed for reproducibility. Hedera payment and consensus transactions are real testnet transactions when executed live under full guards.
+All auction and carrier data in the final demonstration is deliberately synthetic and publicly disclosed for reproducibility. Hedera payment and consensus transactions are real testnet transactions when executed live under full guards. Offline dry-run evidence is rehearsal-only (zero network writes) and must not be read as live HashScan proof.
+
+Private off-chain bids with salted, consensus-timestamped HCS commitments and
+reproducible deterministic evaluation.
+
+**RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC.**
 
 ## Target network
 
@@ -93,4 +98,6 @@ Source of truth in code: `src/domain/hedera-transfer-costs.ts` and `src/domain/p
 | `npm run smoke:hbar` | Guarded HBAR smoke client |
 | `npm run smoke:usdc` | Guarded USDC smoke client |
 | `npm run demo:final-auction` | Final demo (dry-run by default) |
+| `npm run report:final-demo` | Render static Winning Demo HTML from evidence JSON |
+| `npm run verify` | Typecheck + tests + secrets + dry demo + evidence checks |
 | `npm run check:secrets` | Fail closed on private-key fields in public paths |
