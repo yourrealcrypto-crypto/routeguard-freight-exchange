@@ -249,6 +249,8 @@ async function paySubmit(
       reservationId: id,
       optionId,
       paymentPayloadHash: body.paymentPayloadHash,
+      // v1.5 §22.4 — mandatory client-frozen transaction identity.
+      clientTransaction: body.clientTransaction,
       ...(body.httpStatus !== undefined
         ? { httpStatus: body.httpStatus }
         : {}),

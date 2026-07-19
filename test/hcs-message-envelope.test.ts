@@ -11,6 +11,7 @@ import {
   decodeHcsEnvelopeFromBase64,
   encodeHcsEnvelopeUtf8,
   envelopeHash,
+  exceedsHcsMessageLimit,
   HcsEnvelopeError,
   measureHcsMessageBytes,
   PROHIBITED_COMMITMENT_PAYLOAD_FIELDS,
@@ -220,5 +221,16 @@ describe("HCS message envelope", () => {
         },
       }),
     ).toThrow(/UTC/);
+  });
+
+  describe("F-008 strict 1,024-byte boundary", () => {
+    it("accepts 1,023 bytes and rejects exactly 1,024 bytes", () => {
+      expect(HCS_MAX_MESSAGE_BYTES).toBe(1024);
+      expect(exceedsHcsMessageLimit(1022)).toBe(false);
+      expect(exceedsHcsMessageLimit(1023)).toBe(false);
+      // Exactly the limit is rejected — messages must be strictly below.
+      expect(exceedsHcsMessageLimit(1024)).toBe(true);
+      expect(exceedsHcsMessageLimit(1025)).toBe(true);
+    });
   });
 });

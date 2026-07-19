@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { demoClientTransaction } from "./reservation-helpers";
 
 import { createRouteReservedRecord } from "../src/reservation/route-reserved-record";
 import {
@@ -121,7 +122,7 @@ describe("HCS ROUTE_RESERVED evidence", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,

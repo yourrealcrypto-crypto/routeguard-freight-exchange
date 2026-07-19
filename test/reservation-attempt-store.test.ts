@@ -71,6 +71,7 @@ function minimalRecord(
     paymentChallenge: null,
     paymentChallengeHash: null,
     paymentPayloadHash: null,
+    clientTransaction: null,
     facilitatorVerify: null,
     settleClaim: null,
     facilitatorSettle: null,

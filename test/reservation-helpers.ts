@@ -316,6 +316,32 @@ export function buildService<S extends ReservationStore = InMemoryReservationSto
   };
 }
 
+/**
+ * Client-frozen transaction reference matching createMockControls' default
+ * settle transaction ID (v1.5 §22.4 test binding).
+ */
+export const DEMO_CLIENT_TX_ID = "0.0.9197513@1784142000.100000000" as const;
+export function demoClientTransaction(
+  transactionId: string = DEMO_CLIENT_TX_ID,
+): {
+  transactionId: string;
+  validStartTimestamp: string;
+  transactionValidDurationSeconds: number;
+} {
+  const m = /^(\d+\.\d+\.\d+)@(\d+)\.(\d+)$/.exec(transactionId);
+  if (!m) throw new Error(`bad demo tx id ${transactionId}`);
+  const seconds = Number(m[2]);
+  const nanos = (m[3] ?? "0").padStart(9, "0").slice(0, 9);
+  const iso = new Date(seconds * 1000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, `.${nanos}Z`);
+  return {
+    transactionId,
+    validStartTimestamp: iso,
+    transactionValidDurationSeconds: 180,
+  };
+}
+
 export async function createAndSelect(
   service: ReservationService,
   bundle: WinnerBundle,
@@ -325,6 +351,7 @@ export async function createAndSelect(
   reservationId: string;
   offerHash: string;
   paymentPayloadHash: string;
+  clientTransaction: ReturnType<typeof demoClientTransaction>;
 }> {
   const input = createReservationInputFromBundle(bundle, reservationId);
   const record = await service.createReservation(input, bundle.tender);
@@ -340,6 +367,7 @@ export async function createAndSelect(
     reservationId,
     offerHash: record.offer.offerHash,
     paymentPayloadHash: canonicalSha256({ payload: "signed-demo", optionId }),
+    clientTransaction: demoClientTransaction(),
   };
 }
 

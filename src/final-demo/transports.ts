@@ -12,6 +12,7 @@ import type {
   WebhookDeliveryTransport,
 } from "../reservation/transports";
 import type { FinalDemoMessageLabel } from "./constants";
+import type { FinalDemoHcsSubmitter } from "./hcs-submit-authority";
 
 export type FinalDemoClock = {
   nowMs: () => number;
@@ -51,6 +52,7 @@ export type FinalDemoHcsTransport = {
     topicId: string;
     envelope: HcsEnvelope;
     label: FinalDemoMessageLabel;
+    submitter: FinalDemoHcsSubmitter;
     exactBytes: Uint8Array;
   }) => Promise<HcsSubmitResult>;
   getSubmitCount: () => number;
@@ -76,6 +78,8 @@ export type SessionFacilitatorTransport = FacilitatorTransport & {
     requirement: PaymentRequirements;
     paymentPayloadHash: string;
     challengeHash: string;
+    /** Client-frozen transaction ID for exact settle-response binding. */
+    clientTransactionId?: string;
   }) => void;
   clearPaymentSession: () => void;
   /** Test/ops counters when available. */
@@ -113,6 +117,15 @@ export type PaymentPayloadFactory = (input: {
   paymentPayload: PaymentPayload;
   requirement: PaymentRequirements;
   paymentPayloadHash: string;
+  /**
+   * v1.5 §22.4 — exact transaction identity decoded from the signed payment
+   * transaction (never invented). Persisted before any facilitator call.
+   */
+  clientTransaction: {
+    transactionId: string;
+    validStartTimestamp: string;
+    transactionValidDurationSeconds: number;
+  };
 }>;
 
 export type UsdcReadinessResult = {
@@ -133,6 +146,8 @@ export type AccountCheckResult = {
 
 export type FinalDemoReadinessChecks = {
   secretScan: () => void;
+  /** F-002 — facilitator capability preflight, before any irreversible write. */
+  facilitatorPreflight?: () => Promise<void>;
   accountCheck?: () => Promise<AccountCheckResult>;
   usdcReadiness?: () => Promise<UsdcReadinessResult>;
 };

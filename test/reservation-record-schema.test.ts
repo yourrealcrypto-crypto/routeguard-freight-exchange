@@ -2,6 +2,7 @@
  * Phase 6A.2C — strict persisted record schema, creation fingerprint, API boundaries.
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import {
   mkdtempSync,
   readFileSync,
@@ -210,7 +211,7 @@ describe("Persisted record schema (Phase 6A.2C)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -525,7 +526,7 @@ describe("API request/response sanitization (Phase 6A.2C)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,

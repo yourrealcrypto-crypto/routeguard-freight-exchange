@@ -13,7 +13,9 @@ import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import {
   FINAL_DEMO_LIVE_ATTEMPT_PATH,
   FINAL_DEMO_MODE_LIVE,
+  FINAL_DEMO_CARRIER_BETA_ACCOUNT,
   FINAL_DEMO_PAYER_ACCOUNT,
+  FINAL_DEMO_WINNER_ACCOUNT,
   HISTORICAL_PHASE5_TOPIC_ID,
 } from "./constants";
 import { FinalDemoError } from "./errors";
@@ -24,6 +26,7 @@ import {
   type FinalDemoAttemptRecord,
 } from "./attempt-store";
 import { assertSecretScanPass } from "./secret-scan";
+import { checkFacilitatorPreflight } from "./facilitator-preflight";
 import { loadFinalDemoAuthoritativeMaterials } from "./materials";
 import {
   runFinalDemoOrchestration,
@@ -43,6 +46,13 @@ import {
   assertUsdcReadinessPass,
   checkFinalDemoUsdcReadiness,
 } from "./usdc-readiness";
+import {
+  checkFinalDemoHcsIdentityReadiness,
+  type FinalDemoHcsIdentity,
+} from "./hcs-identity-readiness";
+import { selectAuthorizedHcsSubmitter } from "./hcs-submit-authority";
+import { buildFinalDemoTopicCreateTransaction } from "./topic-configuration";
+import type { AccountCheckResult } from "./transports";
 
 /**
  * Production live deps — only real transports / production options.
@@ -64,6 +74,7 @@ export type FinalDemoLiveDeps = {
   paymentMirrorTransport?: MirrorConfirmationTransport;
   webhookTransport?: WebhookDeliveryTransport;
   webhookSigningPrivateKey?: string;
+  hcsIdentityPreflight?: () => Promise<AccountCheckResult>;
   clock?: FinalDemoClock;
   /** When true, build real live transports from env (production CLI). */
   useProductionTransports?: boolean;
@@ -172,6 +183,7 @@ export async function runFinalDemoLiveExecution(
   let paymentMirrorTransport = deps.paymentMirrorTransport;
   let webhookTransport = deps.webhookTransport;
   let clock = deps.clock;
+  let hcsIdentityPreflight = deps.hcsIdentityPreflight;
 
   if (deps.useProductionTransports) {
     const built = await buildProductionLiveTransports(env);
@@ -183,6 +195,7 @@ export async function runFinalDemoLiveExecution(
     paymentMirrorTransport = built.paymentMirrorTransport;
     webhookTransport = built.webhookTransport;
     clock = built.clock;
+    hcsIdentityPreflight = built.hcsIdentityPreflight;
   }
 
   if (
@@ -193,16 +206,21 @@ export async function runFinalDemoLiveExecution(
     !facilitatorTransport ||
     !paymentMirrorTransport ||
     !webhookTransport ||
-    !clock
+    !clock ||
+    !hcsIdentityPreflight
   ) {
     throw new FinalDemoError(
-      "Live final-demo requires all production transports (topic, HCS, Mirror, payer, facilitator, payment Mirror, clock).",
+      "Live final-demo requires all production transports and the HCS identity/funding preflight.",
       "LIVE_TRANSPORTS_REQUIRED",
     );
   }
 
-  // Always run readiness — no skip
+  // Always run readiness — no skip. F-002 facilitator preflight runs before
+  // anything irreversible; the orchestrator re-runs it via `readiness` too.
   assertSecretScanPass({ rootDir: process.cwd() });
+  await checkFacilitatorPreflight({
+    ...(env.FACILITATOR_URL ? { facilitatorUrl: env.FACILITATOR_URL } : {}),
+  });
   const usdc = await checkFinalDemoUsdcReadiness();
   assertUsdcReadinessPass(usdc);
 
@@ -236,6 +254,12 @@ export async function runFinalDemoLiveExecution(
       : {}),
     readiness: {
       secretScan: () => assertSecretScanPass({ rootDir: process.cwd() }),
+      facilitatorPreflight: async () => {
+        await checkFacilitatorPreflight({
+          ...(env.FACILITATOR_URL ? { facilitatorUrl: env.FACILITATOR_URL } : {}),
+        });
+      },
+      accountCheck: hcsIdentityPreflight,
       usdcReadiness: async () => {
         const r = await checkFinalDemoUsdcReadiness();
         assertUsdcReadinessPass(r);
@@ -258,6 +282,7 @@ export async function buildProductionLiveTransports(
   facilitatorTransport: SessionFacilitatorTransport;
   paymentMirrorTransport: MirrorConfirmationTransport;
   webhookTransport: WebhookDeliveryTransport;
+  hcsIdentityPreflight: () => Promise<AccountCheckResult>;
   clock: FinalDemoClock;
 }> {
   const operatorAccount =
@@ -277,13 +302,40 @@ export async function buildProductionLiveTransports(
     );
   }
 
+  const carrierAlphaAccount = env.FINAL_DEMO_CARRIER_ALPHA_ACCOUNT_ID?.trim();
+  const carrierAlphaKey = env.FINAL_DEMO_CARRIER_ALPHA_PRIVATE_KEY?.trim();
+  const carrierBetaAccount = env.FINAL_DEMO_CARRIER_BETA_ACCOUNT_ID?.trim();
+  const carrierBetaKey = env.FINAL_DEMO_CARRIER_BETA_PRIVATE_KEY?.trim();
+  if (
+    !carrierAlphaAccount ||
+    !carrierAlphaKey ||
+    !carrierBetaAccount ||
+    !carrierBetaKey
+  ) {
+    throw new FinalDemoError(
+      "Final-demo carrier alpha/beta account IDs and private keys are required for direct HCS submission",
+      "CARRIER_IDENTITIES_REQUIRED",
+    );
+  }
+  if (carrierAlphaAccount !== FINAL_DEMO_WINNER_ACCOUNT) {
+    throw new FinalDemoError(
+      "Carrier alpha account must match the configured final-demo winner account",
+      "CARRIER_ALPHA_ACCOUNT_MISMATCH",
+    );
+  }
+  if (carrierBetaAccount !== FINAL_DEMO_CARRIER_BETA_ACCOUNT) {
+    throw new FinalDemoError(
+      "Carrier beta account must match the configured final-demo beta account",
+      "CARRIER_BETA_ACCOUNT_MISMATCH",
+    );
+  }
+
   const {
     AccountId,
     Client,
     Hbar,
     PrivateKey,
     Status,
-    TopicCreateTransaction,
     TopicId,
     TopicMessageSubmitTransaction,
   } = await import("@hiero-ledger/sdk");
@@ -301,17 +353,59 @@ export async function buildProductionLiveTransports(
   );
 
   let privateKey: InstanceType<typeof PrivateKey>;
+  let carrierAlphaPrivateKey: InstanceType<typeof PrivateKey>;
+  let carrierBetaPrivateKey: InstanceType<typeof PrivateKey>;
   try {
     privateKey = PrivateKey.fromStringECDSA(operatorKey);
+    carrierAlphaPrivateKey = PrivateKey.fromStringECDSA(carrierAlphaKey);
+    carrierBetaPrivateKey = PrivateKey.fromStringECDSA(carrierBetaKey);
   } catch {
     throw new FinalDemoError(
-      "Failed to parse operator ECDSA key",
-      "OPERATOR_KEY_INVALID",
+      "Failed to parse one or more final-demo ECDSA identity keys",
+      "HCS_IDENTITY_KEY_INVALID",
     );
   }
   const accountId = AccountId.fromString(operatorAccount);
   const client = Client.forTestnet();
   client.setOperator(accountId, privateKey);
+  const carrierAlphaAccountId = AccountId.fromString(carrierAlphaAccount);
+  const carrierAlphaClient = Client.forTestnet();
+  carrierAlphaClient.setOperator(carrierAlphaAccountId, carrierAlphaPrivateKey);
+  const carrierBetaAccountId = AccountId.fromString(carrierBetaAccount);
+  const carrierBetaClient = Client.forTestnet();
+  carrierBetaClient.setOperator(carrierBetaAccountId, carrierBetaPrivateKey);
+
+  const identities: FinalDemoHcsIdentity[] = [
+    {
+      role: "ROUTEGUARD_OPERATOR",
+      accountId: operatorAccount,
+      publicKeyHex: privateKey.publicKey.toStringRaw().toLowerCase(),
+    },
+    {
+      role: "CARRIER_ALPHA",
+      accountId: carrierAlphaAccount,
+      publicKeyHex: carrierAlphaPrivateKey.publicKey.toStringRaw().toLowerCase(),
+    },
+    {
+      role: "CARRIER_BETA",
+      accountId: carrierBetaAccount,
+      publicKeyHex: carrierBetaPrivateKey.publicKey.toStringRaw().toLowerCase(),
+    },
+  ];
+  const hcsIdentityPreflight = async (): Promise<AccountCheckResult> =>
+    checkFinalDemoHcsIdentityReadiness({ identities });
+
+  const submitterContexts = {
+    ROUTEGUARD_OPERATOR: { accountId: operatorAccount, client },
+    CARRIER_ALPHA: {
+      accountId: carrierAlphaAccount,
+      client: carrierAlphaClient,
+    },
+    CARRIER_BETA: {
+      accountId: carrierBetaAccount,
+      client: carrierBetaClient,
+    },
+  } as const;
 
   let createCount = 0;
   let submitCount = 0;
@@ -327,12 +421,7 @@ export async function buildProductionLiveTransports(
           "TOPIC_CREATE_BUDGET",
         );
       }
-      const tx = new TopicCreateTransaction()
-        .setTopicMemo(memo)
-        .setAdminKey(privateKey.publicKey)
-        .setSubmitKey(privateKey.publicKey)
-        .setAutoRenewAccountId(accountId)
-        .setMaxTransactionFee(new Hbar(5));
+      const tx = buildFinalDemoTopicCreateTransaction(memo);
       const response = await tx.execute(client);
       const receipt = await response.getReceipt(client);
       if (receipt.status !== Status.Success) {
@@ -368,6 +457,7 @@ export async function buildProductionLiveTransports(
 
   const hcsTransport: FinalDemoHcsTransport = {
     async submitMessage(input) {
+      const submitter = selectAuthorizedHcsSubmitter(submitterContexts, input);
       submitCount += 1;
       if (submitCount > 5) {
         throw new FinalDemoError(
@@ -390,8 +480,8 @@ export async function buildProductionLiveTransports(
         .setTopicId(TopicId.fromString(input.topicId))
         .setMessage(input.exactBytes)
         .setMaxTransactionFee(new Hbar(5));
-      const response = await tx.execute(client);
-      const receipt = await response.getReceipt(client);
+      const response = await tx.execute(submitter.client);
+      const receipt = await response.getReceipt(submitter.client);
       if (receipt.status !== Status.Success) {
         throw new FinalDemoError(
           `TopicMessageSubmitTransaction failed: ${receipt.status.toString()}`,
@@ -502,6 +592,7 @@ export async function buildProductionLiveTransports(
     facilitatorTransport: facilitator,
     paymentMirrorTransport: new LiveMirrorTransactionAdapter(),
     webhookTransport: new WebhookLocal(),
+    hcsIdentityPreflight,
     clock,
   };
 }

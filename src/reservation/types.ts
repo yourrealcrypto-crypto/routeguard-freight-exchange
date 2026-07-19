@@ -370,9 +370,28 @@ export type SettleClaim = {
   readonly network: typeof RESERVATION_NETWORK;
   readonly challengeHash: string;
   readonly paymentPayloadHash: string;
+  /**
+   * v1.5 §22.4/§23.1 — the EXACT client-frozen Hedera transaction ID and
+   * validity window decoded from the signed payment transaction, persisted
+   * BEFORE the external facilitator settle call. Mandatory; never invented.
+   */
+  readonly transactionId: string;
+  readonly validStartTimestamp: string;
+  readonly transactionValidDurationSeconds: number;
   readonly claimedAt: string;
   /** recordVersion at which this claim was durably persisted. */
   readonly recordVersion: number;
+};
+
+/**
+ * v1.5 §22.4 — client-frozen transaction identity persisted on the record at
+ * PAYMENT_SUBMISSION_STARTED (before any facilitator transmission). Decoded
+ * from the signed transaction; never invented.
+ */
+export type ClientTransactionBinding = {
+  readonly transactionId: string;
+  readonly validStartTimestamp: string;
+  readonly transactionValidDurationSeconds: number;
 };
 
 export type ReservationRecord = {
@@ -414,6 +433,11 @@ export type ReservationRecord = {
   paymentChallenge: PaymentChallengeRecord | null;
   paymentChallengeHash: string | null;
   paymentPayloadHash: string | null;
+  /**
+   * v1.5 §22.4 — exact client-frozen transaction identity, durable from
+   * PAYMENT_SUBMISSION_STARTED onward (before verify/settle transmission).
+   */
+  clientTransaction: ClientTransactionBinding | null;
   facilitatorVerify: FacilitatorVerifyResult | null;
   /** Durable settle-once authority persisted before the external settle call. */
   settleClaim: SettleClaim | null;

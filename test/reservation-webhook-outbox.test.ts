@@ -3,6 +3,7 @@
  * Persist immutable events before first delivery; retries reuse identical bytes.
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -58,7 +59,7 @@ async function reserveToRouteReserved(opts?: {
     sel,
     controls.settleResult.transactionId!,
   );
-  const final = await service.submitPayment({
+  const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
     reservationId,
     optionId: "HBAR",
     paymentPayloadHash,
@@ -108,7 +109,7 @@ describe("Webhook semantic outbox (Phase 6A.2A)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    await service.submitPayment({
+    await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -139,7 +140,7 @@ describe("Webhook semantic outbox (Phase 6A.2A)", () => {
 
     // Reach ROUTE_RESERVED without running dispatch (seed post-payment state).
     // Use submit with webhooks that never fire by pre-seeding ROUTE_RESERVED.
-    await service.submitPayment({
+    await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -250,7 +251,7 @@ describe("Webhook semantic outbox (Phase 6A.2A)", () => {
       return origCas(id, expected, next);
     };
 
-    await service.submitPayment({
+    await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -315,7 +316,7 @@ describe("Webhook semantic outbox (Phase 6A.2A)", () => {
       sel,
       first.controls.settleResult.transactionId!,
     );
-    await first.service.submitPayment({
+    await first.service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,

@@ -3,6 +3,7 @@
  * Fake clocks only — no wall-clock sleeps.
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import { describe, expect, it } from "vitest";
 
 import type { MirrorConfirmation } from "../src/reservation/types";
@@ -40,6 +41,8 @@ function makeClaim(
     network: RESERVATION_NETWORK,
     challengeHash,
     paymentPayloadHash,
+    // v1.5 §22.4 — client-frozen transaction identity on every claim.
+    ...demoClientTransaction(),
     claimedAt: "2026-07-15T19:02:00.000Z",
     recordVersion,
   };
@@ -104,6 +107,7 @@ async function prepToSettled(
     ...rec,
     state: "FACILITATOR_SETTLED",
     paymentPayloadHash,
+    clientTransaction: demoClientTransaction(),
     attemptNumber: 1,
     facilitatorVerify: { isValid: true },
     settleClaim: makeClaim(
@@ -290,7 +294,7 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
       if (n <= 2) return pending(txId);
       return defaultMirrorSuccess(sel, txId);
     };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -381,7 +385,7 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const reserved = await service.submitPayment({
+    const reserved = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -397,7 +401,7 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
     expect(controls.mirrorCallCount).toBe(mirrorBefore);
   });
 
-  it("15. settle claim without transaction ID never resumes settle", async () => {
+  it("15. unresolved settle claim reconciles the exact client transaction — never settles", async () => {
     const { service, store, controls, bundle } = buildService();
     const { reservationId, paymentPayloadHash } = await createAndSelect(
       service,
@@ -410,6 +414,7 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
       paymentPayloadHash,
+      clientTransaction: demoClientTransaction(),
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
       settleClaim: makeClaim(
@@ -423,10 +428,15 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
       transactionId: null,
     });
     controls.settleCallCount = 0;
+    controls.mirrorCallCount = 0;
+    // v1.5 §23: the claim carries the exact client-frozen transaction ID, so
+    // resume performs one exact-transaction lookup; pre-boundary NOT_FOUND
+    // remains locked (no manual review, no settle, no replacement payment).
+    controls.mirrorImpl = async (txId) => notFound(txId);
     const final = await service.resumePaymentConfirmation(reservationId);
-    expect(final.state).toBe("MANUAL_REVIEW_REQUIRED");
+    expect(final.state).toBe("FACILITATOR_SETTLE_CLAIMED");
     expect(controls.settleCallCount).toBe(0);
-    expect(controls.mirrorCallCount).toBe(0);
+    expect(controls.mirrorCallCount).toBe(1);
   });
 
   it("16. selected USDC never falls back to HBAR", async () => {
@@ -471,7 +481,7 @@ describe("Bounded Mirror payment polling (Phase 6A.2B)", () => {
       if (n === 2) return pending(txId);
       return defaultMirrorSuccess(sel, txId);
     };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,

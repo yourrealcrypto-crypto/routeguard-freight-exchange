@@ -8,6 +8,7 @@
  * MANUAL_REVIEW_REQUIRED instead of silently failing or re-paying.
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import { describe, expect, it } from "vitest";
 
 import { InMemoryReservationStore } from "../src/reservation/attempt-store";
@@ -55,7 +56,7 @@ describe("F-001 guarded confirmation recovery", () => {
       "res-timeout-001",
     );
 
-    const timedOut = await service.submitPayment({
+    const timedOut = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -71,7 +72,7 @@ describe("F-001 guarded confirmation recovery", () => {
 
     // Replacement payment remains refused while timed out.
     await expect(
-      service.submitPayment({
+      service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "USDC",
         paymentPayloadHash,
@@ -124,7 +125,7 @@ describe("F-001 guarded confirmation recovery", () => {
       "USDC",
       "res-restart-001",
     );
-    const timedOut = await first.service.submitPayment({
+    const timedOut = await first.service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -165,7 +166,7 @@ describe("F-001 guarded confirmation recovery", () => {
       "USDC",
       "res-guard-001",
     );
-    const timedOut = await service.submitPayment({
+    const timedOut = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -265,7 +266,7 @@ describe("F-001 guarded confirmation recovery", () => {
       "USDC",
       "res-blocked-001",
     );
-    const timedOut = await service.submitPayment({
+    const timedOut = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,

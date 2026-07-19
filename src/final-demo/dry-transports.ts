@@ -12,6 +12,7 @@ import {
 } from "../hcs/message-envelope";
 import type { HcsEnvelope, ObservedHcsMessage } from "../hcs/types";
 import type { MirrorConfirmation } from "../reservation/types";
+import { validStartIsoFromTransactionId } from "../reservation/client-transaction";
 import { LocalDemoWebhookTransport } from "../reservation/live/adapters";
 import {
   FINAL_DEMO_NETWORK,
@@ -85,6 +86,7 @@ export function createFinalDemoDryRunTransports(options?: {
         topicId: input.topicId,
         envelope: input.envelope,
         label: input.label,
+        submitter: input.submitter,
       });
       // Ensure exact bytes were measured by caller
       const recomputed = serializeEnvelopeForSubmit(input.envelope);
@@ -122,7 +124,7 @@ export function createFinalDemoDryRunTransports(options?: {
 
   const facilitator = createDryRunFacilitator(network);
   const paymentMirror = createDryRunPaymentMirror(network, facilitator);
-  const paymentPayloadFactory = createDryRunPaymentPayloadFactory();
+  const paymentPayloadFactory = createDryRunPaymentPayloadFactory(network);
   const webhookTransport = new LocalDemoWebhookTransport();
 
   return {
@@ -138,7 +140,9 @@ export function createFinalDemoDryRunTransports(options?: {
   };
 }
 
-function createDryRunPaymentPayloadFactory(): PaymentPayloadFactory {
+function createDryRunPaymentPayloadFactory(
+  network: MockFinalDemoNetwork,
+): PaymentPayloadFactory {
   return async (input) => {
     if (input.selected.optionId !== "USDC") {
       throw new FinalDemoError("Dry-run USDC only", "USDC_ONLY");
@@ -183,7 +187,17 @@ function createDryRunPaymentPayloadFactory(): PaymentPayloadFactory {
     } as unknown as PaymentRequirements;
 
     const paymentPayloadHash = canonicalSha256(paymentPayload);
-    return { paymentPayload, requirement, paymentPayloadHash };
+
+    // Dry client-frozen transaction identity from the mock network clock —
+    // clearly synthetic (payer@clock), never persisted as live evidence.
+    const clockSeconds = Math.floor(network.getClockMs() / 1000);
+    const transactionId = `${FINAL_DEMO_PAYER_ACCOUNT}@${clockSeconds}.100000000`;
+    const clientTransaction = {
+      transactionId,
+      validStartTimestamp: validStartIsoFromTransactionId(transactionId),
+      transactionValidDurationSeconds: 180,
+    };
+    return { paymentPayload, requirement, paymentPayloadHash, clientTransaction };
   };
 }
 
@@ -195,6 +209,7 @@ function createDryRunFacilitator(
     requirement: PaymentRequirements;
     paymentPayloadHash: string;
     challengeHash: string;
+    clientTransactionId?: string;
   } | null = null;
 
   const fac: SessionFacilitatorTransport = {
@@ -248,7 +263,11 @@ function createDryRunFacilitator(
         };
       }
       network.advanceMs(200);
-      const transactionId = `0.0.9197513@${Math.floor(network.getClockMs() / 1000)}.555000000`;
+      // Settle exactly the client-frozen transaction bound to the session —
+      // the dry facilitator never invents a different transaction ID.
+      const transactionId =
+        session.clientTransactionId ??
+        `0.0.9197513@${Math.floor(network.getClockMs() / 1000)}.555000000`;
       // stash for mirror
       (fac as { _lastTxId?: string })._lastTxId = transactionId;
       (fac as { _lastConsensus?: string })._lastConsensus =

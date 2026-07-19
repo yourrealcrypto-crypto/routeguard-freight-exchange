@@ -77,6 +77,11 @@ import { measureFinalDemoConservativeEnvelope } from "./envelope-budget";
 import { FinalDemoError } from "./errors";
 import { assertFinalDemoLiveAuthorized } from "./guards";
 import {
+  createFinalDemoHcsResolver,
+  resolveRouteReservedFromMirror,
+} from "./hcs-resolver";
+import { requiredSubmitterForLabel } from "./hcs-submit-authority";
+import {
   generateFinalDemoAuthoritativeMaterials,
   hashMaterialsPackage,
   loadFinalDemoAuthoritativeMaterials,
@@ -109,8 +114,51 @@ import {
 import type { MirrorConfirmationTransport } from "../reservation/transports";
 import type { WebhookDeliveryTransport } from "../reservation/transports";
 
-const DEFAULT_WEBHOOK_KEY =
+/**
+ * F-009 — DRY-ONLY synthetic webhook signing key. Never used in live mode; a
+ * live run must supply its own key (see resolveWebhookSigningKey). The value is
+ * a fixed non-secret test constant and must never be logged or persisted.
+ */
+const DRY_ONLY_WEBHOOK_KEY =
   "7a8b9c0d1e2f30415263748596a7b8c9d0e1f2031425364758697a8b9c0d1e2f";
+
+/**
+ * Resolve the webhook signing key. Live mode REQUIRES an owner-supplied key
+ * (deps override or WEBHOOK_SIGNING_KEY env) and rejects the tracked dry key;
+ * dry mode falls back to the synthetic constant. The key is returned for
+ * in-memory signing only and is never written to any evidence artifact.
+ */
+export function resolveWebhookSigningKey(input: {
+  isLive: boolean;
+  provided?: string;
+  env?: NodeJS.ProcessEnv;
+}): string {
+  const envKey = input.env?.WEBHOOK_SIGNING_KEY?.trim();
+  const provided = input.provided?.trim();
+  if (!input.isLive) {
+    return provided || envKey || DRY_ONLY_WEBHOOK_KEY;
+  }
+  const key = provided || envKey;
+  if (!key) {
+    throw new FinalDemoError(
+      "Live final demo requires an owner-supplied webhook signing key (WEBHOOK_SIGNING_KEY) — none provided",
+      "LIVE_WEBHOOK_KEY_REQUIRED",
+    );
+  }
+  if (key === DRY_ONLY_WEBHOOK_KEY) {
+    throw new FinalDemoError(
+      "The tracked dry-run webhook key must not be used for a live run",
+      "LIVE_WEBHOOK_KEY_IS_DRY_DEFAULT",
+    );
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(key)) {
+    throw new FinalDemoError(
+      "Live webhook signing key must be 32-byte hex (64 hex chars)",
+      "LIVE_WEBHOOK_KEY_SHAPE",
+    );
+  }
+  return key;
+}
 
 export type FinalDemoOrchestrationMode =
   | typeof FINAL_DEMO_MODE_DRY
@@ -174,7 +222,7 @@ export type FinalDemoOrchestrationResult = {
     sequence: number;
     label: string;
     envelopeHash: string;
-    transactionId: string;
+    transactionId: string | null;
     consensusTimestamp: string;
   }>;
   auctionEndsAt: string;
@@ -214,7 +262,7 @@ export type FinalDemoOrchestrationResult = {
     sequence: 5;
     envelopeHash: string;
     byteCount: number;
-    transactionId: string;
+    transactionId: string | null;
     consensusTimestamp: string;
   };
   conservativeEnvelopeByteCount: number;
@@ -359,8 +407,20 @@ export async function runFinalDemoOrchestration(
     });
   }
 
-  const readiness = deps.readiness ?? {
+  const readiness: FinalDemoReadinessChecks = deps.readiness ?? {
     secretScan: () => assertSecretScanPass({ rootDir: process.cwd() }),
+    ...(isLive
+      ? {
+          facilitatorPreflight: async () => {
+          const { checkFacilitatorPreflight } = await import(
+            "./facilitator-preflight"
+          );
+          await checkFacilitatorPreflight({
+            ...(env.FACILITATOR_URL ? { facilitatorUrl: env.FACILITATOR_URL } : {}),
+          });
+          },
+        }
+      : {}),
     usdcReadiness: async () =>
       isLive
         ? (await import("./usdc-readiness")).checkFinalDemoUsdcReadiness()
@@ -368,6 +428,18 @@ export async function runFinalDemoOrchestration(
   };
   readiness.secretScan();
 
+  // F-002 — facilitator capability preflight BEFORE any irreversible write
+  // (topic create / HCS submit / payment). Drift or unreachability aborts here.
+  if (readiness.facilitatorPreflight) {
+    await readiness.facilitatorPreflight();
+  }
+
+  if (isLive && !readiness.accountCheck) {
+    throw new FinalDemoError(
+      "Live final demo requires operator/carrier HCS identity and HBAR funding preflight",
+      "HCS_IDENTITY_PREFLIGHT_REQUIRED",
+    );
+  }
   if (readiness.accountCheck) {
     const ac = await readiness.accountCheck();
     if (!ac.ok) {
@@ -381,6 +453,16 @@ export async function runFinalDemoOrchestration(
     const ur = await readiness.usdcReadiness();
     assertUsdcReadinessPass(ur);
   }
+
+  // F-009 — resolve the webhook signing key before any irreversible write.
+  // Live mode requires an owner-supplied key and rejects the tracked dry key.
+  const webhookSigningKey = resolveWebhookSigningKey({
+    isLive,
+    ...(deps.webhookSigningPrivateKey !== undefined
+      ? { provided: deps.webhookSigningPrivateKey }
+      : {}),
+    env,
+  });
 
   // ---- 4–5. Materials + durable attempt ----
   let existing = await attemptStore.get();
@@ -675,7 +757,7 @@ export async function runFinalDemoOrchestration(
 
     const hash = envelopeHash(envelope);
     const exactBytes = serializeEnvelopeForSubmit(envelope);
-    if (exactBytes.byteLength > HCS_MAX_MESSAGE_BYTES) {
+    if (exactBytes.byteLength >= HCS_MAX_MESSAGE_BYTES) {
       throw new FinalDemoError(
         `Envelope ${exactBytes.byteLength} exceeds ${HCS_MAX_MESSAGE_BYTES}`,
         "HCS_MESSAGE_TOO_LARGE",
@@ -698,6 +780,7 @@ export async function runFinalDemoOrchestration(
         topicId,
         envelope,
         label,
+        submitter: requiredSubmitterForLabel(label),
         exactBytes,
       });
     } catch (e) {
@@ -831,6 +914,36 @@ export async function runFinalDemoOrchestration(
   // ---- 19. Mirror reconcile 1–4 ----
   // Complete observation set — never filter before validation (C2).
   const mirrorComplete = await deps.topicMirrorReader.listMessages(topicId);
+  let mirrorAuctionWindow = mirrorComplete;
+  if (mirrorComplete.some((message) => message.sequence >= 5)) {
+    const durableSeq5 = getOutboxMessage(attempt, "ROUTE_RESERVED");
+    if (!durableSeq5.envelopeHash) {
+      throw new FinalDemoError(
+        "Mirror contains sequence 5 without a durable ROUTE_RESERVED claim",
+        "HCS_CONTAMINATION",
+      );
+    }
+    const resolved = resolveRouteReservedFromMirror(mirrorComplete, {
+      topicId,
+      envelopeHash: durableSeq5.envelopeHash,
+      binding: {
+        topicId,
+        auctionRunId: materials.runId,
+        routeReservedRunId: `reservation-${materials.identifiers.reservationId}`,
+        tenderId: materials.identifiers.tenderId,
+        expectedSequence: 5,
+      },
+    });
+    if (resolved.status !== "FOUND") {
+      throw new FinalDemoError(
+        "Mirror sequence-5 window is ambiguous or contaminated",
+        "HCS_PUBLICATION_AMBIGUOUS",
+      );
+    }
+    mirrorAuctionWindow = mirrorComplete.filter(
+      (message) => message.sequence <= 4,
+    );
+  }
   const materialsReloaded = loadFinalDemoAuthoritativeMaterials(paths.materials);
   const reconciliation: FinalDemoReconciliationResult =
     reconcileFinalDemoSequences1to4(
@@ -841,7 +954,7 @@ export async function runFinalDemoOrchestration(
         tenderVersion: materials.tenderBody.version,
         tenderHash: materials.tenderHash,
         auctionEndsAt: materials.auctionEndsAt,
-        messages: mirrorComplete,
+        messages: mirrorAuctionWindow,
         expectedCommitmentEnvelopeHashes: [
           materials.commitmentEnvelopeHashes.alpha,
           materials.commitmentEnvelopeHashes.beta,
@@ -861,7 +974,7 @@ export async function runFinalDemoOrchestration(
   const { first: reconstructed, finalHashes } =
     doubleReconstructFinalDemoProofFromDisk({
       materialsPath: paths.materials,
-      mirrorMessages: mirrorComplete,
+      mirrorMessages: mirrorAuctionWindow,
       topicId,
       runId: materials.runId,
       tenderId: materials.identifiers.tenderId,
@@ -908,7 +1021,7 @@ export async function runFinalDemoOrchestration(
     evaluatedBidSetHash: reconstructed.evaluatedBidSetHash,
     hcsTopicId: topicId,
   });
-  if (conservative.byteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (conservative.byteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new FinalDemoError(
       `Conservative envelope ${conservative.byteCount} exceeds limit`,
       "HCS_MESSAGE_TOO_LARGE",
@@ -926,7 +1039,7 @@ export async function runFinalDemoOrchestration(
     result: {
       sequence: number;
       envelopeHash: string;
-      transactionId: string;
+      transactionId: string | null;
       consensusTimestamp: string;
       byteCount: number;
     } | null;
@@ -984,6 +1097,17 @@ export async function runFinalDemoOrchestration(
   // For seq 5, assertMirrorReadyForSequence checks runId on ALL messages —
   // prior messages have auction runId. That's fine. New message not yet present.
 
+  // F-004 — Mirror-backed resolver so an ambiguous ROUTE_RESERVED (seq 5)
+  // submit resolves by exact envelope identity instead of NOT_FOUND, and is
+  // never resubmitted when Mirror already shows the exact publication.
+  const hcsResolver = createFinalDemoHcsResolver(deps.topicMirrorReader, {
+    topicId,
+    auctionRunId: materials.runId,
+    routeReservedRunId: `reservation-${materials.identifiers.reservationId}`,
+    tenderId: materials.identifiers.tenderId,
+    expectedSequence: 5,
+  });
+
   const service = new ReservationService({
     store,
     registry: reconstructed.registry,
@@ -992,8 +1116,8 @@ export async function runFinalDemoOrchestration(
     mirror: deps.paymentMirrorTransport,
     webhooks: deps.webhookTransport,
     hcs: reservationHcs,
-    webhookSigningPrivateKey:
-      deps.webhookSigningPrivateKey ?? DEFAULT_WEBHOOK_KEY,
+    hcsResolver,
+    webhookSigningPrivateKey: webhookSigningKey,
     now: () => clock.nowIso(),
     nowMs: () => clock.nowMs(),
     sleep: async (ms) => {
@@ -1093,17 +1217,41 @@ export async function runFinalDemoOrchestration(
     !attempt.paymentSubmissionClaim.transactionId &&
     !reservation.transactionId
   ) {
-    // Outer claim without tx — try ReservationService recovery only if safe
-    if (reservation.settleClaim && !reservation.transactionId) {
-      throw new FinalDemoError(
-        "Payment claimed without transaction ID — manual review (no second sign/settle)",
-        "PAYMENT_AMBIGUOUS",
-      );
-    }
-    if (reservation.transactionId) {
-      reservation = await service.resumePaymentConfirmation(
+    // Outer claim without tx: the durable client-frozen transaction identity
+    // (v1.5 §22.4) makes this deterministically reconcilable — exact lookup,
+    // then validity-expiry + safety-buffer rule. Never a second sign/settle.
+    if (
+      reservation.settleClaim ||
+      reservation.clientTransaction ||
+      reservation.state === "PAYMENT_SUBMISSION_STARTED" ||
+      reservation.state === "FACILITATOR_VERIFIED" ||
+      reservation.state === "FACILITATOR_SETTLE_CLAIMED"
+    ) {
+      const reconciled = await service.reconcilePayment(
         reservation.reservationId,
       );
+      reservation = reconciled.record;
+      if (reconciled.outcome.outcome === "RECONCILIATION_PENDING") {
+        throw new FinalDemoError(
+          `Settlement reconciliation pending until ${reconciled.outcome.boundaryIso} — rerun after the boundary; no replacement payment`,
+          "SETTLEMENT_RECONCILIATION_PENDING",
+        );
+      }
+      if (
+        reconciled.outcome.outcome === "FOUND_FAILED" ||
+        reconciled.outcome.outcome === "CONCLUSIVELY_FAILED"
+      ) {
+        throw new FinalDemoError(
+          `Payment attempt failed conclusively (${reconciled.outcome.outcome}) — owner decision required for any replacement attempt`,
+          "PAYMENT_FAILED_CONCLUSIVE",
+        );
+      }
+      if (!reservation.transactionId && !reservation.routeReserved) {
+        throw new FinalDemoError(
+          "Reconciliation did not produce a resumable settlement — manual review",
+          "PAYMENT_AMBIGUOUS",
+        );
+      }
     } else {
       throw new FinalDemoError(
         "PAYMENT_SUBMISSION_CLAIMED without safe resume path",
@@ -1147,6 +1295,15 @@ export async function runFinalDemoOrchestration(
           "PAYMENT_PAYLOAD_GATE",
         );
       }
+      // F-006 — fresh USDC readiness immediately before payload creation and
+      // signing. Association / balance / receiver usability may have drifted
+      // since the start-of-run check (~7 min earlier). Failure here happens
+      // BEFORE any signature or settlement; the attempt stays resumable.
+      if (readiness.usdcReadiness) {
+        const fresh = await readiness.usdcReadiness();
+        assertUsdcReadinessPass(fresh);
+      }
+
       // Pristine topic re-check immediately before signing
       const prePayMsgs = await deps.topicMirrorReader.listMessages(topicId);
       assertPristineTopicSequences1to4(prePayMsgs, {
@@ -1176,7 +1333,7 @@ export async function runFinalDemoOrchestration(
       }
 
       // Signed payload in process memory only
-      const { paymentPayload, requirement, paymentPayloadHash } =
+      const { paymentPayload, requirement, paymentPayloadHash, clientTransaction } =
         await deps.paymentPayloadFactory({
           selected: {
             optionId: "USDC",
@@ -1211,6 +1368,7 @@ export async function runFinalDemoOrchestration(
         requirement,
         paymentPayloadHash,
         challengeHash: challenge.challengeHash,
+        clientTransactionId: clientTransaction.transactionId,
       });
 
       try {
@@ -1218,6 +1376,9 @@ export async function runFinalDemoOrchestration(
           reservationId: reservation.reservationId,
           optionId: "USDC",
           paymentPayloadHash,
+          // v1.5 §22.4 — exact client-frozen transaction identity persisted
+          // before any facilitator transmission.
+          clientTransaction,
         });
       } finally {
         deps.facilitatorTransport.clearPaymentSession();
@@ -1246,33 +1407,42 @@ export async function runFinalDemoOrchestration(
     getOutboxMessage(attempt, "ROUTE_RESERVED").status !== "CONFIRMED"
   ) {
     if (
-      reservation.hcsPublicationClaim?.status === "PUBLISHED" &&
-      reservation.hcsPublicationClaim.sequence === 5
+      reservation.hcsPublicationClaim?.status !== "PUBLISHED" ||
+      reservation.hcsPublicationClaim.sequence !== 5
     ) {
-      attempt = confirmMessageOutbox(attempt, "ROUTE_RESERVED", {
-        topicId,
-        sequence: 5,
-        transactionId: reservation.hcsPublicationClaim.transactionId!,
-        consensusTimestamp:
-          reservation.hcsPublicationClaim.consensusTimestamp!,
-        envelopeHash: reservation.hcsPublicationClaim.envelopeHash,
-      });
-      attempt = await persistAttempt(attemptStore, attempt);
-      seq5Holder.result = {
-        sequence: 5,
-        envelopeHash: reservation.hcsPublicationClaim.envelopeHash,
-        transactionId: reservation.hcsPublicationClaim.transactionId!,
-        consensusTimestamp:
-          reservation.hcsPublicationClaim.consensusTimestamp!,
-        byteCount: reservation.hcsPublicationClaim.encodedByteCount,
-      };
-    } else {
       reservation = await service.resumeWebhookDispatch(
         reservation.reservationId,
       );
       reservation = await service.resumeHcsPublication(
         reservation.reservationId,
       );
+    }
+
+    const resolvedClaim = reservation.hcsPublicationClaim;
+    if (
+      resolvedClaim?.status === "PUBLISHED" &&
+      resolvedClaim.sequence === 5 &&
+      resolvedClaim.consensusTimestamp
+    ) {
+      attempt = confirmMessageOutbox(attempt, "ROUTE_RESERVED", {
+        topicId,
+        sequence: 5,
+        transactionId: resolvedClaim.transactionId,
+        consensusTimestamp: resolvedClaim.consensusTimestamp,
+        envelopeHash: resolvedClaim.envelopeHash,
+        confirmationSource:
+          getOutboxMessage(attempt, "ROUTE_RESERVED").status === "AMBIGUOUS"
+            ? "MIRROR_RESOLVER"
+            : "SUBMIT_RESPONSE",
+      });
+      attempt = await persistAttempt(attemptStore, attempt);
+      seq5Holder.result = {
+        sequence: 5,
+        envelopeHash: resolvedClaim.envelopeHash,
+        transactionId: resolvedClaim.transactionId,
+        consensusTimestamp: resolvedClaim.consensusTimestamp,
+        byteCount: resolvedClaim.encodedByteCount,
+      };
     }
   }
 
@@ -1338,7 +1508,7 @@ export async function runFinalDemoOrchestration(
       }),
     );
 
-  if (actualByteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (actualByteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new FinalDemoError(
       `Actual ROUTE_RESERVED ${actualByteCount} exceeds limit`,
       "HCS_MESSAGE_TOO_LARGE",

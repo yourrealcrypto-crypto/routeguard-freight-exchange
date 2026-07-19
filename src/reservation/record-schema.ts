@@ -196,6 +196,13 @@ function fail(message: string, code = "CORRUPT_RESERVATION_RECORD"): never {
   throw new CorruptReservationRecordError(message, code);
 }
 
+/** Structural tx-id normalization (SDK `@s.n` → Mirror `-s-n`); non-throwing. */
+function normalizeTxIdForm(id: string): string {
+  const m = /^(\d+\.\d+\.\d+)@(\d+)\.(\d+)$/.exec(id.trim());
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return id.trim();
+}
+
 /** Filesystem-safe reservation id: no path traversal, bounded charset. */
 export function assertSafeReservationId(reservationId: string): string {
   if (typeof reservationId !== "string" || reservationId.length === 0) {
@@ -595,6 +602,41 @@ export function assertValidPersistedReservationRecord(
     assertHash(paymentPayloadHash, "paymentPayloadHash");
   }
 
+  // Client-frozen transaction binding (v1.5 §22.4)
+  const clientTransaction =
+    r.clientTransaction as ReservationRecord["clientTransaction"];
+  if (REQUIRES_PAYLOAD.has(state)) {
+    if (!clientTransaction) {
+      fail(`state ${state} requires clientTransaction (v1.5 §22.4)`);
+    }
+  }
+  if (clientTransaction) {
+    if (
+      typeof clientTransaction.transactionId !== "string" ||
+      !/^\d+\.\d+\.\d+@\d+\.\d+$/.test(clientTransaction.transactionId)
+    ) {
+      fail("clientTransaction.transactionId must be SDK form acct@seconds.nanos");
+    }
+    assertUtc(
+      clientTransaction.validStartTimestamp,
+      "clientTransaction.validStartTimestamp",
+    );
+    if (
+      !Number.isInteger(clientTransaction.transactionValidDurationSeconds) ||
+      clientTransaction.transactionValidDurationSeconds < 1 ||
+      clientTransaction.transactionValidDurationSeconds > 180
+    ) {
+      fail("clientTransaction.transactionValidDurationSeconds must be 1..180");
+    }
+    if (
+      r.transactionId &&
+      normalizeTxIdForm(String(r.transactionId)) !==
+        normalizeTxIdForm(clientTransaction.transactionId)
+    ) {
+      fail("record.transactionId must equal clientTransaction.transactionId");
+    }
+  }
+
   // Facilitator verify
   const facilitatorVerify = r.facilitatorVerify as ReservationRecord["facilitatorVerify"];
   if (REQUIRES_VERIFY_OK.has(state)) {
@@ -636,6 +678,41 @@ export function assertValidPersistedReservationRecord(
     if (settleClaim.attemptNumber !== r.attemptNumber) {
       fail("settleClaim.attemptNumber mismatch");
     }
+    // v1.5 §22.4 — client-frozen transaction ID + validity persisted pre-settle.
+    if (
+      typeof settleClaim.transactionId !== "string" ||
+      !/^\d+\.\d+\.\d+@\d+\.\d+$/.test(settleClaim.transactionId)
+    ) {
+      fail("settleClaim.transactionId must be SDK form acct@seconds.nanos");
+    }
+    assertUtc(
+      settleClaim.validStartTimestamp,
+      "settleClaim.validStartTimestamp",
+    );
+    if (
+      !Number.isInteger(settleClaim.transactionValidDurationSeconds) ||
+      settleClaim.transactionValidDurationSeconds < 1 ||
+      settleClaim.transactionValidDurationSeconds > 180
+    ) {
+      fail("settleClaim.transactionValidDurationSeconds must be 1..180");
+    }
+    if (
+      r.transactionId &&
+      normalizeTxIdForm(String(r.transactionId)) !==
+        normalizeTxIdForm(settleClaim.transactionId)
+    ) {
+      fail("record.transactionId must equal settleClaim.transactionId");
+    }
+    {
+      const binding = r.clientTransaction as ReservationRecord["clientTransaction"];
+      if (
+        binding &&
+        normalizeTxIdForm(binding.transactionId) !==
+          normalizeTxIdForm(settleClaim.transactionId)
+      ) {
+        fail("settleClaim.transactionId must equal clientTransaction.transactionId");
+      }
+    }
     assertUtc(settleClaim.claimedAt, "settleClaim.claimedAt");
     assertSafeInt(settleClaim.recordVersion, "settleClaim.recordVersion", {
       min: 1,
@@ -661,9 +738,14 @@ export function assertValidPersistedReservationRecord(
       }
     }
     if (facilitatorSettle) {
+      // Canonical invariant: record.transactionId is the client-frozen ID.
+      // A facilitator response MAY omit transactionId (never erases the
+      // canonical ID); when supplied it must match exactly.
       if (
         facilitatorSettle.success === true &&
-        facilitatorSettle.transactionId !== transactionId
+        facilitatorSettle.transactionId !== null &&
+        normalizeTxIdForm(String(facilitatorSettle.transactionId)) !==
+          normalizeTxIdForm(String(transactionId ?? ""))
       ) {
         fail("facilitatorSettle.transactionId must equal record.transactionId");
       }
@@ -1080,7 +1162,7 @@ function validateHcsClaim(
   assertUtc(claim.claimedAt, "HCS claim.claimedAt");
   assertHash(claim.envelopeHash, "HCS claim.envelopeHash");
   assertSafeInt(claim.encodedByteCount, "HCS claim.encodedByteCount", { min: 1 });
-  if (claim.encodedByteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (claim.encodedByteCount >= HCS_MAX_MESSAGE_BYTES) {
     fail("HCS claim encodedByteCount exceeds 1024");
   }
 
@@ -1120,8 +1202,8 @@ function validateHcsClaim(
   if (!allowedStatus.has(claim.status)) fail("HCS claim status invalid");
 
   if (claim.status === "PUBLISHED") {
-    if (!claim.transactionId || claim.transactionId.length === 0) {
-      fail("PUBLISHED claim requires transactionId");
+    if (claim.transactionId !== null && claim.transactionId.length === 0) {
+      fail("PUBLISHED claim transactionId must be null or non-empty");
     }
     assertSafeInt(claim.sequence, "HCS claim.sequence", { min: 1 });
     assertUtc(claim.consensusTimestamp, "HCS claim.consensusTimestamp");
@@ -1186,6 +1268,26 @@ export const SelectReservationBodySchema = z
 export const PayReservationBodySchema = z
   .object({
     paymentPayloadHash: z.string().regex(SHA256_RE, "invalid paymentPayloadHash"),
+    /**
+     * v1.5 §22.4 — client-frozen transaction identity, decoded from the signed
+     * payment transaction before submission. Mandatory.
+     */
+    clientTransaction: z
+      .object({
+        transactionId: z
+          .string()
+          .regex(/^\d+\.\d+\.\d+@\d+\.\d+$/, "invalid clientTransaction.transactionId"),
+        validStartTimestamp: z
+          .string()
+          .min(20)
+          .max(35),
+        transactionValidDurationSeconds: z
+          .number()
+          .int()
+          .min(1)
+          .max(180),
+      })
+      .strict(),
     httpStatus: z
       .number()
       .int()

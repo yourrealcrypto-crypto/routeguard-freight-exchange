@@ -557,6 +557,12 @@ export function recoverInProgressState(
 
   if (state === "FACILITATOR_SETTLE_CLAIMED") {
     // Settle may or may not have executed. Never auto-settle again.
+    // v1.5 §23: the settle claim persists the client-frozen transaction ID, so
+    // an unresolved claim is deterministically reconcilable — keep it intact
+    // for ReservationService.reconcilePayment instead of forcing manual review.
+    if (!resolution?.transactionId && record.settleClaim?.transactionId) {
+      return record;
+    }
     if (resolution?.transactionId) {
       // A transaction id was resolved authoritatively → continue confirmation.
       // Establish durable deadline + poll shell so the record stays schema-valid
@@ -630,6 +636,11 @@ export function recoverInProgressState(
   }
 
   if (state === "PAYMENT_SUBMISSION_STARTED") {
+    // v1.5 §22.4: with the durable client transaction binding the state is
+    // deterministically reconcilable — keep it for reconcilePayment.
+    if (record.clientTransaction?.transactionId) {
+      return record;
+    }
     return {
       ...record,
       state: "MANUAL_REVIEW_REQUIRED",
@@ -641,6 +652,9 @@ export function recoverInProgressState(
   }
 
   if (state === "FACILITATOR_VERIFIED") {
+    if (record.clientTransaction?.transactionId) {
+      return record;
+    }
     return {
       ...record,
       state: "MANUAL_REVIEW_REQUIRED",

@@ -3,6 +3,7 @@
  * ambiguous resolution (no automatic resubmit).
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -55,7 +56,7 @@ async function seedPostWebhook(
     sel,
     controls.settleResult.transactionId!,
   );
-  await service.submitPayment({
+  await service.submitPayment({ clientTransaction: demoClientTransaction(),
     reservationId,
     optionId,
     paymentPayloadHash,

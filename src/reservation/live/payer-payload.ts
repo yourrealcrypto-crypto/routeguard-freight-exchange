@@ -9,6 +9,7 @@
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
+import { validStartIsoFromTransactionId } from "../client-transaction";
 import {
   PHASE6B_CARRIER_ACCOUNT,
   PHASE6B_FACILITATOR_FEE_PAYER,
@@ -176,7 +177,59 @@ export function createLivePayerPaymentPayloadFactory(options: {
       accepts: [requirement],
     });
 
+    // v1.5 §22.4 — decode the EXACT client-frozen transaction identity from the
+    // signed transaction bytes (offline; nothing invented). Cross-checked
+    // between the official @x402/hedera inspector and the Hiero SDK decode.
+    const txBase64 =
+      (paymentPayload as { payload?: { transaction?: string } })?.payload
+        ?.transaction ??
+      (paymentPayload as { transaction?: string })?.transaction;
+    if (typeof txBase64 !== "string" || txBase64.length === 0) {
+      throw new Phase6bAttemptError(
+        "Signed payment payload lacks a decodable transaction",
+        "CLIENT_TX_UNDECODABLE",
+      );
+    }
+    const inspected = hederaModule.inspectHederaTransaction(txBase64);
+    const sdkModule = await import("@hiero-ledger/sdk");
+    const decoded = sdkModule.Transaction.fromBytes(
+      Buffer.from(txBase64, "base64"),
+    );
+    const decodedTxId = decoded.transactionId?.toString()?.trim();
+    if (!decodedTxId || !/^\d+\.\d+\.\d+@\d+\.\d+$/.test(decodedTxId)) {
+      throw new Phase6bAttemptError(
+        "Signed transaction has no client-frozen transaction ID",
+        "CLIENT_TX_ID_MISSING",
+      );
+    }
+    if (
+      typeof inspected.transactionId === "string" &&
+      inspected.transactionId.trim() &&
+      inspected.transactionId.trim() !== decodedTxId
+    ) {
+      throw new Phase6bAttemptError(
+        "Inspector and SDK disagree on the frozen transaction ID",
+        "CLIENT_TX_ID_MISMATCH",
+      );
+    }
+    const durationSeconds = decoded.transactionValidDuration;
+    if (
+      !Number.isInteger(durationSeconds) ||
+      durationSeconds < 1 ||
+      durationSeconds > 180
+    ) {
+      throw new Phase6bAttemptError(
+        "Signed transaction valid duration outside Hedera bounds",
+        "CLIENT_TX_DURATION_INVALID",
+      );
+    }
+    const clientTransaction = {
+      transactionId: decodedTxId,
+      validStartTimestamp: validStartIsoFromTransactionId(decodedTxId),
+      transactionValidDurationSeconds: durationSeconds,
+    };
+
     const paymentPayloadHash = canonicalSha256(paymentPayload);
-    return { paymentPayload, requirement, paymentPayloadHash };
+    return { paymentPayload, requirement, paymentPayloadHash, clientTransaction };
   };
 }

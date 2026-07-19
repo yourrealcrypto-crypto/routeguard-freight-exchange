@@ -233,6 +233,7 @@ describe("Challenge-stated Hedera transfer costs", () => {
       paymentChallenge: null,
       paymentChallengeHash: null,
       paymentPayloadHash: null,
+      clientTransaction: null,
       facilitatorVerify: null,
       settleClaim: null,
       facilitatorSettle: null,

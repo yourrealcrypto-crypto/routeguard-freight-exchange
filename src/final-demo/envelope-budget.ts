@@ -66,7 +66,7 @@ export function measureFinalDemoConservativeEnvelope(input: {
     payload: buildRouteReservedPayload(rr, input.carrierId),
   });
   const byteCount = measureRouteReservedEnvelope(envelope);
-  if (byteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (byteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new FinalDemoError(
       `Conservative ROUTE_RESERVED envelope ${byteCount} exceeds ${HCS_MAX_MESSAGE_BYTES}`,
       "HCS_MESSAGE_TOO_LARGE",
@@ -125,7 +125,7 @@ export function measureFinalDemoActualEnvelope(input: {
     payload: buildRouteReservedPayload(rr, input.carrierId),
   });
   const byteCount = measureRouteReservedEnvelope(envelope);
-  if (byteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (byteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new FinalDemoError(
       `Actual ROUTE_RESERVED envelope ${byteCount} exceeds ${HCS_MAX_MESSAGE_BYTES}`,
       "HCS_MESSAGE_TOO_LARGE",

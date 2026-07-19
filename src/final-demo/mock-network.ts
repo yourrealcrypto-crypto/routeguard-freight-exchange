@@ -13,6 +13,7 @@ import type { HcsEnvelope, ObservedHcsMessage } from "../hcs/types";
 import { FinalDemoError } from "./errors";
 import { observedFromEnvelope } from "./reconciliation";
 import { HISTORICAL_PHASE5_TOPIC_ID } from "./constants";
+import type { FinalDemoHcsSubmitter } from "./hcs-submit-authority";
 
 export type MockTopicCreateResult = {
   topicId: string;
@@ -38,6 +39,11 @@ export type MockTopicState = {
   messages: ObservedHcsMessage[];
   createCount: number;
   submitCount: number;
+  submissions: Array<{
+    label: string | null;
+    submitter: FinalDemoHcsSubmitter;
+    sequence: number;
+  }>;
 };
 
 /**
@@ -51,7 +57,7 @@ export class MockFinalDemoNetwork {
   private nextTopicNum = 9_700_000;
   clockMs: number;
   private forceTopicCreateAmbiguous = false;
-  private forceSubmitAmbiguousLabel: string | null = null;
+  private forceSubmitResponseLossLabel: string | null = null;
 
   constructor(options?: { clockMs?: number }) {
     this.clockMs = options?.clockMs ?? Date.now();
@@ -104,8 +110,13 @@ export class MockFinalDemoNetwork {
     this.forceTopicCreateAmbiguous = v;
   }
 
+  setForceSubmitResponseLoss(label: string | null): void {
+    this.forceSubmitResponseLossLabel = label;
+  }
+
+  /** @deprecated Use setForceSubmitResponseLoss. */
   setForceSubmitAmbiguous(label: string | null): void {
-    this.forceSubmitAmbiguousLabel = label;
+    this.setForceSubmitResponseLoss(label);
   }
 
   async createTopic(memo: string): Promise<MockTopicCreateResult> {
@@ -135,6 +146,7 @@ export class MockFinalDemoNetwork {
       messages: [],
       createCount: 1,
       submitCount: 0,
+      submissions: [],
     });
     this.advanceMs(50);
     return {
@@ -150,16 +162,8 @@ export class MockFinalDemoNetwork {
     topicId: string;
     envelope: HcsEnvelope;
     label?: string;
+    submitter?: FinalDemoHcsSubmitter;
   }): Promise<MockSubmitResult> {
-    if (
-      input.label &&
-      this.forceSubmitAmbiguousLabel === input.label
-    ) {
-      throw new FinalDemoError(
-        `Submit ambiguous for ${input.label}`,
-        "HCS_SUBMIT_AMBIGUOUS",
-      );
-    }
     if (input.topicId === HISTORICAL_PHASE5_TOPIC_ID) {
       throw new FinalDemoError(
         "Historical topic forbidden",
@@ -185,9 +189,19 @@ export class MockFinalDemoNetwork {
       envelope: input.envelope,
       envelopeHash: hash,
       consensusTimestamp,
-      transactionId,
     });
     topic.messages.push(observed);
+    topic.submissions.push({
+      label: input.label ?? null,
+      submitter: input.submitter ?? "ROUTEGUARD_OPERATOR",
+      sequence,
+    });
+    if (input.label && this.forceSubmitResponseLossLabel === input.label) {
+      throw new FinalDemoError(
+        `Submit reached consensus but response was lost for ${input.label}`,
+        "HCS_SUBMIT_AMBIGUOUS",
+      );
+    }
     return {
       topicId: input.topicId,
       sequence,
@@ -206,6 +220,14 @@ export class MockFinalDemoNetwork {
 
   getTopic(topicId: string): MockTopicState | undefined {
     return this.topics.get(topicId);
+  }
+
+  getSubmitCountForLabel(label: string): number {
+    let count = 0;
+    for (const topic of this.topics.values()) {
+      count += topic.submissions.filter((submission) => submission.label === label).length;
+    }
+    return count;
   }
 
 }

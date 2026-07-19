@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { demoClientTransaction } from "./reservation-helpers";
 
 import {
   RESERVATION_NETWORK,
@@ -43,6 +44,8 @@ function makeClaim(
     network: RESERVATION_NETWORK,
     challengeHash: record.paymentChallengeHash!,
     paymentPayloadHash,
+    // v1.5 §22.4 — client-frozen transaction identity on every claim.
+    ...demoClientTransaction(),
     claimedAt: "2026-07-15T19:02:00.000Z",
     recordVersion: record.recordVersion + 1,
   };
@@ -66,6 +69,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec!.recordVersion, {
       ...rec!,
       state: "PAYMENT_SUBMISSION_STARTED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
     });
@@ -77,8 +81,8 @@ describe("Durable settle claim (M2)", () => {
     };
 
     const [a, b] = await Promise.all([
-      service.submitPayment({ reservationId, optionId: "HBAR", paymentPayloadHash }),
-      service.submitPayment({ reservationId, optionId: "HBAR", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "HBAR", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "HBAR", paymentPayloadHash }),
     ]);
 
     expect(controls.settleCallCount).toBe(1);
@@ -104,14 +108,15 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec!.recordVersion, {
       ...rec!,
       state: "FACILITATOR_VERIFIED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
     });
 
     const [a, b] = await Promise.all([
-      service.submitPayment({ reservationId, optionId: "USDC", paymentPayloadHash }),
-      service.submitPayment({ reservationId, optionId: "USDC", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "USDC", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "USDC", paymentPayloadHash }),
     ]);
 
     expect(controls.settleCallCount).toBe(1);
@@ -122,7 +127,7 @@ describe("Durable settle claim (M2)", () => {
     expect(final!.settleClaim!.paymentPayloadHash).toBe(paymentPayloadHash);
   });
 
-  it("restart from SETTLE_CLAIMED without tx id → manual review, no settle", async () => {
+  it("restart from SETTLE_CLAIMED stays reconcilable via the claim's exact tx id — no settle", async () => {
     const { service, store, controls, bundle } = buildService();
     const { reservationId, paymentPayloadHash } = await createAndSelect(
       service,
@@ -134,15 +139,21 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
       settleClaim: makeClaim(rec, paymentPayloadHash),
     });
 
+    // v1.5 §23: the durable claim carries the client-frozen transaction ID,
+    // so restart keeps the state deterministically reconcilable — no blanket
+    // manual review, and never a second settle. reconcilePayment resolves it.
     const recovered = await service.recover(reservationId);
-    expect(recovered.state).toBe("MANUAL_REVIEW_REQUIRED");
-    expect(recovered.failureCode).toBe("AMBIGUOUS_SETTLE_CLAIM");
+    expect(recovered.state).toBe("FACILITATOR_SETTLE_CLAIMED");
+    expect(recovered.settleClaim?.transactionId).toBe(
+      demoClientTransaction().transactionId,
+    );
     expect(controls.settleCallCount).toBe(0);
   });
 
@@ -158,6 +169,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
@@ -186,6 +198,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
@@ -193,7 +206,7 @@ describe("Durable settle claim (M2)", () => {
     });
 
     await expect(
-      service.submitPayment({
+      service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "HBAR",
         paymentPayloadHash: "sha256:" + "ff".repeat(32),
@@ -213,6 +226,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
@@ -242,6 +256,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
@@ -249,7 +264,7 @@ describe("Durable settle claim (M2)", () => {
     });
 
     await expect(
-      service.submitPayment({ reservationId, optionId: "HBAR", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "HBAR", paymentPayloadHash }),
     ).rejects.toThrow(/WRONG_ASSET|fallback/i);
   });
 
@@ -265,6 +280,7 @@ describe("Durable settle claim (M2)", () => {
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "FACILITATOR_SETTLE_CLAIMED",
+      clientTransaction: demoClientTransaction(),
       paymentPayloadHash,
       attemptNumber: 1,
       facilitatorVerify: { isValid: true },
@@ -272,7 +288,7 @@ describe("Durable settle claim (M2)", () => {
     });
 
     await expect(
-      service.submitPayment({ reservationId, optionId: "USDC", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "USDC", paymentPayloadHash }),
     ).rejects.toThrow(/WRONG_ASSET|fallback/i);
   });
 
@@ -289,7 +305,7 @@ describe("Durable settle claim (M2)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    await service.submitPayment({ reservationId, optionId: "HBAR", paymentPayloadHash });
+    await service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "HBAR", paymentPayloadHash });
 
     const record = (await service.getReservation(reservationId))!;
     const claim = record.settleClaim!;

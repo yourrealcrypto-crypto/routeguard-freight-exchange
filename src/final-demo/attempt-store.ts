@@ -455,10 +455,14 @@ export function parseFinalDemoAttempt(raw: unknown): FinalDemoAttemptRecord {
     }
     if (
       msg.status === "CONFIRMED" &&
-      (!msg.transactionId || !String(msg.transactionId).trim())
+      (!msg.transactionId || !String(msg.transactionId).trim()) &&
+      !(
+        msg.logicalLabel === "ROUTE_RESERVED" &&
+        msg.receiptStatus === "MIRROR_RESOLVED"
+      )
     ) {
       throw new FinalDemoError(
-        "CONFIRMED HCS outbox requires transactionId",
+        "CONFIRMED HCS outbox requires transactionId unless Mirror resolved ROUTE_RESERVED",
         "CORRUPT_ATTEMPT",
       );
     }
@@ -923,15 +927,26 @@ export function confirmMessageOutbox(
   input: {
     topicId: string;
     sequence: number;
-    transactionId: string;
+    transactionId: string | null;
     consensusTimestamp: string;
     envelopeHash: string;
+    confirmationSource?: "SUBMIT_RESPONSE" | "MIRROR_RESOLVER";
   },
 ): FinalDemoAttemptRecord {
-  if (!input.transactionId?.trim()) {
+  const confirmationSource = input.confirmationSource ?? "SUBMIT_RESPONSE";
+  if (!input.transactionId?.trim() && confirmationSource !== "MIRROR_RESOLVER") {
     throw new FinalDemoError(
       "Cannot confirm HCS without transaction ID",
       "HCS_MISSING_TRANSACTION_ID",
+    );
+  }
+  if (
+    confirmationSource === "MIRROR_RESOLVER" &&
+    label !== "ROUTE_RESERVED"
+  ) {
+    throw new FinalDemoError(
+      "Only ROUTE_RESERVED may be confirmed from the publication resolver",
+      "HCS_CONFIRM_INVALID",
     );
   }
   if (!input.consensusTimestamp?.trim()) {
@@ -945,7 +960,14 @@ export function confirmMessageOutbox(
     throw new FinalDemoError(`Unknown outbox label ${label}`, "OUTBOX_MISSING");
   }
   const current = attempt.messageOutbox[idx]!;
-  if (current.status !== "CLAIMED" && current.status !== "SUBMITTED") {
+  if (
+    current.status !== "CLAIMED" &&
+    current.status !== "SUBMITTED" &&
+    !(
+      current.status === "AMBIGUOUS" &&
+      confirmationSource === "MIRROR_RESOLVER"
+    )
+  ) {
     throw new FinalDemoError(
       `Cannot confirm ${label} from status ${current.status}`,
       "HCS_CONFIRM_INVALID",
@@ -977,10 +999,13 @@ export function confirmMessageOutbox(
       ? {
           ...m,
           status: "CONFIRMED" as const,
-          transactionId: input.transactionId,
+          transactionId: input.transactionId?.trim() || null,
           consensusTimestamp: input.consensusTimestamp,
           sequence: input.sequence,
-          receiptStatus: "SUCCESS",
+          receiptStatus:
+            confirmationSource === "MIRROR_RESOLVER"
+              ? "MIRROR_RESOLVED"
+              : "SUCCESS",
           expectedTopic: input.topicId,
         }
       : m,

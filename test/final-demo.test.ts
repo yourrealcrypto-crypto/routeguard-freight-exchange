@@ -731,6 +731,7 @@ describe("Final demo — payment and live guards", () => {
       webhookTransport: transports.webhookTransport,
       readiness: {
         secretScan: () => undefined,
+        accountCheck: async () => ({ ok: true, reasons: [] }),
         usdcReadiness: async () => offlineUsdcReadinessPass(),
       },
     });
@@ -768,8 +769,10 @@ describe("Final demo — payment and live guards", () => {
       facilitatorTransport: t2.facilitatorTransport,
       paymentMirrorTransport: t2.paymentMirrorTransport,
       webhookTransport: t2.webhookTransport,
+      webhookSigningPrivateKey: "ab".repeat(32),
       readiness: {
         secretScan: () => undefined,
+        accountCheck: async () => ({ ok: true, reasons: [] }),
         usdcReadiness: async () => offlineUsdcReadinessPass(),
       },
     });

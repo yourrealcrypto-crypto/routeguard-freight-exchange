@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { demoClientTransaction } from "./reservation-helpers";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -83,7 +84,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const reserved = await service.submitPayment({
+    const reserved = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId: "res-stale-rr",
       optionId: "USDC",
       paymentPayloadHash: (await import("../src/domain/canonical-hash")).canonicalSha256(
@@ -128,7 +129,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
         { account: sel.payTo, amount: "10000", tokenId: "0.0.429274" },
       ],
     };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -160,7 +161,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
         ],
         tokenTransfers: [],
       };
-      const final = await service.submitPayment({
+      const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "HBAR",
         paymentPayloadHash,
@@ -191,7 +192,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
         ],
         tokenTransfers: [],
       };
-      const final = await service.submitPayment({
+      const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "HBAR",
         paymentPayloadHash,
@@ -209,7 +210,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
       "USDC",
       "res-adv-nofallback",
     );
-    const rejected = await service.submitPayment({
+    const rejected = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -217,10 +218,10 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
     expect(rejected.state).toBe("PAYMENT_REJECTED");
     // Cannot retry the same asset (terminal) and cannot switch assets.
     await expect(
-      service.submitPayment({ reservationId, optionId: "USDC", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "USDC", paymentPayloadHash }),
     ).rejects.toThrow(/TERMINAL|terminal/i);
     await expect(
-      service.submitPayment({ reservationId, optionId: "HBAR", paymentPayloadHash }),
+      service.submitPayment({ clientTransaction: demoClientTransaction(), reservationId, optionId: "HBAR", paymentPayloadHash }),
     ).rejects.toThrow(/WRONG_ASSET|fallback|TERMINAL/i);
     expect(controls.settleCallCount).toBe(0);
   });
@@ -243,7 +244,7 @@ describe("Phase 6A.1 adversarial — cross-cutting", () => {
         sel,
         controls.settleResult.transactionId!,
       );
-      const final = await service.submitPayment({
+      const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "USDC",
         paymentPayloadHash,
