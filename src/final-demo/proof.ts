@@ -3,6 +3,9 @@
  * No historical expected-hash constants — fresh-run values are the authority.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import {
   createAuctionClosureProof,
   isVerifiedAuctionClosureProof,
@@ -10,17 +13,22 @@ import {
 } from "../auction/closure-proof";
 import { verifyDecisionManifestIntegrity } from "../auction/decision-manifest";
 import { bidHash, type SignedCarrierBid } from "../domain/bid";
-import {
-  InMemoryCarrierRegistry,
-} from "../domain/carrier";
+import { InMemoryCarrierRegistry } from "../domain/carrier";
 import type { SignedAcceptanceReceipt } from "../domain/acceptance-receipt";
 import { parseFreightTender, tenderHash } from "../domain/tender";
-import {
-  FINAL_DEMO_WINNER_ACCOUNT,
-} from "./constants";
+import { FINAL_DEMO_WINNER_ACCOUNT } from "./constants";
 import { FinalDemoError } from "./errors";
-import type { FinalDemoAuthoritativeMaterials } from "./materials";
+import {
+  loadFinalDemoAuthoritativeMaterials,
+  parseFinalDemoAuthoritativeMaterials,
+  type FinalDemoAuthoritativeMaterials,
+} from "./materials";
 import type { FinalDemoReconciliationResult } from "./reconciliation";
+import {
+  reconcileFinalDemoSequences1to4,
+  type FinalDemoMirrorWindow,
+} from "./reconciliation";
+import type { ObservedHcsMessage } from "../hcs/types";
 
 export type FinalDemoReconstructedProof = {
   tender: ReturnType<typeof parseFreightTender>;
@@ -44,10 +52,6 @@ export function reconstructFinalDemoProof(input: {
   reconciliation: FinalDemoReconciliationResult;
 }): FinalDemoReconstructedProof {
   const { materials, reconciliation } = input;
-
-  if (reconciliation.topicId !== reconciliation.topicId) {
-    throw new FinalDemoError("Topic identity error", "WRONG_TOPIC");
-  }
 
   const tender = parseFreightTender(materials.tenderBody);
   const tHash = tenderHash(tender);
@@ -176,8 +180,125 @@ export function reconstructFinalDemoProof(input: {
 }
 
 /**
- * Reconstruct twice from independently reloaded materials + Mirror evidence.
- * Require identical critical hashes.
+ * True independent double reconstruction:
+ * - two separate disk reads of materials
+ * - two separate Mirror observation parses
+ * - two independent createAuctionClosureProof calls
+ */
+export function doubleReconstructFinalDemoProofFromDisk(input: {
+  materialsPath: string;
+  mirrorMessages: ObservedHcsMessage[];
+  topicId: string;
+  runId: string;
+  tenderId: string;
+  tenderVersion: number;
+  tenderHash: string;
+  auctionEndsAt: string;
+  expectedCommitmentEnvelopeHashes: [string, string];
+  /** Test counters */
+  onMaterialsRead?: (path: string) => void;
+}): {
+  first: FinalDemoReconstructedProof;
+  second: FinalDemoReconstructedProof;
+  finalHashes: {
+    tenderHash: string;
+    winningBidHash: string;
+    evaluatedBidSetHash: string;
+    decisionManifestHash: string;
+  };
+} {
+  const materialsPath = path.resolve(input.materialsPath);
+
+  // Pass A: independent disk read + parse + reconcile
+  input.onMaterialsRead?.(materialsPath);
+  const rawA = readFileSync(materialsPath, "utf8");
+  const materialsA = parseFinalDemoAuthoritativeMaterials(JSON.parse(rawA));
+  const messagesA = JSON.parse(
+    JSON.stringify(input.mirrorMessages),
+  ) as ObservedHcsMessage[];
+  const reconA = reconcileFinalDemoSequences1to4(
+    {
+      topicId: input.topicId,
+      runId: input.runId,
+      tenderId: input.tenderId,
+      tenderVersion: input.tenderVersion,
+      tenderHash: input.tenderHash,
+      auctionEndsAt: input.auctionEndsAt,
+      messages: messagesA,
+      expectedCommitmentEnvelopeHashes: input.expectedCommitmentEnvelopeHashes,
+    },
+    materialsA,
+  );
+  const first = reconstructFinalDemoProof({
+    materials: materialsA,
+    reconciliation: reconA,
+  });
+
+  // Pass B: second independent disk read + parse + reconcile (no clone of A)
+  input.onMaterialsRead?.(materialsPath);
+  const rawB = readFileSync(materialsPath, "utf8");
+  const materialsB = parseFinalDemoAuthoritativeMaterials(JSON.parse(rawB));
+  const messagesB = JSON.parse(
+    JSON.stringify(input.mirrorMessages),
+  ) as ObservedHcsMessage[];
+  const reconB = reconcileFinalDemoSequences1to4(
+    {
+      topicId: input.topicId,
+      runId: input.runId,
+      tenderId: input.tenderId,
+      tenderVersion: input.tenderVersion,
+      tenderHash: input.tenderHash,
+      auctionEndsAt: input.auctionEndsAt,
+      messages: messagesB,
+      expectedCommitmentEnvelopeHashes: input.expectedCommitmentEnvelopeHashes,
+    },
+    materialsB,
+  );
+  const second = reconstructFinalDemoProof({
+    materials: materialsB,
+    reconciliation: reconB,
+  });
+
+  if (first.winningBidId !== second.winningBidId) {
+    throw new FinalDemoError(
+      "Double reconstruction winner mismatch",
+      "HASH_MISMATCH",
+    );
+  }
+  if (first.winningBidHash !== second.winningBidHash) {
+    throw new FinalDemoError(
+      "Double reconstruction winningBidHash mismatch",
+      "HASH_MISMATCH",
+    );
+  }
+  if (first.evaluatedBidSetHash !== second.evaluatedBidSetHash) {
+    throw new FinalDemoError(
+      "Double reconstruction evaluatedBidSetHash mismatch",
+      "HASH_MISMATCH",
+    );
+  }
+  if (first.decisionManifestHash !== second.decisionManifestHash) {
+    throw new FinalDemoError(
+      "Double reconstruction decisionManifestHash mismatch",
+      "HASH_MISMATCH",
+    );
+  }
+
+  return {
+    first,
+    second,
+    finalHashes: {
+      tenderHash: first.tenderHash,
+      winningBidHash: first.winningBidHash,
+      evaluatedBidSetHash: first.evaluatedBidSetHash,
+      decisionManifestHash: first.decisionManifestHash,
+    },
+  };
+}
+
+/**
+ * @deprecated Prefer doubleReconstructFinalDemoProofFromDisk for true independence.
+ * Kept for unit tests that inject already-loaded materials.
  */
 export function doubleReconstructFinalDemoProof(input: {
   materialsA: FinalDemoAuthoritativeMaterials;
@@ -235,3 +356,6 @@ export function doubleReconstructFinalDemoProof(input: {
     },
   };
 }
+
+void loadFinalDemoAuthoritativeMaterials;
+type _UnusedMirror = FinalDemoMirrorWindow;

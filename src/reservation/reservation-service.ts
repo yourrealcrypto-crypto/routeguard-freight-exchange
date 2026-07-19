@@ -163,14 +163,20 @@ function isPastDeadline(
 function transition(
   record: ReservationRecord,
   to: ReservationState,
-  reason?: string,
-  at?: string,
+  reason: string | undefined,
+  at: string,
 ): ReservationRecord {
   assertLegalTransition(record.state, to);
   if (record.state === to) {
     return record;
   }
-  const ts = at ?? new Date().toISOString();
+  if (typeof at !== "string" || !isUtcIsoTimestamp(at)) {
+    throw new ReservationError(
+      "INVALID_TIMESTAMP",
+      "transition requires an explicit valid UTC timestamp",
+    );
+  }
+  const ts = at;
   return {
     ...record,
     state: to,
@@ -614,8 +620,7 @@ export class ReservationService {
         next = transition(
           next,
           "PAYMENT_REJECTED",
-          verifyResult.invalidReason ?? "verify failed",
-        );
+          verifyResult.invalidReason ?? "verify failed", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "VERIFY_REJECTED",
@@ -628,7 +633,7 @@ export class ReservationService {
         facilitatorVerify: verifyResult,
         updatedAt: nowIso(this.deps),
       };
-      next = transition(next, "FACILITATOR_VERIFIED", "verify ok");
+      next = transition(next, "FACILITATOR_VERIFIED", "verify ok", nowIso(this.deps));
       const r = await this.commitOrConflict(record, next);
       if (r.conflicted) return r.record;
       record = r.record;
@@ -706,8 +711,7 @@ export class ReservationService {
         next = transition(
           next,
           "SETTLEMENT_FAILED",
-          settleResult.errorReason ?? "settle failed",
-        );
+          settleResult.errorReason ?? "settle failed", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "SETTLE_FAILED",
@@ -725,7 +729,7 @@ export class ReservationService {
           facilitatorSettle: settleResult,
           updatedAt: nowIso(this.deps),
         };
-        next = transition(next, "SETTLEMENT_FAILED", "missing transaction ID");
+        next = transition(next, "SETTLEMENT_FAILED", "missing transaction ID", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "MISSING_TRANSACTION_ID",
@@ -739,6 +743,7 @@ export class ReservationService {
           { ...record, facilitatorSettle: settleResult },
           "SETTLEMENT_FAILED",
           "network mismatch",
+          nowIso(this.deps),
         );
         next = {
           ...next,
@@ -752,6 +757,7 @@ export class ReservationService {
           { ...record, facilitatorSettle: settleResult },
           "SETTLEMENT_FAILED",
           "payer mismatch",
+          nowIso(this.deps),
         );
         next = {
           ...next,
@@ -767,7 +773,7 @@ export class ReservationService {
         transactionId: txId,
         updatedAt: nowIso(this.deps),
       };
-      next = transition(next, "FACILITATOR_SETTLED", "settle ok");
+      next = transition(next, "FACILITATOR_SETTLED", "settle ok", nowIso(this.deps));
       record = await this.commit(record, next);
     }
 
@@ -803,8 +809,7 @@ export class ReservationService {
       let next = transition(
         record,
         "MANUAL_REVIEW_REQUIRED",
-        "settle claim without transaction id",
-      );
+        "settle claim without transaction id", nowIso(this.deps));
       next = {
         ...next,
         failureCode: "AMBIGUOUS_SETTLE_CLAIM",
@@ -1032,7 +1037,7 @@ export class ReservationService {
 
       // Conclusive ledger FAILED — stop immediately, no more polls, no settle.
       if (mirrorStatus === "FAILED" && mirror) {
-        let next = transition(record, "CONFIRMATION_FAILED", "mirror FAILED");
+        let next = transition(record, "CONFIRMATION_FAILED", "mirror FAILED", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "MIRROR_FAILED",
@@ -1074,7 +1079,7 @@ export class ReservationService {
             mirrorPoll: successPoll,
             updatedAt: nowIso(this.deps),
           };
-          next = transition(next, "PAYMENT_CONFIRMED", "mirror SUCCESS verified");
+          next = transition(next, "PAYMENT_CONFIRMED", "mirror SUCCESS verified", nowIso(this.deps));
           record = await this.commit(record, next);
 
           assertCanEnterRouteReserved({
@@ -1107,7 +1112,7 @@ export class ReservationService {
           });
 
           record = await this.commit(record, {
-            ...transition(record, "ROUTE_RESERVED", "payment confirmed"),
+            ...transition(record, "ROUTE_RESERVED", "payment confirmed", nowIso(this.deps)),
             routeReserved,
           });
 
@@ -1121,7 +1126,7 @@ export class ReservationService {
           ) {
             record = await this.commit(
               record,
-              transition(record, "COMPLETED", "post-reservation done"),
+              transition(record, "COMPLETED", "post-reservation done", nowIso(this.deps)),
             );
           }
           return record;
@@ -1129,8 +1134,7 @@ export class ReservationService {
           let next = transition(
             record,
             "CONFIRMATION_FAILED",
-            e instanceof Error ? e.message : "verify failed",
-          );
+            e instanceof Error ? e.message : "verify failed", nowIso(this.deps));
           next = {
             ...next,
             failureCode:
@@ -1154,8 +1158,7 @@ export class ReservationService {
         let next = transition(
           record,
           "CONFIRMATION_TIMED_OUT",
-          "mirror not conclusive within bound",
-        );
+          "mirror not conclusive within bound", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "CONFIRMATION_TIMED_OUT",
@@ -1175,8 +1178,7 @@ export class ReservationService {
     let next = transition(
       record,
       "CONFIRMATION_TIMED_OUT",
-      "mirror poll iteration bound exhausted",
-    );
+      "mirror poll iteration bound exhausted", nowIso(this.deps));
     next = {
       ...next,
       failureCode: "CONFIRMATION_TIMED_OUT",
@@ -1318,14 +1320,13 @@ export class ReservationService {
         next.state === "ROUTE_RESERVED" ||
         next.state === "WEBHOOK_DELIVERY_FAILED"
       ) {
-        next = transition(next, "WEBHOOKS_DISPATCHED", "webhooks ok");
+        next = transition(next, "WEBHOOKS_DISPATCHED", "webhooks ok", nowIso(this.deps));
       }
     } else if (next.state === "ROUTE_RESERVED") {
       next = transition(
         next,
         "WEBHOOK_DELIVERY_FAILED",
-        "one or more webhooks failed",
-      );
+        "one or more webhooks failed", nowIso(this.deps));
     }
     // Already WEBHOOKS_DISPATCHED with a later failed retry: keep state; only
     // operational delivery metadata changes (never reverse ROUTE_RESERVED).
@@ -1767,7 +1768,7 @@ export class ReservationService {
       next.state === "ROUTE_RESERVED" ||
       next.state === "HCS_EVIDENCE_FAILED"
     ) {
-      next = transition(next, "HCS_EVIDENCE_RECORDED", "hcs published");
+      next = transition(next, "HCS_EVIDENCE_RECORDED", "hcs published", nowIso(this.deps));
     }
     const r = await this.commitOrConflict(record, next);
     return r.record;
@@ -1803,7 +1804,7 @@ export class ReservationService {
       next.state === "WEBHOOK_DELIVERY_FAILED" ||
       next.state === "ROUTE_RESERVED"
     ) {
-      next = transition(next, "HCS_EVIDENCE_FAILED", "hcs publish failed");
+      next = transition(next, "HCS_EVIDENCE_FAILED", "hcs publish failed", nowIso(this.deps));
     }
     const r = await this.commitOrConflict(record, next);
     return r.record;
@@ -1821,7 +1822,7 @@ export class ReservationService {
       record.state === "ROUTE_RESERVED" ||
       record.state === "HCS_EVIDENCE_FAILED"
     ) {
-      const next = transition(record, "HCS_EVIDENCE_RECORDED", "hcs already published");
+      const next = transition(record, "HCS_EVIDENCE_RECORDED", "hcs already published", nowIso(this.deps));
       const r = await this.commitOrConflict(record, next);
       return r.record;
     }

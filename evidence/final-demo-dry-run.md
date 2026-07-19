@@ -8,63 +8,77 @@ All auction and carrier data in this final demonstration is deliberately synthet
 
 Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.
 
-**This dry-run used synthetic topic `0.0.9700000` — not 0.0.9587459.**
+**Authority topic: `0.0.9700000` — not 0.0.9587459.**
 
 ## Attempt
 
 - Mode: `OFFLINE_DRY_RUN`
-- Attempt ID: `final-demo-dab230d0-fcfb-4cd3-8840-a055964b0d66`
-- Short ID: `964b0d66`
-- Final state: `COMPLETED`
-
-## Auction materials
-
-- Tender: `tender-final-964b0d66`
-- Bid alpha: `bid-alpha-final-964b0d66`
-- Bid beta: `bid-beta-final-964b0d66`
-- Reservation: `reservation-final-964b0d66`
-- Tender hash: `sha256:b794ff492cd963c097fe22f4aa6ef65a4a70e725d37e7c779494897e6510c20b`
-- Auction ends: `2026-07-15T23:07:33.967Z`
+- Attempt ID: `final-demo-e6b63243-50a3-4bfc-a252-cdf2737b059f`
+- Short ID: `737b059f`
+- Final state: `DRY_RUN_COMPLETE`
 
 ## Topic
 
 - Topic ID: `0.0.9700000`
-- Create tx: `0.0.9197513@1784156764.365125942`
-- Memo: `routeguard-final:964b0d66`
+- Create tx: `0.0.9197513@1784467215.715932329`
+- Memo: `routeguard-final:737b059f`
 
 ## HCS sequences 1–5
 
 | Seq | Label | Envelope hash | Consensus |
 |-----|-------|---------------|-----------|
-| 1 | AUCTION_OPEN | `sha256:e568fc634d2f42fb42e79d6922a7f841109a945a5c98dea14d613e0cf97fcb47` | `2026-07-15T23:06:05.137456789Z` |
-| 2 | BID_COMMITMENT_ALPHA | `sha256:a284b7cb9fd5f97812b7b9b85d1497ec77104dfdd116494b6ae876ed4adc73f0` | `2026-07-15T23:06:05.257456789Z` |
-| 3 | BID_COMMITMENT_BETA | `sha256:14cc36ab3f1ebff1fe6de0086ec0990d731ad0b49efefe9ae8a0e3f2edb07efd` | `2026-07-15T23:06:05.377456789Z` |
-| 4 | AUCTION_CLOSE_BARRIER | `sha256:a877f4625059748650bb440448d9209f330850c61f6767a149c048dd8edb4c54` | `2026-07-15T23:07:39.088456789Z` |
-| 5 | ROUTE_RESERVED | `sha256:2e43e8e8376ccf691d4a216f95010f89182ff91a84ef3d1fc6c0091185a9778c` | `2026-07-15T23:07:39.408456789Z` |
+| 1 | AUCTION_OPEN | `sha256:92f6051880383bc3ee4d20ee35d032c7768db85598893c136d6da351a2f6a579` | `2026-07-19T13:20:15.454456789Z` |
+| 2 | BID_COMMITMENT_ALPHA | `sha256:7ac89d2c18f6de47ce6745bd3adaa1b92ee94a58aeea33b4672e6d21b6e4cb60` | `2026-07-19T13:20:15.574456789Z` |
+| 3 | BID_COMMITMENT_BETA | `sha256:5798a6baef9882fa4f78d77ec73dd3ad43f4c75825690a825582e0a6becc46d6` | `2026-07-19T13:20:15.694456789Z` |
+| 4 | AUCTION_CLOSE_BARRIER | `sha256:660ece564957fd05ffcb5cca71ffb64595aef65ac2f2461ef80f52ab695a227b` | `2026-07-19T13:25:20.405456789Z` |
+| 5 | ROUTE_RESERVED | `sha256:9143c366600c547e8a5d8d52e34d21c0731a3b53650ab32c84ff48a33a814b4c` | `2026-07-19T13:25:20.725456789Z` |
 
 ## Proof
 
-- Winner: `carrier-alpha` / `bid-alpha-final-964b0d66` / `0.0.9215954`
-- winningBidHash: `sha256:9c7a31dea8d166fb35686ebaa19fd4f318d34681a355ddc725e465e6faedeaf5`
-- evaluatedBidSetHash: `sha256:f4851ed212f653e444f83afbfdeb9fe79d3eff8633faef1c200b2fde232c842e`
-- decisionManifestHash: `sha256:cbff923b5bd19eaf7fda2053a11e83c95531b0331d44e4ebb6e05dcac3a777e7`
+- Winner: `carrier-alpha` / `bid-alpha-final-737b059f` / `0.0.9215954`
+- winningBidHash: `sha256:2b8e364115f1e0353bf38081610667aa0728066a2d8a87d1e6c292565c603694`
+- evaluatedBidSetHash: `sha256:5e74d53e2fd0f12960e927de3a40b38c9824f6b0c867c2d0b9c026962342e48b`
+- decisionManifestHash: `sha256:aa74f3eb7bc21b616e07a23ded0babed324cab1b5ba6e5942c18b04e4b2c2577`
 - Reconciliation: `mirror:topic:0.0.9700000:1-4`
-- Barrier consensus: `2026-07-15T23:07:39.088456789Z`
+- Barrier consensus: `2026-07-19T13:25:20.405456789Z`
+- Auction ends: `2026-07-19T13:25:15.284Z`
 
-## Payment (simulated)
+## Payment (ReservationService)
 
-- USDC only: token `0.0.429274` amount `10000`
+- Selected rail: `USDC`
+- Carrier reservation payment: `10000` atomic of token `0.0.429274`
+- Carrier-received amount: `10000` (network cost not deducted)
+- Challenge-stated fixed Hedera network transfer cost: `$0.001` USD
+- Facilitator fee: `NOT_MODELED_AS_SEPARATE_X402_CHARGE`
+- RouteGuard platform fee: `NOT_MODELED_AS_SEPARATE_CHARGE`
 - Payer `0.0.9197513` → receiver `0.0.9215954`
-- Tx: `0.0.9197513@1784156859.555000000`
+- Tx: `0.0.9197513@1784467520.555000000`
+- Consensus: `2026-07-19T13:25:20.605456789Z`
+- Settle count (process): 1
+
+### Payment economics lines
+
+- Carrier reservation payment: 0.01 USDC (10000 atomic; asset 0.0.429274)
+- Selected asset / rail: USDC
+- Challenge-stated fixed Hedera network transfer cost: $0.001 USD
+- Facilitator fee: NOT_MODELED_AS_SEPARATE_X402_CHARGE
+- RouteGuard platform fee: NOT_MODELED_AS_SEPARATE_CHARGE
+- Carrier-received amount: 10000 atomic of 0.0.429274 (equals reservation payment; network transfer cost not deducted)
+- Carrier reservation payment is 0.01 USDC (10000 atomic units). Challenge-stated fixed Hedera network transfer cost is $0.001 USD and is not deducted from the 0.01 USDC carrier payment.
 
 ## ROUTE_RESERVED
 
 - Sequence: 5
 - Byte count: 941 (limit 1024)
 - Conservative budget: 949
-- Record hash: `sha256:50998595c77a5e7b40a6308051ec8ef240f2e3268b504984346e68903bd4e622`
+- Record hash: `sha256:fbc2ac94cdf7c803c545f64c68441225413f6b908c7b02e51729042cbaf1bda6`
+
+## Webhooks
+
+- `evt-route-reserved-reservation-final-737b059f-shipper` hash `sha256:274e19e97b931e054089da6b4edb1085233ac07eeb9dc2f4ef2d3c5de2750fcb`
+- `evt-route-reserved-reservation-final-737b059f-carrier` hash `sha256:fb3d9a813327d93e1ddafb83cb338b55ee68cd4fe202957eb422bbf9c6b51fbf`
 
 ## Network writes
 
-Real network writes: **none** (mocked transports only).
-Simulated: 1 topic create, 5 HCS submits, 1 payment.
+Real network: **false**
+Counts: topicCreates=1, hcs=5, payments=1

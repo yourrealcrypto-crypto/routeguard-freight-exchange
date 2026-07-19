@@ -208,40 +208,4 @@ export class MockFinalDemoNetwork {
     return this.topics.get(topicId);
   }
 
-  async mockPaymentSettle(): Promise<{
-    transactionId: string;
-    consensusTimestamp: string;
-    tokenTransfers: Array<{
-      account: string;
-      tokenId: string;
-      amount: string;
-    }>;
-  }> {
-    this.paymentSubmitCount += 1;
-    if (this.paymentSubmitCount > 1) {
-      throw new FinalDemoError(
-        "Mock payment refuses second settle",
-        "PAYMENT_ALREADY_SUBMITTED",
-      );
-    }
-    this.advanceMs(200);
-    const transactionId = `0.0.9197513@${Math.floor(this.clockMs / 1000)}.555000000`;
-    const consensusTimestamp = this.consensusTimestamp();
-    return {
-      transactionId,
-      consensusTimestamp,
-      tokenTransfers: [
-        {
-          account: "0.0.9197513",
-          tokenId: "0.0.429274",
-          amount: "-10000",
-        },
-        {
-          account: "0.0.9215954",
-          tokenId: "0.0.429274",
-          amount: "10000",
-        },
-      ],
-    };
-  }
 }

@@ -1,5 +1,5 @@
 /**
- * Final demonstration CLI (Phase 6B.2).
+ * Final demonstration CLI (Phase 6B.3).
  *
  * Default: OFFLINE_DRY_RUN — zero network writes.
  *
@@ -11,6 +11,9 @@
  *   ENABLE_LIVE_TOPIC_CREATE=true
  *   ENABLE_PHASE6B_LIVE_EXECUTE=true
  *   CONFIRM_FINAL_DEMO=CREATE_NEW_TOPIC_AND_EXECUTE_ONE_USDC_RESERVATION
+ *
+ * When all flags are set, production real transports are wired and the shared
+ * orchestration engine runs (no stub, no post-audit source edit).
  *
  * Importing this module is side-effect free; main() runs only under direct execution.
  */
@@ -60,6 +63,9 @@ export async function main(): Promise<void> {
     console.log(
       `  ROUTE_RESERVED bytes: ${result.dryRunEnvelopeByteCount} (conservative ${result.conservativeEnvelopeByteCount})`,
     );
+    console.log(
+      `  settleCalls (facilitator): ${result.settleCallCount ?? "n/a"}`,
+    );
     console.log(`  selected rail : ${result.payment.selectedOptionId}`);
     console.log(
       `  reservation payment: ${result.payment.amount} atomic USDC (carrier receives ${result.payment.carrierReceivedAmountAtomic})`,
@@ -78,21 +84,21 @@ export async function main(): Promise<void> {
   }
 
   console.log("Mode: LIVE_FINAL_DEMO (all live flags detected)");
-  try {
-    await runFinalDemoLiveExecution({ env: process.env });
-  } catch (e) {
-    if (e instanceof FinalDemoError && e.code === "LIVE_PATH_REQUIRES_AUDIT") {
-      console.error(e.message);
-      process.exitCode = 2;
-      return;
-    }
-    throw e;
-  }
+  console.log("Wiring production transports (topic/HCS/Mirror/x402/facilitator)...");
+  const result = await runFinalDemoLiveExecution({
+    env: process.env,
+    useProductionTransports: true,
+  });
+  console.log("Live final-demo COMPLETED");
+  console.log(`  attemptId     : ${result.materials.attemptId}`);
+  console.log(`  topicId       : ${result.topic.topicId}`);
+  console.log(`  winner        : ${result.winner.carrierId}`);
+  console.log(`  payment tx    : ${result.payment.transactionId}`);
+  console.log(`  evidence      : ${result.evidencePaths.json}`);
 }
 
 const thisFile = fileURLToPath(import.meta.url);
 const invoked = process.argv[1] && fileURLToPath(`file://${process.argv[1].replace(/\\/g, "/")}`);
-// Robust direct-execution check for Windows paths
 const isDirect =
   typeof process.argv[1] === "string" &&
   (process.argv[1].endsWith("final-auction-demo.ts") ||
@@ -101,7 +107,11 @@ const isDirect =
 
 if (isDirect || process.argv[1]?.includes("final-auction-demo")) {
   main().catch((err) => {
-    console.error(err instanceof Error ? err.message : err);
+    if (err instanceof FinalDemoError) {
+      console.error(`[${err.code}] ${err.message}`);
+    } else {
+      console.error(err instanceof Error ? err.message : err);
+    }
     process.exitCode = 1;
   });
 }

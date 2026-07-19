@@ -6,11 +6,11 @@ Carrier systems submit signed freight-capacity bids. Hedera Consensus Service es
 
 ## Current status
 
-Core auction, HCS evidence, dual-asset reservation, and final-demo dry-run are implemented offline.
+Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, and offline dry-run are implemented.
 
-Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase). Default CLI modes perform **zero** network writes.
+Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. A real live run is an **owner checkpoint** (private keys, funded accounts, testnet settlement, HCS writes).
 
-### Final demonstration (Phase 6B.2)
+### Final demonstration (Phase 6B.3 / 6B.4)
 
 ```bash
 npm run demo:final-auction   # OFFLINE_DRY_RUN by default

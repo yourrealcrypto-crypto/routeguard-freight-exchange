@@ -1,6 +1,9 @@
 /**
  * Secret / private-key scan gate for public paths.
  * Reports paths only — never prints matching secret values.
+ *
+ * Also merges git tracked / staged / untracked commit-intent paths so public
+ * TypeScript outside fixed roots cannot hide merely by placement.
  */
 
 import {
@@ -10,6 +13,7 @@ import {
   statSync,
 } from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 import { FinalDemoError } from "./errors";
 
@@ -230,11 +234,59 @@ export type SecretScanOptions = {
   extraPaths?: string[];
   /** Relative roots to scan under rootDir */
   includeRoots?: string[];
+  /**
+   * Include git commit-intent paths (tracked, staged, untracked).
+   * Default true. Tests may inject gitPaths or set false.
+   */
+  includeGitPaths?: boolean;
+  /** Injected git paths (relative or absolute) — tests without touching index. */
+  gitPaths?: string[];
 };
 
 /**
+ * Discover git commit-intent paths (tracked + staged + untracked).
+ * Returns relative paths. Never prints file contents.
+ */
+export function discoverGitCommitIntentPaths(
+  rootDir: string,
+  execImpl: typeof execFileSync = execFileSync,
+): string[] {
+  const root = path.resolve(rootDir);
+  const run = (args: string[]): string[] => {
+    try {
+      const out = execImpl("git", args, {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+      return String(out)
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+  const tracked = run(["ls-files"]);
+  const staged = run(["diff", "--cached", "--name-only"]);
+  const untracked = run(["ls-files", "--others", "--exclude-standard"]);
+  return [...new Set([...tracked, ...staged, ...untracked])];
+}
+
+function isSkippableGitPath(rel: string): boolean {
+  const n = rel.replace(/\\/g, "/");
+  if (n.startsWith("node_modules/")) return true;
+  if (n.startsWith(".git/")) return true;
+  if (n.startsWith("dist/")) return true;
+  if (n.startsWith("coverage/")) return true;
+  if (n.includes("/node_modules/")) return true;
+  return false;
+}
+
+/**
  * Scan tracked/public source, demo, evidence, scripts, and test fixtures.
- * Never returns secret values — paths and reasons only.
+ * Merges git commit-intent paths. Never returns secret values — paths and reasons only.
  */
 export function runSecretScan(
   options: SecretScanOptions = {},
@@ -269,6 +321,23 @@ export function runSecretScan(
     }
   }
 
+  if (options.includeGitPaths !== false) {
+    const gitRels =
+      options.gitPaths ?? discoverGitCommitIntentPaths(root);
+    for (const rel of gitRels) {
+      if (isSkippableGitPath(rel)) continue;
+      const abs = path.isAbsolute(rel) ? rel : path.join(root, rel);
+      if (!existsSync(abs)) continue;
+      try {
+        if (statSync(abs).isFile() && shouldScanFile(abs)) {
+          files.push(abs);
+        }
+      } catch {
+        // ignore unreadable
+      }
+    }
+  }
+
   const unique = [...new Set(files)];
   const findings: SecretScanFinding[] = [];
   for (const file of unique) {
@@ -282,46 +351,46 @@ export function runSecretScan(
     // when they are pattern definitions or deny-lists — but fail on assignment-like
     // values with 64+ hex in non-test fixture production data.
     const rel = path.relative(root, file).replace(/\\/g, "/");
+    // Scanner / deny-list implementations may mention field names as patterns.
     const isSecretScanImpl =
-      rel.includes("secret-scan") ||
-      rel.includes("check-secrets") ||
-      rel.includes("final-demo.test") ||
-      rel.includes("phase6b-live-reservation.test") ||
-      rel.includes("auction-fixtures") ||
-      rel.includes("reservation-fixtures");
+      rel.includes("secret-scan") || rel.includes("check-secrets");
 
     if (isSecretScanImpl) {
-      // Still fail if test fixtures accidentally include routeGuardPrivateKeyHex JSON keys with real hex
+      // Still fail if this module embeds a real-looking key assignment.
       if (
-        rel.endsWith(".json") &&
-        /routeGuardPrivateKeyHex|signingPrivateKeyHex/.test(content)
+        /routeGuardPrivateKeyHex\s*[:=]\s*["'][0-9a-fA-F]{64,}["']/.test(
+          content,
+        ) ||
+        /BEGIN (EC |RSA |OPENSSH )?PRIVATE KEY/.test(content)
       ) {
         findings.push({
           path: rel,
-          reason: "fixture JSON contains private-key field name",
+          reason: "scanner impl embeds private-key literal",
         });
       }
       continue;
     }
 
-    // Source TypeScript may reference parameter names like privateKeyHex in function
-    // signatures — allow those. Fail on JSON-like assignments of long hex secrets
-    // outside scanners.
+    // Uniform scan for TS/JS/JSON/MD/etc — catch real assignments and PEM.
+    // Parameter names alone (no assignment of 64+ hex) are allowed.
     if (rel.endsWith(".ts") || rel.endsWith(".js") || rel.endsWith(".mjs")) {
-      // Flag only explicit secret-bearing literals in non-fixture source
       if (
-        /routeGuardPrivateKeyHex\s*[:=]\s*["'][0-9a-fA-F]{64,}["']/.test(
+        /(?:routeGuardPrivateKeyHex|signingPrivateKeyHex|privateKeyHex|signingPrivateKey|secretKey)\s*[:=]\s*["'][0-9a-fA-F]{64,}["']/.test(
           content,
         ) ||
-        /signingPrivateKeyHex\s*[:=]\s*["'][0-9a-fA-F]{64,}["']/.test(content) ||
-        /BEGIN (EC |RSA )?PRIVATE KEY/.test(content)
+        /BEGIN (EC |RSA |OPENSSH )?PRIVATE KEY/.test(content) ||
+        /HEDERA_[A-Z0-9_]*_KEY\s*=\s*(?!your_|<.*>|REPLACE|xxx|placeholder)[^\s"']{16,}/i.test(
+          content,
+        ) ||
+        /PAYMENT-SIGNATURE\s*:\s*(?!mock|placeholder|test)[A-Za-z0-9+/=_-]{20,}/i.test(
+          content,
+        )
       ) {
         findings.push({
           path: rel,
-          reason: "source appears to embed a private-key literal",
+          reason: "source embeds private-key or payment-signature material",
         });
       }
-      // Allow domain API param names
       continue;
     }
 

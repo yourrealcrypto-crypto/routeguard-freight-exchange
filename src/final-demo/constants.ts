@@ -1,5 +1,5 @@
 /**
- * Final-demo (Phase 6B.2) public constants.
+ * Final-demo public constants (Phase 6B.4).
  * No private keys. No hard-coded HCS topic ID for the live chain.
  */
 
@@ -34,8 +34,15 @@ export const CONFIRM_FINAL_DEMO_VALUE =
 export const FINAL_DEMO_TEMPLATE_PATH =
   "demo/fixtures/final-auction-template.json" as const;
 
+/** @deprecated Shared path removed — use dry/live specific paths. */
 export const FINAL_DEMO_MATERIALS_PATH =
-  "evidence/final-demo-authoritative-materials.json" as const;
+  "evidence/final-demo-live-authoritative-materials.json" as const;
+
+export const FINAL_DEMO_LIVE_MATERIALS_PATH =
+  "evidence/final-demo-live-authoritative-materials.json" as const;
+export const FINAL_DEMO_DRY_MATERIALS_PATH =
+  "evidence/final-demo-dry-run-authoritative-materials.json" as const;
+
 export const FINAL_DEMO_LIVE_ATTEMPT_PATH =
   "evidence/final-demo-live-attempt.json" as const;
 export const FINAL_DEMO_RESULT_JSON_PATH =
@@ -50,13 +57,24 @@ export const FINAL_DEMO_DRY_RUN_MD_PATH =
 export const FINAL_DEMO_DRY_RUN_ATTEMPT_PATH =
   "evidence/final-demo-dry-run-attempt.json" as const;
 
+export const FINAL_DEMO_LIVE_RESERVATION_DIR =
+  "data/final-demo-live-reservations" as const;
+export const FINAL_DEMO_DRY_RESERVATION_DIR =
+  "data/final-demo-dry-reservations" as const;
+
 export const FINAL_DEMO_PLANNED_TOPIC_CREATES = 1 as const;
 export const FINAL_DEMO_PLANNED_HCS_SUBMISSIONS = 5 as const;
 export const FINAL_DEMO_PLANNED_PAYMENT_SUBMISSIONS = 1 as const;
 
-export const FINAL_DEMO_AUCTION_WINDOW_SECONDS = 90 as const;
+/** Setup buffer before auction opens (topic create / prep). */
+export const FINAL_DEMO_PREP_BUFFER_SECONDS = 120 as const;
+/** Default live auction window after auctionOpensAt. */
+export const FINAL_DEMO_AUCTION_WINDOW_SECONDS = 300 as const;
 export const FINAL_DEMO_BARRIER_SAFETY_MARGIN_MS = 5_000 as const;
-export const FINAL_DEMO_COMMITMENT_SAFETY_MARGIN_MS = 10_000 as const;
+/** Fail closed if less than 30s remains before auctionEndsAt for commitments. */
+export const FINAL_DEMO_COMMITMENT_SAFETY_MARGIN_MS = 30_000 as const;
+
+export const FINAL_DEMO_ATTEMPT_SCHEMA = "final-demo-live-attempt-1.1" as const;
 
 export const FINAL_DEMO_ATTEMPT_STATUSES = [
   "PLANNED",
@@ -64,24 +82,31 @@ export const FINAL_DEMO_ATTEMPT_STATUSES = [
   "TOPIC_CREATE_CLAIMED",
   "TOPIC_CREATED",
   "TOPIC_CREATE_AMBIGUOUS",
+  "WAITING_AUCTION_OPEN",
   "SEQ1_CLAIMED",
   "SEQ1_CONFIRMED",
   "SEQ2_CLAIMED",
   "SEQ2_CONFIRMED",
   "SEQ3_CLAIMED",
   "SEQ3_CONFIRMED",
+  "WAITING_AUCTION_CLOSE",
   "SEQ4_CLAIMED",
   "SEQ4_CONFIRMED",
   "MIRROR_RECONCILED",
   "PROOF_RECONSTRUCTED",
+  "PAYMENT_READY",
   "PAYMENT_SUBMISSION_CLAIMED",
   "PAYMENT_SUBMITTED",
   "PAYMENT_CONFIRMED",
   "SEQ5_CLAIMED",
   "SEQ5_CONFIRMED",
+  "EVIDENCE_PENDING",
+  "EVIDENCE_WRITING",
+  "EVIDENCE_WRITTEN",
   "COMPLETED",
   "FAILED",
   "AMBIGUOUS",
+  "MANUAL_REVIEW_REQUIRED",
   "DRY_RUN_COMPLETE",
 ] as const;
 

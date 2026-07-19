@@ -4,9 +4,9 @@
   "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions when executed live.",
   "network": "hedera:testnet",
   "auction": {
-    "windowSeconds": 90,
+    "windowSeconds": 300,
     "barrierSafetyMarginMs": 5000,
-    "commitmentSubmitSafetyMarginMs": 10000
+    "commitmentSubmitSafetyMarginMs": 30000
   },
   "route": {
     "origin": "Hamburg, DE",

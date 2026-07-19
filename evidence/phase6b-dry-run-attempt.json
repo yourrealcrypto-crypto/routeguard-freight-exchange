@@ -1,6 +1,6 @@
 {
   "kind": "DRY_RUN",
-  "attemptId": "phase6b-dry-6fb1a4d3-bec8-406c-903f-6f07a9140753",
+  "attemptId": "phase6b-dry-3bc6c9c6-b245-432e-8552-f180a30d2a54",
   "reservationId": "res-phase6b-usdc-0001",
   "network": "hedera:testnet",
   "payer": "0.0.9197513",
@@ -12,7 +12,7 @@
   "plannedMaxPaymentSubmissions": 1,
   "plannedMaxHcsSubmissions": 1,
   "status": "DRY_RUN_COMPLETE",
-  "createdAt": "2026-07-15T23:06:03.950Z",
+  "createdAt": "2026-07-15T23:53:43.719Z",
   "paymentSubmissionClaimedAt": null,
   "paymentSubmittedAt": null,
   "transactionId": null,
@@ -28,5 +28,5 @@
   },
   "failureCode": null,
   "failureReason": null,
-  "updatedAt": "2026-07-15T23:06:03.970Z"
+  "updatedAt": "2026-07-15T23:53:43.733Z"
 }

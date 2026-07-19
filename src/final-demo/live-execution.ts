@@ -1,12 +1,11 @@
 /**
- * Guarded live final-demo execution path.
+ * Guarded live final-demo execution path (Phase 6B.4).
  *
- * Fully implemented for auditability. Default CLI entry refuses live mode
- * without all flags. Tests exercise claim/guard paths with mocks only.
+ * Production entry always enforces every live guard and readiness gate.
+ * No skip* flags are accepted. Tests exercise orchestration via
+ * OFFLINE_DRY_RUN with mocked transports, not by weakening this API.
  *
- * Settlement authority is ALWAYS ReservationService — never direct settle.
- * This module never performs real network I/O unless transports allow it
- * AND live guards pass.
+ * Settlement authority is ALWAYS ReservationService.
  */
 
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
@@ -14,6 +13,7 @@ import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import {
   FINAL_DEMO_LIVE_ATTEMPT_PATH,
   FINAL_DEMO_MODE_LIVE,
+  FINAL_DEMO_PAYER_ACCOUNT,
   HISTORICAL_PHASE5_TOPIC_ID,
 } from "./constants";
 import { FinalDemoError } from "./errors";
@@ -25,28 +25,80 @@ import {
 } from "./attempt-store";
 import { assertSecretScanPass } from "./secret-scan";
 import { loadFinalDemoAuthoritativeMaterials } from "./materials";
+import {
+  runFinalDemoOrchestration,
+  type FinalDemoOrchestrationResult,
+} from "./orchestration";
+import type {
+  FinalDemoClock,
+  FinalDemoHcsTransport,
+  FinalDemoTopicMirrorReader,
+  FinalDemoTopicTransport,
+  PaymentPayloadFactory,
+  SessionFacilitatorTransport,
+} from "./transports";
+import type { MirrorConfirmationTransport } from "../reservation/transports";
+import type { WebhookDeliveryTransport } from "../reservation/transports";
+import {
+  assertUsdcReadinessPass,
+  checkFinalDemoUsdcReadiness,
+} from "./usdc-readiness";
 
+/**
+ * Production live deps — only real transports / production options.
+ * Extra properties (including any skip*) are rejected.
+ */
 export type FinalDemoLiveDeps = {
   env?: NodeJS.ProcessEnv;
   attemptPath?: string;
   materialsPath?: string;
-  /** Skip env live-flag check (unit tests only). */
-  skipEnvLiveGuard?: boolean;
-  /** Skip secret scan (unit tests only). */
-  skipSecretScan?: boolean;
-  /**
-   * Live path requires injected network factories in production.
-   * Without them and without skip, refuses to run (implementation-complete
-   * skeleton that still cannot write without explicit wiring).
-   */
-  allowUnwiredLive?: boolean;
+  workDir?: string;
+  resultJsonPath?: string;
+  resultMdPath?: string;
+  reservationStoreDir?: string;
+  topicTransport?: FinalDemoTopicTransport;
+  hcsTransport?: FinalDemoHcsTransport;
+  topicMirrorReader?: FinalDemoTopicMirrorReader;
+  paymentPayloadFactory?: PaymentPayloadFactory;
+  facilitatorTransport?: SessionFacilitatorTransport;
+  paymentMirrorTransport?: MirrorConfirmationTransport;
+  webhookTransport?: WebhookDeliveryTransport;
+  webhookSigningPrivateKey?: string;
+  clock?: FinalDemoClock;
+  /** When true, build real live transports from env (production CLI). */
+  useProductionTransports?: boolean;
 };
 
+const FORBIDDEN_SKIP_KEYS = [
+  "skipEnvLiveGuard",
+  "skipSecretScan",
+  "skipUsdcReadiness",
+  "skipAccountReadiness",
+  "skipFacilitatorPreflight",
+] as const;
+
+function rejectSkipBypasses(deps: object): void {
+  for (const k of FORBIDDEN_SKIP_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(deps, k)) {
+      throw new FinalDemoError(
+        `Production live entry rejects ${k} — no guard bypasses`,
+        "GUARD_BYPASS_FORBIDDEN",
+      );
+    }
+  }
+  // Adversarial: any skip* property
+  for (const k of Object.keys(deps)) {
+    if (/^skip/i.test(k)) {
+      throw new FinalDemoError(
+        `Production live entry rejects skip property ${k}`,
+        "GUARD_BYPASS_FORBIDDEN",
+      );
+    }
+  }
+}
+
 /**
- * Pre-flight for live final demo. Refuses to start a second attempt.
- * Does not create topics or submit messages by itself in this milestone's
- * default path — full live orchestration is wired through the CLI only when
- * all guards pass; during implementation, this validates readiness.
+ * Pre-flight for live final demo readiness checks (no network writes).
  */
 export function assertFinalDemoLiveReady(
   deps: FinalDemoLiveDeps = {},
@@ -55,37 +107,36 @@ export function assertFinalDemoLiveReady(
   materialsLoaded: boolean;
   existing: FinalDemoAttemptRecord | null;
 } {
+  rejectSkipBypasses(deps);
   const env = deps.env ?? process.env;
-  if (!deps.skipEnvLiveGuard) {
-    assertFinalDemoLiveAuthorized({
-      enableFinalDemoLive: env.ENABLE_FINAL_DEMO_LIVE,
-      enableLiveHedera: env.ENABLE_LIVE_HEDERA,
-      enableLiveUsdcPayments: env.ENABLE_LIVE_USDC_PAYMENTS,
-      enableLiveHcsWrites: env.ENABLE_LIVE_HCS_WRITES,
-      enableLiveTopicCreate: env.ENABLE_LIVE_TOPIC_CREATE,
-      enablePhase6bLiveExecute: env.ENABLE_PHASE6B_LIVE_EXECUTE,
-      confirmFinalDemo: env.CONFIRM_FINAL_DEMO,
-    });
-  }
-  if (!deps.skipSecretScan) {
-    assertSecretScanPass({ rootDir: process.cwd() });
-  }
+  assertFinalDemoLiveAuthorized({
+    enableFinalDemoLive: env.ENABLE_FINAL_DEMO_LIVE,
+    enableLiveHedera: env.ENABLE_LIVE_HEDERA,
+    enableLiveUsdcPayments: env.ENABLE_LIVE_USDC_PAYMENTS,
+    enableLiveHcsWrites: env.ENABLE_LIVE_HCS_WRITES,
+    enableLiveTopicCreate: env.ENABLE_LIVE_TOPIC_CREATE,
+    enablePhase6bLiveExecute: env.ENABLE_PHASE6B_LIVE_EXECUTE,
+    confirmFinalDemo: env.CONFIRM_FINAL_DEMO,
+  });
+  assertSecretScanPass({ rootDir: process.cwd() });
 
   const attemptPath = deps.attemptPath ?? FINAL_DEMO_LIVE_ATTEMPT_PATH;
   const existing = loadFinalDemoAttempt(attemptPath);
-  assertSafeToStartFinalDemoLive(existing);
+  if (
+    existing &&
+    (existing.status === "COMPLETED" ||
+      existing.status === "AMBIGUOUS" ||
+      existing.status === "TOPIC_CREATE_AMBIGUOUS" ||
+      existing.status === "FAILED" ||
+      existing.topicCreateClaim.status === "AMBIGUOUS")
+  ) {
+    assertSafeToStartFinalDemoLive(existing);
+  }
 
-  // Materials must exist before any network write
   let materialsLoaded = false;
   try {
-    const materials = loadFinalDemoAuthoritativeMaterials(deps.materialsPath);
+    loadFinalDemoAuthoritativeMaterials(deps.materialsPath);
     materialsLoaded = true;
-    if (
-      materials.accounts.winnerReceiverAccountId &&
-      false
-    ) {
-      // keep structure
-    }
   } catch {
     materialsLoaded = false;
   }
@@ -94,34 +145,367 @@ export function assertFinalDemoLiveReady(
 }
 
 /**
- * Live entry — refuses unless fully authorized. Implementation-complete guard
- * surface; actual SDK topic create / HCS submit / payment are only reachable
- * after materials + claim CAS (same algorithm as dry-run) with live transports.
- *
- * During Phase 6B.2 implementation milestone, calling this without
- * `allowUnwiredLive` throws LIVE_PATH_REQUIRES_AUDIT so no accidental write.
+ * Live entry — always enforces all guards. Wire real transports via
+ * useProductionTransports or inject production-shaped adapters.
  */
 export async function runFinalDemoLiveExecution(
   deps: FinalDemoLiveDeps = {},
-): Promise<never> {
-  assertFinalDemoLiveReady(deps);
+): Promise<FinalDemoOrchestrationResult> {
+  rejectSkipBypasses(deps);
+  const env = deps.env ?? process.env;
 
-  if (!deps.allowUnwiredLive) {
+  assertFinalDemoLiveAuthorized({
+    enableFinalDemoLive: env.ENABLE_FINAL_DEMO_LIVE,
+    enableLiveHedera: env.ENABLE_LIVE_HEDERA,
+    enableLiveUsdcPayments: env.ENABLE_LIVE_USDC_PAYMENTS,
+    enableLiveHcsWrites: env.ENABLE_LIVE_HCS_WRITES,
+    enableLiveTopicCreate: env.ENABLE_LIVE_TOPIC_CREATE,
+    enablePhase6bLiveExecute: env.ENABLE_PHASE6B_LIVE_EXECUTE,
+    confirmFinalDemo: env.CONFIRM_FINAL_DEMO,
+  });
+
+  let topicTransport = deps.topicTransport;
+  let hcsTransport = deps.hcsTransport;
+  let topicMirrorReader = deps.topicMirrorReader;
+  let paymentPayloadFactory = deps.paymentPayloadFactory;
+  let facilitatorTransport = deps.facilitatorTransport;
+  let paymentMirrorTransport = deps.paymentMirrorTransport;
+  let webhookTransport = deps.webhookTransport;
+  let clock = deps.clock;
+
+  if (deps.useProductionTransports) {
+    const built = await buildProductionLiveTransports(env);
+    topicTransport = built.topicTransport;
+    hcsTransport = built.hcsTransport;
+    topicMirrorReader = built.topicMirrorReader;
+    paymentPayloadFactory = built.paymentPayloadFactory;
+    facilitatorTransport = built.facilitatorTransport;
+    paymentMirrorTransport = built.paymentMirrorTransport;
+    webhookTransport = built.webhookTransport;
+    clock = built.clock;
+  }
+
+  if (
+    !topicTransport ||
+    !hcsTransport ||
+    !topicMirrorReader ||
+    !paymentPayloadFactory ||
+    !facilitatorTransport ||
+    !paymentMirrorTransport ||
+    !webhookTransport ||
+    !clock
+  ) {
     throw new FinalDemoError(
-      "Live final-demo network writes are blocked until independent read-only audit approval. Dry-run is the default. Do not set live flags during implementation.",
-      "LIVE_PATH_REQUIRES_AUDIT",
+      "Live final-demo requires all production transports (topic, HCS, Mirror, payer, facilitator, payment Mirror, clock).",
+      "LIVE_TRANSPORTS_REQUIRED",
     );
   }
 
-  throw new FinalDemoError(
-    "Live transport wiring not enabled in this process",
-    "LIVE_TRANSPORT_UNWIRED",
-  );
+  // Always run readiness — no skip
+  assertSecretScanPass({ rootDir: process.cwd() });
+  const usdc = await checkFinalDemoUsdcReadiness();
+  assertUsdcReadinessPass(usdc);
+
+  return runFinalDemoOrchestration({
+    mode: FINAL_DEMO_MODE_LIVE,
+    env,
+    clock,
+    ...(deps.workDir !== undefined ? { workDir: deps.workDir } : {}),
+    ...(deps.attemptPath !== undefined ? { attemptPath: deps.attemptPath } : {}),
+    ...(deps.materialsPath !== undefined
+      ? { materialsPath: deps.materialsPath }
+      : {}),
+    ...(deps.resultJsonPath !== undefined
+      ? { resultJsonPath: deps.resultJsonPath }
+      : {}),
+    ...(deps.resultMdPath !== undefined
+      ? { resultMdPath: deps.resultMdPath }
+      : {}),
+    ...(deps.reservationStoreDir !== undefined
+      ? { reservationStoreDir: deps.reservationStoreDir }
+      : {}),
+    topicTransport,
+    hcsTransport,
+    topicMirrorReader,
+    paymentPayloadFactory,
+    facilitatorTransport,
+    paymentMirrorTransport,
+    webhookTransport,
+    ...(deps.webhookSigningPrivateKey !== undefined
+      ? { webhookSigningPrivateKey: deps.webhookSigningPrivateKey }
+      : {}),
+    readiness: {
+      secretScan: () => assertSecretScanPass({ rootDir: process.cwd() }),
+      usdcReadiness: async () => {
+        const r = await checkFinalDemoUsdcReadiness();
+        assertUsdcReadinessPass(r);
+        return r;
+      },
+    },
+  });
 }
 
 /**
- * Explicit rejection helpers used by tests and live guards.
+ * Build real Hedera / x402 / Mirror transports for production live CLI.
  */
+export async function buildProductionLiveTransports(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{
+  topicTransport: FinalDemoTopicTransport;
+  hcsTransport: FinalDemoHcsTransport;
+  topicMirrorReader: FinalDemoTopicMirrorReader;
+  paymentPayloadFactory: PaymentPayloadFactory;
+  facilitatorTransport: SessionFacilitatorTransport;
+  paymentMirrorTransport: MirrorConfirmationTransport;
+  webhookTransport: WebhookDeliveryTransport;
+  clock: FinalDemoClock;
+}> {
+  const operatorAccount =
+    env.SHIPPER_ACCOUNT_ID?.trim() || env.HEDERA_OPERATOR_ID?.trim();
+  const operatorKey =
+    env.SHIPPER_PRIVATE_KEY?.trim() || env.HEDERA_OPERATOR_KEY?.trim();
+  if (!operatorAccount || !operatorKey) {
+    throw new FinalDemoError(
+      "SHIPPER_ACCOUNT_ID and SHIPPER_PRIVATE_KEY required for live final demo",
+      "OPERATOR_REQUIRED",
+    );
+  }
+  if (operatorAccount !== FINAL_DEMO_PAYER_ACCOUNT) {
+    throw new FinalDemoError(
+      "Live operator must be payer account 0.0.9197513",
+      "WRONG_PAYER",
+    );
+  }
+
+  const {
+    AccountId,
+    Client,
+    Hbar,
+    PrivateKey,
+    Status,
+    TopicCreateTransaction,
+    TopicId,
+    TopicMessageSubmitTransaction,
+  } = await import("@hiero-ledger/sdk");
+  const { MirrorNodeClient } = await import("../hcs/mirror-node-client");
+  const {
+    LiveFacilitatorAdapter,
+    LiveMirrorTransactionAdapter,
+    LocalDemoWebhookTransport: WebhookLocal,
+  } = await import("../reservation/live/adapters");
+  const { createLivePayerPaymentPayloadFactory } = await import(
+    "../reservation/live/payer-payload"
+  );
+  const { envelopeHash, serializeEnvelopeForSubmit } = await import(
+    "../hcs/message-envelope"
+  );
+
+  let privateKey: InstanceType<typeof PrivateKey>;
+  try {
+    privateKey = PrivateKey.fromStringECDSA(operatorKey);
+  } catch {
+    throw new FinalDemoError(
+      "Failed to parse operator ECDSA key",
+      "OPERATOR_KEY_INVALID",
+    );
+  }
+  const accountId = AccountId.fromString(operatorAccount);
+  const client = Client.forTestnet();
+  client.setOperator(accountId, privateKey);
+
+  let createCount = 0;
+  let submitCount = 0;
+  let boundTopicId: string | null = null;
+  const mirror = new MirrorNodeClient();
+
+  const topicTransport: FinalDemoTopicTransport = {
+    async createTopic(memo: string) {
+      createCount += 1;
+      if (createCount > 1) {
+        throw new FinalDemoError(
+          "Topic create budget exhausted",
+          "TOPIC_CREATE_BUDGET",
+        );
+      }
+      const tx = new TopicCreateTransaction()
+        .setTopicMemo(memo)
+        .setAdminKey(privateKey.publicKey)
+        .setSubmitKey(privateKey.publicKey)
+        .setAutoRenewAccountId(accountId)
+        .setMaxTransactionFee(new Hbar(5));
+      const response = await tx.execute(client);
+      const receipt = await response.getReceipt(client);
+      if (receipt.status !== Status.Success) {
+        throw new FinalDemoError(
+          `TopicCreateTransaction failed: ${receipt.status.toString()}`,
+          "TOPIC_CREATE_FAILED",
+        );
+      }
+      const topicId = receipt.topicId?.toString();
+      if (!topicId) {
+        throw new FinalDemoError(
+          "TopicCreateTransaction SUCCESS but topicId missing",
+          "TOPIC_CREATE_FAILED",
+        );
+      }
+      if (topicId === HISTORICAL_PHASE5_TOPIC_ID) {
+        throw new FinalDemoError(
+          "Historical topic forbidden",
+          "HISTORICAL_TOPIC_FORBIDDEN",
+        );
+      }
+      boundTopicId = topicId;
+      return {
+        topicId,
+        transactionId: response.transactionId.toString(),
+        topicMemo: memo,
+        createdAt: new Date().toISOString(),
+        receiptStatus: receipt.status.toString(),
+      };
+    },
+    getCreateCount: () => createCount,
+  };
+
+  const hcsTransport: FinalDemoHcsTransport = {
+    async submitMessage(input) {
+      submitCount += 1;
+      if (submitCount > 5) {
+        throw new FinalDemoError(
+          "HCS submit budget exhausted",
+          "HCS_BUDGET_EXHAUSTED",
+        );
+      }
+      if (boundTopicId && input.topicId !== boundTopicId) {
+        throw new FinalDemoError("Topic mismatch on submit", "WRONG_TOPIC");
+      }
+      const hash = envelopeHash(input.envelope);
+      const body = serializeEnvelopeForSubmit(input.envelope);
+      if (body.byteLength !== input.exactBytes.byteLength) {
+        throw new FinalDemoError(
+          "exactBytes mismatch",
+          "ENVELOPE_BYTES_MISMATCH",
+        );
+      }
+      const tx = new TopicMessageSubmitTransaction()
+        .setTopicId(TopicId.fromString(input.topicId))
+        .setMessage(input.exactBytes)
+        .setMaxTransactionFee(new Hbar(5));
+      const response = await tx.execute(client);
+      const receipt = await response.getReceipt(client);
+      if (receipt.status !== Status.Success) {
+        throw new FinalDemoError(
+          `TopicMessageSubmitTransaction failed: ${receipt.status.toString()}`,
+          "HCS_SUBMIT_FAILED",
+        );
+      }
+      const observed = await mirror.waitForEnvelopeHash(input.topicId, hash, {
+        timeoutMs: 90_000,
+        pollIntervalMs: 1_500,
+      });
+      return {
+        topicId: observed.topicId,
+        sequence: observed.sequence,
+        transactionId: response.transactionId.toString(),
+        consensusTimestamp: observed.consensusTimestamp,
+        envelopeHash: hash,
+        receiptStatus: receipt.status.toString(),
+      };
+    },
+    getSubmitCount: () => submitCount,
+  };
+
+  const topicMirrorReader: FinalDemoTopicMirrorReader = {
+    listMessages: async (topicId) => {
+      const raw = await mirror.fetchAllTopicMessages(topicId);
+      return mirror.decodeAll(topicId, raw);
+    },
+    waitForEnvelopeHash: async (topicId, hash, options) =>
+      mirror.waitForEnvelopeHash(topicId, hash, {
+        timeoutMs: options?.timeoutMs ?? 90_000,
+        pollIntervalMs: options?.pollIntervalMs ?? 1_500,
+      }),
+  };
+
+  const facilitator = new LiveFacilitatorAdapter({
+    facilitatorUrl:
+      env.FACILITATOR_URL?.trim() || "https://api.testnet.blocky402.com",
+    allowNetwork: true,
+  }) as SessionFacilitatorTransport;
+
+  const phase6bFactory = createLivePayerPaymentPayloadFactory({ env });
+  // Capture actual reservation binding when factory is invoked from orchestrator.
+  // The PaymentPayloadFactory interface already receives selected+challenge;
+  // we bind reservationId/offerHash from selected when ReservationService
+  // has populated them — no placeholders.
+  const paymentPayloadFactory: PaymentPayloadFactory = async (input) => {
+    if (!input.selected.payerAccount || !input.challenge.resource) {
+      throw new FinalDemoError(
+        "Payer factory requires durable selected option and challenge",
+        "PAYER_CONTEXT_INCOMPLETE",
+      );
+    }
+    // Extract reservationId from resource path when present
+    const resource = input.challenge.resource;
+    const reservationIdMatch = /reservations\/([^/]+)/.exec(resource);
+    const reservationId =
+      reservationIdMatch?.[1] ??
+      // selected may carry reservationId on production SelectedPaymentOption
+      (input.selected as { reservationId?: string }).reservationId;
+    if (!reservationId) {
+      throw new FinalDemoError(
+        "Cannot derive reservationId for payment payload",
+        "PAYER_CONTEXT_INCOMPLETE",
+      );
+    }
+    const offerHash =
+      (input.selected as { offerHash?: string }).offerHash ?? "";
+    const offerVersion =
+      (input.selected as { offerVersion?: number }).offerVersion ?? 1;
+    if (!offerHash || /^sha256:0+$/.test(offerHash.replace(/sha256:/, ""))) {
+      throw new FinalDemoError(
+        "offerHash must be the durable selected offer hash (no placeholders)",
+        "PAYER_PLACEHOLDER_FORBIDDEN",
+      );
+    }
+    return phase6bFactory({
+      selected: {
+        reservationId,
+        optionId: "USDC",
+        scheme: "exact",
+        network: "hedera:testnet",
+        asset: input.selected.asset,
+        amountAtomic: input.selected.amountAtomic,
+        payTo: input.selected.payTo,
+        payerAccount: input.selected.payerAccount,
+        offerHash,
+        offerVersion,
+        selectedAt:
+          (input.selected as { selectedAt?: string }).selectedAt ??
+          new Date().toISOString(),
+        resourcePath: resource,
+      },
+      challenge: input.challenge,
+    });
+  };
+
+  const clock: FinalDemoClock = {
+    nowMs: () => Date.now(),
+    nowIso: () => new Date().toISOString(),
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  };
+
+  return {
+    topicTransport,
+    hcsTransport,
+    topicMirrorReader,
+    paymentPayloadFactory,
+    facilitatorTransport: facilitator,
+    paymentMirrorTransport: new LiveMirrorTransactionAdapter(),
+    webhookTransport: new WebhookLocal(),
+    clock,
+  };
+}
+
 export function rejectHistoricalTopic(topicId: string): void {
   if (topicId === HISTORICAL_PHASE5_TOPIC_ID) {
     throw new FinalDemoError(
@@ -152,7 +536,6 @@ export function assertPaymentPayloadNotPersisted(record: unknown): void {
   }
 }
 
-/** Type anchors for payer factory (live wiring). */
 export type FinalDemoPayerPaymentPayloadFactory = (input: {
   challenge: {
     x402Version: number;

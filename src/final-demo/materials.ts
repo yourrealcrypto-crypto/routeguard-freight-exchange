@@ -45,11 +45,13 @@ import { atomicWriteJson } from "./atomic-write";
 import {
   DATA_CLASSIFICATION_PUBLIC,
   FINAL_DEMO_AUCTION_WINDOW_SECONDS,
-  FINAL_DEMO_MATERIALS_PATH,
+  FINAL_DEMO_LIVE_MATERIALS_PATH,
+  FINAL_DEMO_PREP_BUFFER_SECONDS,
   FINAL_DEMO_USDC_AMOUNT_ATOMIC,
   FINAL_DEMO_USDC_TOKEN,
   SYNTHETIC_DATA_DISCLOSURE,
 } from "./constants";
+import { canonicalSha256 } from "../domain/canonical-hash";
 import { FinalDemoError } from "./errors";
 import {
   loadFinalAuctionTemplate,
@@ -65,6 +67,8 @@ export type FinalDemoAuthoritativeMaterials = {
   shortAttemptId: string;
   runId: string;
   runBaseTime: string;
+  /** Auction may not open until this timestamp (after topic prep). */
+  auctionOpensAt: string;
   network: "hedera:testnet";
   tenderBody: ReturnType<typeof parseFreightTender>;
   tenderHash: string;
@@ -72,6 +76,7 @@ export type FinalDemoAuthoritativeMaterials = {
   auctionEndsAt: string;
   relativeTimestamps: {
     auctionWindowSeconds: number;
+    prepBufferSeconds?: number;
     pickupEarliest: string;
     pickupLatest: string;
     deliveryDeadline: string;
@@ -157,14 +162,23 @@ function paymentOptionsFor(accountId: string) {
 export type GenerateMaterialsInput = {
   attemptId?: string;
   runBaseTime?: string;
+  /** Absolute or relative materials path (must be dry or live specific). */
   templatePath?: string;
   template?: FinalAuctionTemplate;
   /** Override auction window (tests). */
   auctionWindowSeconds?: number;
+  /** Seconds after preparation before auction opens (default 120). */
+  prepBufferSeconds?: number;
   materialsPath?: string;
   /** When false, do not write disk (tests). Default true. */
   persist?: boolean;
 };
+
+export function hashMaterialsPackage(
+  materials: FinalDemoAuthoritativeMaterials,
+): string {
+  return canonicalSha256(materials);
+}
 
 /**
  * Create durable final-demo attempt IDs + complete public authoritative package.
@@ -178,13 +192,18 @@ export function generateFinalDemoAuthoritativeMaterials(
   const attemptId =
     input.attemptId ?? `final-demo-${randomUUID()}`;
   const shortAttemptId = shortIdFromAttempt(attemptId);
-  const runBaseTime = input.runBaseTime ?? new Date().toISOString();
+  const preparationStartedAt = input.runBaseTime ?? new Date().toISOString();
+  const prepBuffer =
+    input.prepBufferSeconds ?? FINAL_DEMO_PREP_BUFFER_SECONDS;
+  // auctionOpensAt after prep buffer; auctionEndsAt after window from open.
+  const auctionOpensAt = addSecondsIso(preparationStartedAt, prepBuffer);
+  const runBaseTime = auctionOpensAt;
   const windowSeconds =
     input.auctionWindowSeconds ??
     template.auction.windowSeconds ??
     FINAL_DEMO_AUCTION_WINDOW_SECONDS;
 
-  const auctionEndsAt = addSecondsIso(runBaseTime, windowSeconds);
+  const auctionEndsAt = addSecondsIso(auctionOpensAt, windowSeconds);
   const pickupEarliest = addSecondsIso(
     auctionEndsAt,
     template.relativeOffsets.pickupEarliestAfterAuctionEndSeconds,
@@ -438,6 +457,7 @@ export function generateFinalDemoAuthoritativeMaterials(
       shortAttemptId,
       runId,
       runBaseTime,
+      auctionOpensAt,
       network: "hedera:testnet",
       tenderBody: tender,
       tenderHash: tHash,
@@ -445,6 +465,7 @@ export function generateFinalDemoAuthoritativeMaterials(
       auctionEndsAt,
       relativeTimestamps: {
         auctionWindowSeconds: windowSeconds,
+        prepBufferSeconds: prepBuffer,
         pickupEarliest,
         pickupLatest,
         deliveryDeadline,
@@ -485,7 +506,8 @@ export function generateFinalDemoAuthoritativeMaterials(
     assertNoPrivateKeyFields(materials, "authoritative-materials");
 
     if (input.persist !== false) {
-      const materialsPath = input.materialsPath ?? FINAL_DEMO_MATERIALS_PATH;
+      const materialsPath =
+        input.materialsPath ?? FINAL_DEMO_LIVE_MATERIALS_PATH;
       atomicWriteJson(materialsPath, materials);
       // Re-load and re-assert (persisted form)
       const reloaded = loadFinalDemoAuthoritativeMaterials(materialsPath);
@@ -504,7 +526,9 @@ export function generateFinalDemoAuthoritativeMaterials(
 export function loadFinalDemoAuthoritativeMaterials(
   materialsPath?: string,
 ): FinalDemoAuthoritativeMaterials {
-  const absolute = path.resolve(materialsPath ?? FINAL_DEMO_MATERIALS_PATH);
+  const absolute = path.resolve(
+    materialsPath ?? FINAL_DEMO_LIVE_MATERIALS_PATH,
+  );
   if (!existsSync(absolute)) {
     throw new FinalDemoError(
       "Authoritative materials package missing",
@@ -541,6 +565,10 @@ export function parseFinalDemoAuthoritativeMaterials(
       "Materials dataClassification must be PUBLIC_SYNTHETIC_DEMO",
       "MATERIALS_INVALID",
     );
+  }
+  // Back-compat: older packages without auctionOpensAt use runBaseTime
+  if (typeof o.auctionOpensAt !== "string" || !o.auctionOpensAt) {
+    (o as FinalDemoAuthoritativeMaterials).auctionOpensAt = o.runBaseTime;
   }
   assertNoPrivateKeyFields(raw, "authoritative-materials");
   if (!o.tenderBody || !Array.isArray(o.signedBids) || o.signedBids.length !== 2) {
