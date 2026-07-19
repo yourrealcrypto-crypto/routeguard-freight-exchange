@@ -218,7 +218,10 @@ export function assessTimedOutConfirmationRecovery(
   }
   if (
     record.facilitatorSettle.transactionId &&
-    record.facilitatorSettle.transactionId !== record.transactionId
+    !transactionIdsEqual(
+      record.facilitatorSettle.transactionId,
+      record.transactionId,
+    )
   ) {
     return { ok: false, reason: "settlement transaction ID mismatch" };
   }
@@ -240,7 +243,7 @@ export function assessTimedOutConfirmationRecovery(
   }
   if (
     record.mirrorPoll &&
-    record.mirrorPoll.transactionId !== record.transactionId
+    !transactionIdsEqual(record.mirrorPoll.transactionId, record.transactionId)
   ) {
     return { ok: false, reason: "mirror poll transaction ID mismatch" };
   }

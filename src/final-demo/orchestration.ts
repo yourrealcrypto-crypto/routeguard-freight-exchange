@@ -65,6 +65,8 @@ import {
   FINAL_DEMO_WINNER_ACCOUNT,
   HISTORICAL_PHASE5_TOPIC_ID,
   HISTORICAL_TOPIC_DISCLOSURE,
+  DRY_SYNTHETIC_DATA_DISCLOSURE,
+  HEDERA_NON_AFFILIATION_DISCLAIMER,
   SYNTHETIC_DATA_DISCLOSURE,
   type FinalDemoMessageLabel,
 } from "./constants";
@@ -198,7 +200,7 @@ export type FinalDemoOrchestrationDeps = {
 
 export type FinalDemoOrchestrationResult = {
   mode: FinalDemoOrchestrationMode;
-  disclosure: typeof SYNTHETIC_DATA_DISCLOSURE;
+  disclosure: typeof SYNTHETIC_DATA_DISCLOSURE | typeof DRY_SYNTHETIC_DATA_DISCLOSURE;
   historicalTopicDisclosure: typeof HISTORICAL_TOPIC_DISCLOSURE;
   attempt: FinalDemoAttemptRecord;
   materials: {
@@ -562,6 +564,9 @@ export async function runFinalDemoOrchestration(
           : {}),
       materialsPath: paths.materials,
       persist: true,
+      disclosure: isLive
+        ? SYNTHETIC_DATA_DISCLOSURE
+        : DRY_SYNTHETIC_DATA_DISCLOSURE,
     });
     // Independent reload
     materials = loadFinalDemoAuthoritativeMaterials(paths.materials);
@@ -1581,7 +1586,9 @@ export async function runFinalDemoOrchestration(
 
   const result: FinalDemoOrchestrationResult = {
     mode: deps.mode,
-    disclosure: SYNTHETIC_DATA_DISCLOSURE,
+    disclosure: isLive
+      ? SYNTHETIC_DATA_DISCLOSURE
+      : DRY_SYNTHETIC_DATA_DISCLOSURE,
     historicalTopicDisclosure: HISTORICAL_TOPIC_DISCLOSURE,
     attempt,
     materials: {
@@ -1645,8 +1652,8 @@ export async function runFinalDemoOrchestration(
     conservativeEnvelopeByteCount: conservative.byteCount,
     dryRunEnvelopeByteCount: actualByteCount,
     envelopeWithinLimit:
-      actualByteCount <= HCS_MAX_MESSAGE_BYTES &&
-      conservative.byteCount <= HCS_MAX_MESSAGE_BYTES,
+      actualByteCount < HCS_MAX_MESSAGE_BYTES &&
+      conservative.byteCount < HCS_MAX_MESSAGE_BYTES,
     networkWrites: {
       topicCreates: deps.topicTransport.getCreateCount(),
       hcsSubmits: deps.hcsTransport.getSubmitCount(),
@@ -1726,23 +1733,38 @@ function sanitizeEvidence(
       routeReservedRecordHash: attemptRecord.routeReservedRecordHash,
       finalHashes: attemptRecord.finalHashes,
     },
-    hashScanTopic: r.topic.topicId
-      ? `https://hashscan.io/testnet/topic/${r.topic.topicId}`
-      : null,
-    hashScanTopicCreate: r.topic.topicCreateTransactionId
-      ? `https://hashscan.io/testnet/transaction/${r.topic.topicCreateTransactionId}`
-      : null,
-    hashScanPayment: r.payment.transactionId
-      ? `https://hashscan.io/testnet/transaction/${r.payment.transactionId}`
-      : null,
-    mirrorTopic: r.topic.topicId
-      ? `https://testnet.mirrornode.hedera.com/api/v1/topics/${r.topic.topicId}/messages`
-      : null,
+    // F-007 — dry evidence must not emit active HashScan / Mirror URLs for
+    // simulated identifiers. Live evidence alone exposes verification links.
+    hashScanTopic:
+      r.mode === FINAL_DEMO_MODE_LIVE && r.topic.topicId
+        ? `https://hashscan.io/testnet/topic/${r.topic.topicId}`
+        : null,
+    hashScanTopicCreate:
+      r.mode === FINAL_DEMO_MODE_LIVE && r.topic.topicCreateTransactionId
+        ? `https://hashscan.io/testnet/transaction/${r.topic.topicCreateTransactionId}`
+        : null,
+    hashScanPayment:
+      r.mode === FINAL_DEMO_MODE_LIVE && r.payment.transactionId
+        ? `https://hashscan.io/testnet/transaction/${r.payment.transactionId}`
+        : null,
+    mirrorTopic:
+      r.mode === FINAL_DEMO_MODE_LIVE && r.topic.topicId
+        ? `https://testnet.mirrornode.hedera.com/api/v1/topics/${r.topic.topicId}/messages`
+        : null,
   };
 }
 
 function formatEvidenceMarkdown(r: FinalDemoOrchestrationResult): string {
-  return `# Final Demo ${r.mode === FINAL_DEMO_MODE_LIVE ? "Live" : "Dry-Run"} Evidence
+  const isLive = r.mode === FINAL_DEMO_MODE_LIVE;
+  const sim = isLive ? "" : " *(simulated — not a live network identifier)*";
+  const networkSection = isLive
+    ? `Real network: **true**
+Counts: topicCreates=${r.networkWrites.topicCreates}, hcs=${r.networkWrites.hcsSubmits}, payments=${r.networkWrites.payments}`
+    : `Real network: **false** — zero network writes (topicCreates/hcs/payments counts below are local mock counters only).
+Counts: topicCreates=${r.networkWrites.topicCreates}, hcs=${r.networkWrites.hcsSubmits}, payments=${r.networkWrites.payments}
+Simulated identifiers only — no HashScan links are published for dry-run evidence.`;
+
+  return `# Final Demo ${isLive ? "Live" : "Dry-Run"} Evidence
 
 ## Disclosure
 
@@ -1752,7 +1774,7 @@ ${r.disclosure}
 
 ${r.historicalTopicDisclosure}
 
-**Authority topic: \`${r.topic.topicId}\` — not ${HISTORICAL_PHASE5_TOPIC_ID}.**
+**Authority topic: \`${r.topic.topicId}\`${sim} — not ${HISTORICAL_PHASE5_TOPIC_ID}.**
 
 ## Attempt
 
@@ -1763,18 +1785,18 @@ ${r.historicalTopicDisclosure}
 
 ## Topic
 
-- Topic ID: \`${r.topic.topicId}\`
-- Create tx: \`${r.topic.topicCreateTransactionId}\`
+- Topic ID: \`${r.topic.topicId}\`${sim}
+- Create tx: \`${r.topic.topicCreateTransactionId}\`${sim}
 - Memo: \`${r.topic.topicMemo}\`
 
 ## HCS sequences 1–5
 
-| Seq | Label | Envelope hash | Consensus |
-|-----|-------|---------------|-----------|
+| Seq | Label | Envelope hash | Consensus | Identifier class |
+|-----|-------|---------------|-----------|------------------|
 ${r.sequences
   .map(
     (s) =>
-      `| ${s.sequence} | ${s.label} | \`${s.envelopeHash}\` | \`${s.consensusTimestamp}\` |`,
+      `| ${s.sequence} | ${s.label} | \`${s.envelopeHash}\` | \`${s.consensusTimestamp}\` | ${isLive ? "live testnet" : "simulated"} |`,
   )
   .join("\n")}
 
@@ -1784,7 +1806,7 @@ ${r.sequences
 - winningBidHash: \`${r.finalHashes.winningBidHash}\`
 - evaluatedBidSetHash: \`${r.finalHashes.evaluatedBidSetHash}\`
 - decisionManifestHash: \`${r.finalHashes.decisionManifestHash}\`
-- Reconciliation: \`${r.reconciliationReference}\`
+- Reconciliation: \`${r.reconciliationReference}\`${sim}
 - Barrier consensus: \`${r.barrierConsensusTimestamp}\`
 - Auction ends: \`${r.auctionEndsAt}\`
 
@@ -1797,7 +1819,7 @@ ${r.sequences
 - Facilitator fee: \`${r.payment.economics.facilitatorFee.status}\`
 - RouteGuard platform fee: \`${r.payment.economics.routeGuardPlatformFee.status}\`
 - Payer \`${r.payment.payer}\` → receiver \`${r.payment.receiver}\`
-- Tx: \`${r.payment.transactionId}\`
+- Tx: \`${r.payment.transactionId}\`${sim}
 - Consensus: \`${r.payment.consensusTimestamp}\`
 - Settle count (process): ${r.settleCallCount ?? "n/a"}
 
@@ -1810,7 +1832,7 @@ ${formatPaymentEconomicsLines(r.payment.economics)
 ## ROUTE_RESERVED
 
 - Sequence: 5
-- Byte count: ${r.routeReserved.byteCount} (limit ${HCS_MAX_MESSAGE_BYTES})
+- Byte count: ${r.routeReserved.byteCount} (strict limit: must be < ${HCS_MAX_MESSAGE_BYTES})
 - Conservative budget: ${r.conservativeEnvelopeByteCount}
 - Record hash: \`${r.reservationRecordHash}\`
 
@@ -1820,8 +1842,11 @@ ${r.webhookEventIds.map((id, i) => `- \`${id}\` hash \`${r.webhookPayloadHashes[
 
 ## Network writes
 
-Real network: **${r.networkWrites.realNetwork}**
-Counts: topicCreates=${r.networkWrites.topicCreates}, hcs=${r.networkWrites.hcsSubmits}, payments=${r.networkWrites.payments}
+${networkSection}
+
+## Attribution
+
+${HEDERA_NON_AFFILIATION_DISCLAIMER}
 `;
 }
 

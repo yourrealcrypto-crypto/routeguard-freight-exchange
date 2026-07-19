@@ -335,8 +335,8 @@ export async function runPhase6bDryRun(
     conservativeEnvelopeByteCount: conservative.byteCount,
     dryRunEnvelopeByteCount,
     envelopeWithinLimit:
-      dryRunEnvelopeByteCount <= HCS_MAX_MESSAGE_BYTES &&
-      conservative.byteCount <= HCS_MAX_MESSAGE_BYTES,
+      dryRunEnvelopeByteCount < HCS_MAX_MESSAGE_BYTES &&
+      conservative.byteCount < HCS_MAX_MESSAGE_BYTES,
     hcsMaxBytes: HCS_MAX_MESSAGE_BYTES,
     topicPreflight,
     networkWrites: {

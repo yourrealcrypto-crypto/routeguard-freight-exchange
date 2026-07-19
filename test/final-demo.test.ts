@@ -1055,8 +1055,8 @@ describe("Final demo — recovery and evidence", () => {
       result.payment.economics.hederaNetworkTransferCost.deductedFromCarrier,
     ).toBe(false);
     expect(result.routeReserved.sequence).toBe(5);
-    expect(result.dryRunEnvelopeByteCount).toBeLessThanOrEqual(1024);
-    expect(result.conservativeEnvelopeByteCount).toBeLessThanOrEqual(1024);
+    expect(result.dryRunEnvelopeByteCount).toBeLessThan(1024);
+    expect(result.conservativeEnvelopeByteCount).toBeLessThan(1024);
     expect(result.historicalTopicDisclosure).toBe(HISTORICAL_TOPIC_DISCLOSURE);
     expect(result.reconciliationReference).toContain(result.topic.topicId);
     expect(result.reconciliationReference).not.toContain(

@@ -635,7 +635,7 @@ describe("Phase 6B.1A — HCS publisher wiring", () => {
       createdAt: "2026-07-15T19:06:01.000Z",
       payload: buildRouteReservedPayload(rr, r.winningCarrierId),
     });
-    expect(measureRouteReservedEnvelope(env)).toBeLessThanOrEqual(1024);
+    expect(measureRouteReservedEnvelope(env)).toBeLessThan(1024);
     // decisionManifestHash must not be flat on HCS payload
     expect(env.payload).not.toHaveProperty("decisionManifestHash");
 

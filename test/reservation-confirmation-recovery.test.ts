@@ -250,6 +250,64 @@ describe("F-001 guarded confirmation recovery", () => {
     expect(controls.settleCallCount).toBe(1);
   });
 
+  it("accepts SDK-form and Mirror-form IDs for the same exact transaction", async () => {
+    const store = new InMemoryReservationStore();
+    const controls = createMockControls();
+    controls.mirrorImpl = async (txId) => notFound(txId);
+    const { service, bundle } = buildService({
+      controls,
+      store,
+      confirmationTimeoutMs: 300,
+      mirrorPollIntervalMs: 50,
+    });
+    const { reservationId, paymentPayloadHash, clientTransaction } =
+      await createAndSelect(service, bundle, "USDC", "res-txid-form-001");
+    const timedOut = await service.submitPayment({
+      clientTransaction,
+      reservationId,
+      optionId: "USDC",
+      paymentPayloadHash,
+    });
+    expect(timedOut.state).toBe("CONFIRMATION_TIMED_OUT");
+    const sdkId = timedOut.transactionId!;
+    // Mirror form of the same exact transaction (0.0.x@s.n → 0.0.x-s-n).
+    const mirrorForm = sdkId.replace("@", "-").replace(/\.(?=\d+$)/, "-");
+    expect(mirrorForm).not.toBe(sdkId);
+
+    const sameTxFacilitator = {
+      ...timedOut,
+      facilitatorSettle: {
+        ...timedOut.facilitatorSettle!,
+        transactionId: mirrorForm,
+      },
+    };
+    expect(assessTimedOutConfirmationRecovery(sameTxFacilitator)).toEqual({
+      ok: true,
+    });
+
+    const sameTxMirrorPoll = {
+      ...timedOut,
+      mirrorPoll: {
+        ...timedOut.mirrorPoll!,
+        transactionId: mirrorForm,
+      },
+    };
+    expect(assessTimedOutConfirmationRecovery(sameTxMirrorPoll)).toEqual({
+      ok: true,
+    });
+
+    // A different transaction in either form still fails closed.
+    const different = {
+      ...timedOut,
+      facilitatorSettle: {
+        ...timedOut.facilitatorSettle!,
+        transactionId: "0.0.9197513@1784142999.999999999",
+      },
+    };
+    expect(assessTimedOutConfirmationRecovery(different).ok).toBe(false);
+    expect(controls.settleCallCount).toBe(1);
+  });
+
   it("service routes a blocked recovery to MANUAL_REVIEW_REQUIRED without settling again", async () => {
     const store = new InMemoryReservationStore();
     const controls = createMockControls();
