@@ -110,6 +110,16 @@ export function renderDevelopmentPage(): string {
       cursor: not-allowed;
     }
 
+    .rail {
+      margin: 0 0 12px;
+    }
+
+    .rail-cost {
+      margin: 6px 0 0;
+      color: #525252;
+      font-size: 13px;
+    }
+
     footer {
       padding: 0 24px 24px;
       color: #737373;
@@ -177,8 +187,18 @@ export function renderDevelopmentPage(): string {
 
       <p>Preferred settlement rail</p>
 
-      <button type="button" disabled>USDC</button>
-      <button type="button" disabled>HBAR</button>
+      <div class="rail">
+        <button type="button" disabled>USDC</button>
+        <p class="rail-cost">
+          Challenge-stated Hedera transfer cost: $0.001
+        </p>
+      </div>
+      <div class="rail">
+        <button type="button" disabled>HBAR</button>
+        <p class="rail-cost">
+          Challenge-stated Hedera transfer cost: $0.0001
+        </p>
+      </div>
 
       <dl>
         <dt>402 challenge</dt>
@@ -186,6 +206,34 @@ export function renderDevelopmentPage(): string {
 
         <dt>Settlement</dt>
         <dd>—</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Payment summary</h2>
+      <span class="status">AWAITING SELECTION</span>
+
+      <dl>
+        <dt>Carrier reservation</dt>
+        <dd>—</dd>
+
+        <dt>Selected asset</dt>
+        <dd>—</dd>
+
+        <dt>Hedera network transfer cost</dt>
+        <dd>
+          Challenge-stated fixed amount by rail
+          (HBAR $0.0001 / USDC $0.001)
+        </dd>
+
+        <dt>Facilitator fee</dt>
+        <dd>Not modeled as a separate x402 charge</dd>
+
+        <dt>RouteGuard fee</dt>
+        <dd>Not modeled as a separate charge</dd>
+
+        <dt>Carrier received</dt>
+        <dd>Equals reservation payment (network cost not deducted)</dd>
       </dl>
     </section>
 

@@ -17,6 +17,11 @@
 
 import { fileURLToPath } from "node:url";
 
+import { formatPaymentEconomicsLines } from "../src/domain/payment-economics";
+import {
+  HBAR_NETWORK_TRANSFER_COST_USD,
+  STABLECOIN_NETWORK_TRANSFER_COST_USD,
+} from "../src/domain/hedera-transfer-costs";
 import { runFinalDemoDryRun } from "../src/final-demo/dry-run";
 import { isFinalDemoDryRun } from "../src/final-demo/guards";
 import { runFinalDemoLiveExecution } from "../src/final-demo/live-execution";
@@ -35,6 +40,12 @@ export async function main(): Promise<void> {
   console.log(
     `Historical topic ${HISTORICAL_PHASE5_TOPIC_ID}: ${HISTORICAL_TOPIC_DISCLOSURE}`,
   );
+  console.log(
+    "Hedera makes machine-scale payment viable because the challenge specifies a fixed $0.0001 cost for an HBAR transfer and $0.001 for a stablecoin transfer.",
+  );
+  console.log(
+    `Challenge-stated fixed Hedera network transfer costs: HBAR=$${HBAR_NETWORK_TRANSFER_COST_USD}; Stablecoin/HTS=$${STABLECOIN_NETWORK_TRANSFER_COST_USD}`,
+  );
 
   if (isFinalDemoDryRun(process.env)) {
     console.log("Mode: OFFLINE_DRY_RUN (default — no network writes)");
@@ -49,6 +60,16 @@ export async function main(): Promise<void> {
     console.log(
       `  ROUTE_RESERVED bytes: ${result.dryRunEnvelopeByteCount} (conservative ${result.conservativeEnvelopeByteCount})`,
     );
+    console.log(`  selected rail : ${result.payment.selectedOptionId}`);
+    console.log(
+      `  reservation payment: ${result.payment.amount} atomic USDC (carrier receives ${result.payment.carrierReceivedAmountAtomic})`,
+    );
+    console.log(
+      `  challenge-stated Hedera transfer cost: $${result.payment.challengeStatedHederaNetworkTransferCostUsd}`,
+    );
+    for (const line of formatPaymentEconomicsLines(result.payment.economics)) {
+      console.log(`  economics     : ${line}`);
+    }
     console.log(`  evidence      : ${result.evidencePaths.json}`);
     console.log(
       `  real network writes: none (simulated topicCreates=${result.networkWrites.topicCreates}, hcs=${result.networkWrites.hcsSubmits}, payments=${result.networkWrites.payments})`,

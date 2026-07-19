@@ -70,6 +70,11 @@ import {
   assertBarrierAfterAuctionEnd,
   assertCommitmentTimeRemaining,
 } from "./timing";
+import {
+  buildPaymentEconomicsSummary,
+  formatPaymentEconomicsLines,
+} from "../domain/payment-economics";
+import { STABLECOIN_NETWORK_TRANSFER_COST_USD } from "../domain/hedera-transfer-costs";
 
 const DRY_RUN_WEBHOOK_KEY =
   "7a8b9c0d1e2f30415263748596a7b8c9d0e1f2031425364758697a8b9c0d1e2f";
@@ -123,6 +128,10 @@ export type FinalDemoDryRunResult = {
     receiver: string;
     token: string;
     amount: string;
+    /** Carrier-received reservation amount — network cost not deducted. */
+    carrierReceivedAmountAtomic: string;
+    challengeStatedHederaNetworkTransferCostUsd: typeof STABLECOIN_NETWORK_TRANSFER_COST_USD;
+    economics: ReturnType<typeof buildPaymentEconomicsSummary>;
     transactionId: string;
     consensusTimestamp: string;
     tokenTransfers: Array<{
@@ -722,6 +731,16 @@ export async function runFinalDemoDryRun(
       receiver: FINAL_DEMO_WINNER_ACCOUNT,
       token: FINAL_DEMO_USDC_TOKEN,
       amount: FINAL_DEMO_USDC_AMOUNT_ATOMIC,
+      carrierReceivedAmountAtomic: FINAL_DEMO_USDC_AMOUNT_ATOMIC,
+      challengeStatedHederaNetworkTransferCostUsd:
+        STABLECOIN_NETWORK_TRANSFER_COST_USD,
+      economics: buildPaymentEconomicsSummary({
+        optionId: "USDC",
+        asset: FINAL_DEMO_USDC_TOKEN,
+        amountAtomic: FINAL_DEMO_USDC_AMOUNT_ATOMIC,
+        displayAmount: "0.01",
+        currencyLabel: "USDC",
+      }),
       transactionId: payment.transactionId,
       consensusTimestamp: payment.consensusTimestamp,
       tokenTransfers: payment.tokenTransfers,
@@ -816,9 +835,20 @@ ${r.sequences
 
 ## Payment (simulated)
 
-- USDC only: token \`${r.payment.token}\` amount \`${r.payment.amount}\`
+- Selected rail: \`${r.payment.selectedOptionId}\`
+- Carrier reservation payment: \`${r.payment.amount}\` atomic of token \`${r.payment.token}\`
+- Carrier-received amount: \`${r.payment.carrierReceivedAmountAtomic}\` (network cost not deducted)
+- Challenge-stated fixed Hedera network transfer cost: \`$${r.payment.challengeStatedHederaNetworkTransferCostUsd}\` USD
+- Facilitator fee: \`${r.payment.economics.facilitatorFee.status}\`
+- RouteGuard platform fee: \`${r.payment.economics.routeGuardPlatformFee.status}\`
 - Payer \`${r.payment.payer}\` → receiver \`${r.payment.receiver}\`
 - Tx: \`${r.payment.transactionId}\`
+
+### Payment economics lines
+
+${formatPaymentEconomicsLines(r.payment.economics)
+  .map((line) => `- ${line}`)
+  .join("\n")}
 
 ## ROUTE_RESERVED
 

@@ -7,6 +7,8 @@ import { Hono } from "hono";
 import { ZodError } from "zod";
 
 import {
+  paymentEconomicsForSelection,
+  publicPaymentRailsFromOffer,
   publicReservationView,
   type ReservationService,
 } from "./reservation-service";
@@ -95,6 +97,8 @@ export function registerReservationRoutes(
       return c.json({
         reservationId: record.reservationId,
         offer: record.offer,
+        // Application-level rail presentation (not x402 protocol fields).
+        paymentRails: publicPaymentRailsFromOffer(record.offer),
         // immutable public offer only — no private bid data
       });
     } catch (e) {
@@ -127,6 +131,9 @@ export function registerReservationRoutes(
               payerAccount: record.selected.payerAccount,
               resourcePath: record.selected.resourcePath,
             }
+          : null,
+        paymentEconomics: record.selected
+          ? paymentEconomicsForSelection(record.selected)
           : null,
       });
     } catch (e) {
@@ -211,6 +218,10 @@ async function payChallenge(
         challengeHash: challenge.challengeHash,
         issuedAt: challenge.issuedAt,
       },
+      // Economics are application metadata beside the protocol challenge.
+      paymentEconomics: record.selected
+        ? paymentEconomicsForSelection(record.selected)
+        : null,
       note: "Demo reservation fee challenge — not freight price",
     });
   } catch (e) {
@@ -246,10 +257,17 @@ async function paySubmit(
       reservationId: record.reservationId,
       state: record.state,
       transactionId: record.transactionId,
+      paymentEconomics: record.selected
+        ? paymentEconomicsForSelection(record.selected)
+        : null,
       routeReserved: record.routeReserved
         ? {
             reservationId: record.routeReserved.reservationId,
             selectedOptionId: record.routeReserved.selectedOptionId,
+            paymentAsset: record.routeReserved.paymentAsset,
+            paymentAmountAtomic: record.routeReserved.paymentAmountAtomic,
+            carrierReceivedAmountAtomic:
+              record.routeReserved.paymentAmountAtomic,
             transactionId: record.routeReserved.transactionId,
             consensusTimestamp: record.routeReserved.consensusTimestamp,
             reservedAt: record.routeReserved.reservedAt,

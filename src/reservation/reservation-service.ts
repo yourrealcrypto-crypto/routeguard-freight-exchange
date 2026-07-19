@@ -15,6 +15,10 @@
 import { randomUUID } from "node:crypto";
 
 import type { CarrierRegistry } from "../domain/carrier";
+import {
+  buildPaymentEconomicsSummary,
+  buildRailPresentation,
+} from "../domain/payment-economics";
 import type { FreightTender } from "../domain/tender";
 import { compareUtc, isUtcIsoTimestamp } from "../domain/time";
 import {
@@ -63,9 +67,11 @@ import type {
 import type { RouteReservedEnvelope } from "../hcs/types";
 import {
   DEMO_RESERVATION_FEE_NOTE,
+  HBAR_RESERVATION_OPTION,
   RESERVATION_NETWORK,
   ReservationError,
   ReservationVersionConflictError,
+  USDC_RESERVATION_OPTION,
   type CreateReservationInput,
   type HcsPublicationClaim,
   type MirrorPollRecord,
@@ -1866,6 +1872,38 @@ export class ReservationService {
 }
 
 /**
+ * Public rail presentation for asset selector surfaces.
+ * Application metadata only — not part of the x402 challenge body.
+ */
+export function publicPaymentRailsFromOffer(offer: ReservationRecord["offer"]) {
+  return offer.options.map((option) =>
+    buildRailPresentation({
+      optionId: option.optionId,
+      asset: option.asset,
+      amountAtomic: option.amountAtomic,
+      displayAmount: option.displayAmount,
+      currencyLabel: option.currencyLabel,
+    }),
+  );
+}
+
+export function paymentEconomicsForSelection(
+  selected: SelectedPaymentOption,
+) {
+  const fixed =
+    selected.optionId === "USDC"
+      ? USDC_RESERVATION_OPTION
+      : HBAR_RESERVATION_OPTION;
+  return buildPaymentEconomicsSummary({
+    optionId: selected.optionId,
+    asset: selected.asset,
+    amountAtomic: selected.amountAtomic,
+    displayAmount: fixed.displayAmount,
+    currencyLabel: fixed.currencyLabel,
+  });
+}
+
+/**
  * Public reservation view — never exposes settle claims, payment payloads,
  * webhook signatures, HCS publishAttemptId, proof handles, or internal paths.
  */
@@ -1887,6 +1925,10 @@ export function publicReservationView(record: ReservationRecord): unknown {
           }
         : null;
 
+  const paymentEconomics = record.selected
+    ? paymentEconomicsForSelection(record.selected)
+    : null;
+
   return {
     reservationId: record.reservationId,
     state: record.state,
@@ -1898,6 +1940,7 @@ export function publicReservationView(record: ReservationRecord): unknown {
     winningCarrierId: record.winningCarrierId,
     winningCarrierAccount: record.winningCarrierAccount,
     offer: record.offer,
+    paymentRails: publicPaymentRailsFromOffer(record.offer),
     selectedOptionId: record.selected?.optionId ?? null,
     selectedSummary: record.selected
       ? {
@@ -1908,6 +1951,7 @@ export function publicReservationView(record: ReservationRecord): unknown {
           network: record.selected.network,
         }
       : null,
+    paymentEconomics,
     feeLabel: DEMO_RESERVATION_FEE_NOTE,
     transactionId: record.transactionId,
     routeReserved: record.routeReserved
@@ -1919,6 +1963,12 @@ export function publicReservationView(record: ReservationRecord): unknown {
           selectedOptionId: record.routeReserved.selectedOptionId,
           paymentAsset: record.routeReserved.paymentAsset,
           paymentAmountAtomic: record.routeReserved.paymentAmountAtomic,
+          /** Carrier receives the full reservation payment; network cost not deducted. */
+          carrierReceivedAmountAtomic:
+            record.routeReserved.paymentAmountAtomic,
+          challengeStatedHederaNetworkTransferCostUsd: paymentEconomics
+            ? paymentEconomics.hederaNetworkTransferCost.networkFeeUsd
+            : null,
           transactionId: record.routeReserved.transactionId,
           consensusTimestamp: record.routeReserved.consensusTimestamp,
           reservedAt: record.routeReserved.reservedAt,

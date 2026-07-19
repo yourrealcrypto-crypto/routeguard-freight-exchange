@@ -730,6 +730,15 @@ describe("Final demo — recovery and evidence", () => {
     expect(result.payment.receiver).toBe(FINAL_DEMO_WINNER_ACCOUNT);
     expect(result.payment.token).toBe(FINAL_DEMO_USDC_TOKEN);
     expect(result.payment.amount).toBe(FINAL_DEMO_USDC_AMOUNT_ATOMIC);
+    expect(result.payment.carrierReceivedAmountAtomic).toBe(
+      FINAL_DEMO_USDC_AMOUNT_ATOMIC,
+    );
+    expect(result.payment.challengeStatedHederaNetworkTransferCostUsd).toBe(
+      "0.001",
+    );
+    expect(
+      result.payment.economics.hederaNetworkTransferCost.deductedFromCarrier,
+    ).toBe(false);
     expect(result.routeReserved.sequence).toBe(5);
     expect(result.dryRunEnvelopeByteCount).toBeLessThanOrEqual(1024);
     expect(result.conservativeEnvelopeByteCount).toBeLessThanOrEqual(1024);
