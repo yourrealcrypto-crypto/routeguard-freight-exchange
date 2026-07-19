@@ -49,6 +49,7 @@ import {
   FINAL_DEMO_PREP_BUFFER_SECONDS,
   FINAL_DEMO_USDC_AMOUNT_ATOMIC,
   FINAL_DEMO_USDC_TOKEN,
+  DRY_SYNTHETIC_DATA_DISCLOSURE,
   SYNTHETIC_DATA_DISCLOSURE,
 } from "./constants";
 import { canonicalSha256 } from "../domain/canonical-hash";
@@ -59,10 +60,14 @@ import {
 } from "./template";
 import { assertNoPrivateKeyFields } from "./secret-scan";
 
+export type FinalDemoMaterialsDisclosure =
+  | typeof SYNTHETIC_DATA_DISCLOSURE
+  | typeof DRY_SYNTHETIC_DATA_DISCLOSURE;
+
 export type FinalDemoAuthoritativeMaterials = {
   schemaVersion: "final-demo-authoritative-materials-1.0";
   dataClassification: typeof DATA_CLASSIFICATION_PUBLIC;
-  disclosure: typeof SYNTHETIC_DATA_DISCLOSURE;
+  disclosure: FinalDemoMaterialsDisclosure;
   attemptId: string;
   shortAttemptId: string;
   runId: string;
@@ -172,6 +177,8 @@ export type GenerateMaterialsInput = {
   materialsPath?: string;
   /** When false, do not write disk (tests). Default true. */
   persist?: boolean;
+  /** Mode-specific disclosure (dry must not claim real network writes). */
+  disclosure?: FinalDemoMaterialsDisclosure;
 };
 
 export function hashMaterialsPackage(
@@ -452,7 +459,7 @@ export function generateFinalDemoAuthoritativeMaterials(
     const materials: FinalDemoAuthoritativeMaterials = {
       schemaVersion: "final-demo-authoritative-materials-1.0",
       dataClassification: DATA_CLASSIFICATION_PUBLIC,
-      disclosure: SYNTHETIC_DATA_DISCLOSURE,
+      disclosure: input.disclosure ?? SYNTHETIC_DATA_DISCLOSURE,
       attemptId,
       shortAttemptId,
       runId,

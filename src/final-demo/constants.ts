@@ -22,11 +22,30 @@ export const HISTORICAL_PHASE5_TOPIC_ID = "0.0.9587459" as const;
 export const HISTORICAL_TOPIC_DISCLOSURE =
   "Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration." as const;
 
+/**
+ * Live-mode disclosure: business data is synthetic; settlement/HCS writes are
+ * real Hedera testnet transactions when executed under live guards.
+ */
 export const SYNTHETIC_DATA_DISCLOSURE =
   "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions." as const;
 
+/**
+ * Dry-mode disclosure (F-007): rehearsal only — zero network writes; identifiers
+ * are simulated and must not be presented as live HashScan evidence.
+ */
+export const DRY_SYNTHETIC_DATA_DISCLOSURE =
+  "OFFLINE_DRY_RUN rehearsal only. All auction, carrier, topic, and payment identifiers in this evidence are deliberately synthetic and simulated for reproducibility. Zero network writes occurred: no Hedera topic was created, no HCS messages were submitted, and no payment was settled. These are not real testnet transactions and must not be treated as live HashScan evidence." as const;
+
 export const DATA_CLASSIFICATION_PUBLIC =
   "PUBLIC_SYNTHETIC_DEMO" as const;
+
+/** Non-affiliation disclaimer required for Hedera trademark use. */
+export const HEDERA_NON_AFFILIATION_DISCLAIMER =
+  "RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC." as const;
+
+/** F-011 plan differentiator sentence (exact wording). */
+export const PRIVATE_BID_COMMITMENT_SENTENCE =
+  "Private off-chain bids with salted, consensus-timestamped HCS commitments and reproducible deterministic evaluation." as const;
 
 export const CONFIRM_FINAL_DEMO_VALUE =
   "CREATE_NEW_TOPIC_AND_EXECUTE_ONE_USDC_RESERVATION" as const;

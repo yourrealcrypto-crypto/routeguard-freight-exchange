@@ -1,81 +1,81 @@
 {
   "mode": "OFFLINE_DRY_RUN",
-  "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.",
+  "disclosure": "OFFLINE_DRY_RUN rehearsal only. All auction, carrier, topic, and payment identifiers in this evidence are deliberately synthetic and simulated for reproducibility. Zero network writes occurred: no Hedera topic was created, no HCS messages were submitted, and no payment was settled. These are not real testnet transactions and must not be treated as live HashScan evidence.",
   "historicalTopicDisclosure": "Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.",
   "materials": {
-    "attemptId": "final-demo-e6b63243-50a3-4bfc-a252-cdf2737b059f",
-    "shortAttemptId": "737b059f",
-    "tenderId": "tender-final-737b059f",
-    "bidAlphaId": "bid-alpha-final-737b059f",
-    "bidBetaId": "bid-beta-final-737b059f",
-    "reservationId": "reservation-final-737b059f",
-    "tenderHash": "sha256:799ac72c7d289f4cd789d685d4c22cc8a07d72b71b305ea80c156efcb0f96d67",
+    "attemptId": "final-demo-baef2fa5-940c-4e7f-94a6-6620e7212cfa",
+    "shortAttemptId": "e7212cfa",
+    "tenderId": "tender-final-e7212cfa",
+    "bidAlphaId": "bid-alpha-final-e7212cfa",
+    "bidBetaId": "bid-beta-final-e7212cfa",
+    "reservationId": "reservation-final-e7212cfa",
+    "tenderHash": "sha256:751352cadbc8a7fa53d8a34c21af8e244b5db258d5cc6d9ac4ee442eaa518962",
     "bidHashes": {
-      "alpha": "sha256:2b8e364115f1e0353bf38081610667aa0728066a2d8a87d1e6c292565c603694",
-      "beta": "sha256:5b671e58a3fc8c0d4b3d641967e66076faf36a36188b8f86346ed3074b7c9e36"
+      "alpha": "sha256:f846225f2fd85ae32d36c554935b57c6c356d2dd14c0ec440bc3f7e9f2484e1a",
+      "beta": "sha256:2deb335579c6e6cf26ba96b1d2b529717e4bcef59cff159bf0c33c4845b36ed7"
     },
     "receiptHashes": {
-      "alpha": "sha256:1ab378f8c974e4c840b300d6e57c25256b64ae992ad20b17421893adf0bf831c",
-      "beta": "sha256:2179641b642ba155f90edec15ec1a16443d629db0f151f8f303753802b59b1b0"
+      "alpha": "sha256:ee2dbf81a07ed8be0990f0e161251f6e3f8baa3a7154c1600576b1be84b1ce45",
+      "beta": "sha256:2e3a4724419851c50e1dcbcaa520954b689f4210c6f5568da24a71be7d782d87"
     },
     "commitmentEnvelopeHashes": {
-      "alpha": "sha256:7ac89d2c18f6de47ce6745bd3adaa1b92ee94a58aeea33b4672e6d21b6e4cb60",
-      "beta": "sha256:5798a6baef9882fa4f78d77ec73dd3ad43f4c75825690a825582e0a6becc46d6"
+      "alpha": "sha256:9b993775c2b00ae5c60e5a8dd49205b4e0a909f60bd33bdcdb6967063570e34a",
+      "beta": "sha256:7dd41cbe8e20af44a8f02c001a37e53364d62330aacba916a01de57876c99f27"
     }
   },
   "topic": {
     "topicId": "0.0.9700000",
-    "topicCreateTransactionId": "0.0.9197513@1784467215.715932329",
-    "topicMemo": "routeguard-final:737b059f"
+    "topicCreateTransactionId": "0.0.9197513@1784501363.793393635",
+    "topicMemo": "routeguard-final:e7212cfa"
   },
   "sequences": [
     {
       "sequence": 1,
       "label": "AUCTION_OPEN",
-      "envelopeHash": "sha256:92f6051880383bc3ee4d20ee35d032c7768db85598893c136d6da351a2f6a579",
-      "transactionId": "0.0.9197513@1784467215.100000001",
-      "consensusTimestamp": "2026-07-19T13:20:15.454456789Z"
+      "envelopeHash": "sha256:3aeb97208cf7b71232b461d927f8cc59c5557916c2699b2822e11a6d4643e3fd",
+      "transactionId": "0.0.9197513@1784501363.100000001",
+      "consensusTimestamp": "2026-07-19T22:49:23.340456789Z"
     },
     {
       "sequence": 2,
       "label": "BID_COMMITMENT_ALPHA",
-      "envelopeHash": "sha256:7ac89d2c18f6de47ce6745bd3adaa1b92ee94a58aeea33b4672e6d21b6e4cb60",
-      "transactionId": "0.0.9197513@1784467215.100000002",
-      "consensusTimestamp": "2026-07-19T13:20:15.574456789Z"
+      "envelopeHash": "sha256:9b993775c2b00ae5c60e5a8dd49205b4e0a909f60bd33bdcdb6967063570e34a",
+      "transactionId": "0.0.9197513@1784501363.100000002",
+      "consensusTimestamp": "2026-07-19T22:49:23.460456789Z"
     },
     {
       "sequence": 3,
       "label": "BID_COMMITMENT_BETA",
-      "envelopeHash": "sha256:5798a6baef9882fa4f78d77ec73dd3ad43f4c75825690a825582e0a6becc46d6",
-      "transactionId": "0.0.9197513@1784467215.100000003",
-      "consensusTimestamp": "2026-07-19T13:20:15.694456789Z"
+      "envelopeHash": "sha256:7dd41cbe8e20af44a8f02c001a37e53364d62330aacba916a01de57876c99f27",
+      "transactionId": "0.0.9197513@1784501363.100000003",
+      "consensusTimestamp": "2026-07-19T22:49:23.580456789Z"
     },
     {
       "sequence": 4,
       "label": "AUCTION_CLOSE_BARRIER",
-      "envelopeHash": "sha256:660ece564957fd05ffcb5cca71ffb64595aef65ac2f2461ef80f52ab695a227b",
-      "transactionId": "0.0.9197513@1784467520.100000004",
-      "consensusTimestamp": "2026-07-19T13:25:20.405456789Z"
+      "envelopeHash": "sha256:8a0d055a16b557aa2f435c050f42867bd4cd516243bc441aaf39a940db242ee0",
+      "transactionId": "0.0.9197513@1784501668.100000004",
+      "consensusTimestamp": "2026-07-19T22:54:28.291456789Z"
     },
     {
       "sequence": 5,
       "label": "ROUTE_RESERVED",
-      "envelopeHash": "sha256:9143c366600c547e8a5d8d52e34d21c0731a3b53650ab32c84ff48a33a814b4c",
-      "transactionId": "0.0.9197513@1784467520.100000005",
-      "consensusTimestamp": "2026-07-19T13:25:20.725456789Z"
+      "envelopeHash": "sha256:5dfd31a70e84c79f428e3a61a0d9c6c47e3128876f50ea907b99c938f95995fd",
+      "transactionId": "0.0.9197513@1784501668.100000005",
+      "consensusTimestamp": "2026-07-19T22:54:28.611456789Z"
     }
   ],
-  "auctionEndsAt": "2026-07-19T13:25:15.284Z",
-  "barrierConsensusTimestamp": "2026-07-19T13:25:20.405456789Z",
+  "auctionEndsAt": "2026-07-19T22:54:23.170Z",
+  "barrierConsensusTimestamp": "2026-07-19T22:54:28.291456789Z",
   "reconciliationReference": "mirror:topic:0.0.9700000:1-4",
   "finalHashes": {
-    "tenderHash": "sha256:799ac72c7d289f4cd789d685d4c22cc8a07d72b71b305ea80c156efcb0f96d67",
-    "winningBidHash": "sha256:2b8e364115f1e0353bf38081610667aa0728066a2d8a87d1e6c292565c603694",
-    "evaluatedBidSetHash": "sha256:5e74d53e2fd0f12960e927de3a40b38c9824f6b0c867c2d0b9c026962342e48b",
-    "decisionManifestHash": "sha256:aa74f3eb7bc21b616e07a23ded0babed324cab1b5ba6e5942c18b04e4b2c2577"
+    "tenderHash": "sha256:751352cadbc8a7fa53d8a34c21af8e244b5db258d5cc6d9ac4ee442eaa518962",
+    "winningBidHash": "sha256:f846225f2fd85ae32d36c554935b57c6c356d2dd14c0ec440bc3f7e9f2484e1a",
+    "evaluatedBidSetHash": "sha256:ad48bc3c6266f98570ea96312b9d01af2d5c9b099fe7de2f193bfa156fcb6bc4",
+    "decisionManifestHash": "sha256:8f210b9f64afd60a5f90bc05e6e0d09a49cefd8c6181a64ff432e88829b3095b"
   },
   "winner": {
-    "bidId": "bid-alpha-final-737b059f",
+    "bidId": "bid-alpha-final-e7212cfa",
     "carrierId": "carrier-alpha",
     "carrierAccount": "0.0.9215954"
   },
@@ -113,8 +113,8 @@
       "carrierReceivedAsset": "0.0.429274",
       "totalPayerEconomicsNote": "Carrier reservation payment is 0.01 USDC (10000 atomic units). Challenge-stated fixed Hedera network transfer cost is $0.001 USD and is not deducted from the 0.01 USDC carrier payment."
     },
-    "transactionId": "0.0.9197513@1784467520.555000000",
-    "consensusTimestamp": "2026-07-19T13:25:20.605456789Z",
+    "transactionId": "0.0.9197513@1784501668.100000000",
+    "consensusTimestamp": "2026-07-19T22:54:28.491456789Z",
     "tokenTransfers": [
       {
         "account": "0.0.9197513",
@@ -128,13 +128,13 @@
       }
     ]
   },
-  "reservationRecordHash": "sha256:fbc2ac94cdf7c803c545f64c68441225413f6b908c7b02e51729042cbaf1bda6",
+  "reservationRecordHash": "sha256:abcf344117f97babf93078c84fde650f64fdb20ca16ac1ad07830c709d5e9086",
   "routeReserved": {
     "sequence": 5,
-    "envelopeHash": "sha256:9143c366600c547e8a5d8d52e34d21c0731a3b53650ab32c84ff48a33a814b4c",
+    "envelopeHash": "sha256:5dfd31a70e84c79f428e3a61a0d9c6c47e3128876f50ea907b99c938f95995fd",
     "byteCount": 941,
-    "transactionId": "0.0.9197513@1784467520.100000005",
-    "consensusTimestamp": "2026-07-19T13:25:20.725456789Z"
+    "transactionId": "0.0.9197513@1784501668.100000005",
+    "consensusTimestamp": "2026-07-19T22:54:28.611456789Z"
   },
   "conservativeEnvelopeByteCount": 949,
   "dryRunEnvelopeByteCount": 941,
@@ -155,34 +155,34 @@
   "finalState": "DRY_RUN_COMPLETE",
   "settleCallCount": 1,
   "webhookEventIds": [
-    "evt-route-reserved-reservation-final-737b059f-shipper",
-    "evt-route-reserved-reservation-final-737b059f-carrier"
+    "evt-route-reserved-reservation-final-e7212cfa-shipper",
+    "evt-route-reserved-reservation-final-e7212cfa-carrier"
   ],
   "webhookPayloadHashes": [
-    "sha256:274e19e97b931e054089da6b4edb1085233ac07eeb9dc2f4ef2d3c5de2750fcb",
-    "sha256:fb3d9a813327d93e1ddafb83cb338b55ee68cd4fe202957eb422bbf9c6b51fbf"
+    "sha256:747b4e87ac0ae408b3d62a1211477c5dbe83f2edc39cd1ae93e3e4b626390c95",
+    "sha256:47676e5256d926fa6c94c44f1b35704c0599adca953019381136733239537425"
   ],
   "attempt": {
-    "attemptId": "final-demo-e6b63243-50a3-4bfc-a252-cdf2737b059f",
-    "shortAttemptId": "737b059f",
+    "attemptId": "final-demo-baef2fa5-940c-4e7f-94a6-6620e7212cfa",
+    "shortAttemptId": "e7212cfa",
     "mode": "OFFLINE_DRY_RUN",
     "status": "EVIDENCE_WRITING",
     "topicId": "0.0.9700000",
-    "topicCreateTransactionId": "0.0.9197513@1784467215.715932329",
+    "topicCreateTransactionId": "0.0.9197513@1784501363.793393635",
     "plannedTopicCreates": 1,
     "plannedHcsSubmissions": 5,
     "plannedPaymentSubmissions": 1,
-    "paymentTransactionId": "0.0.9197513@1784467520.555000000",
-    "routeReservedRecordHash": "sha256:fbc2ac94cdf7c803c545f64c68441225413f6b908c7b02e51729042cbaf1bda6",
+    "paymentTransactionId": "0.0.9197513@1784501668.100000000",
+    "routeReservedRecordHash": "sha256:abcf344117f97babf93078c84fde650f64fdb20ca16ac1ad07830c709d5e9086",
     "finalHashes": {
-      "tenderHash": "sha256:799ac72c7d289f4cd789d685d4c22cc8a07d72b71b305ea80c156efcb0f96d67",
-      "winningBidHash": "sha256:2b8e364115f1e0353bf38081610667aa0728066a2d8a87d1e6c292565c603694",
-      "evaluatedBidSetHash": "sha256:5e74d53e2fd0f12960e927de3a40b38c9824f6b0c867c2d0b9c026962342e48b",
-      "decisionManifestHash": "sha256:aa74f3eb7bc21b616e07a23ded0babed324cab1b5ba6e5942c18b04e4b2c2577"
+      "tenderHash": "sha256:751352cadbc8a7fa53d8a34c21af8e244b5db258d5cc6d9ac4ee442eaa518962",
+      "winningBidHash": "sha256:f846225f2fd85ae32d36c554935b57c6c356d2dd14c0ec440bc3f7e9f2484e1a",
+      "evaluatedBidSetHash": "sha256:ad48bc3c6266f98570ea96312b9d01af2d5c9b099fe7de2f193bfa156fcb6bc4",
+      "decisionManifestHash": "sha256:8f210b9f64afd60a5f90bc05e6e0d09a49cefd8c6181a64ff432e88829b3095b"
     }
   },
-  "hashScanTopic": "https://hashscan.io/testnet/topic/0.0.9700000",
-  "hashScanTopicCreate": "https://hashscan.io/testnet/transaction/0.0.9197513@1784467215.715932329",
-  "hashScanPayment": "https://hashscan.io/testnet/transaction/0.0.9197513@1784467520.555000000",
-  "mirrorTopic": "https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.9700000/messages"
+  "hashScanTopic": null,
+  "hashScanTopicCreate": null,
+  "hashScanPayment": null,
+  "mirrorTopic": null
 }

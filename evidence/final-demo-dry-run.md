@@ -2,46 +2,46 @@
 
 ## Disclosure
 
-All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.
+OFFLINE_DRY_RUN rehearsal only. All auction, carrier, topic, and payment identifiers in this evidence are deliberately synthetic and simulated for reproducibility. Zero network writes occurred: no Hedera topic was created, no HCS messages were submitted, and no payment was settled. These are not real testnet transactions and must not be treated as live HashScan evidence.
 
 ## Historical topic
 
 Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.
 
-**Authority topic: `0.0.9700000` — not 0.0.9587459.**
+**Authority topic: `0.0.9700000` *(simulated — not a live network identifier)* — not 0.0.9587459.**
 
 ## Attempt
 
 - Mode: `OFFLINE_DRY_RUN`
-- Attempt ID: `final-demo-e6b63243-50a3-4bfc-a252-cdf2737b059f`
-- Short ID: `737b059f`
+- Attempt ID: `final-demo-baef2fa5-940c-4e7f-94a6-6620e7212cfa`
+- Short ID: `e7212cfa`
 - Final state: `DRY_RUN_COMPLETE`
 
 ## Topic
 
-- Topic ID: `0.0.9700000`
-- Create tx: `0.0.9197513@1784467215.715932329`
-- Memo: `routeguard-final:737b059f`
+- Topic ID: `0.0.9700000` *(simulated — not a live network identifier)*
+- Create tx: `0.0.9197513@1784501363.793393635` *(simulated — not a live network identifier)*
+- Memo: `routeguard-final:e7212cfa`
 
 ## HCS sequences 1–5
 
-| Seq | Label | Envelope hash | Consensus |
-|-----|-------|---------------|-----------|
-| 1 | AUCTION_OPEN | `sha256:92f6051880383bc3ee4d20ee35d032c7768db85598893c136d6da351a2f6a579` | `2026-07-19T13:20:15.454456789Z` |
-| 2 | BID_COMMITMENT_ALPHA | `sha256:7ac89d2c18f6de47ce6745bd3adaa1b92ee94a58aeea33b4672e6d21b6e4cb60` | `2026-07-19T13:20:15.574456789Z` |
-| 3 | BID_COMMITMENT_BETA | `sha256:5798a6baef9882fa4f78d77ec73dd3ad43f4c75825690a825582e0a6becc46d6` | `2026-07-19T13:20:15.694456789Z` |
-| 4 | AUCTION_CLOSE_BARRIER | `sha256:660ece564957fd05ffcb5cca71ffb64595aef65ac2f2461ef80f52ab695a227b` | `2026-07-19T13:25:20.405456789Z` |
-| 5 | ROUTE_RESERVED | `sha256:9143c366600c547e8a5d8d52e34d21c0731a3b53650ab32c84ff48a33a814b4c` | `2026-07-19T13:25:20.725456789Z` |
+| Seq | Label | Envelope hash | Consensus | Identifier class |
+|-----|-------|---------------|-----------|------------------|
+| 1 | AUCTION_OPEN | `sha256:3aeb97208cf7b71232b461d927f8cc59c5557916c2699b2822e11a6d4643e3fd` | `2026-07-19T22:49:23.340456789Z` | simulated |
+| 2 | BID_COMMITMENT_ALPHA | `sha256:9b993775c2b00ae5c60e5a8dd49205b4e0a909f60bd33bdcdb6967063570e34a` | `2026-07-19T22:49:23.460456789Z` | simulated |
+| 3 | BID_COMMITMENT_BETA | `sha256:7dd41cbe8e20af44a8f02c001a37e53364d62330aacba916a01de57876c99f27` | `2026-07-19T22:49:23.580456789Z` | simulated |
+| 4 | AUCTION_CLOSE_BARRIER | `sha256:8a0d055a16b557aa2f435c050f42867bd4cd516243bc441aaf39a940db242ee0` | `2026-07-19T22:54:28.291456789Z` | simulated |
+| 5 | ROUTE_RESERVED | `sha256:5dfd31a70e84c79f428e3a61a0d9c6c47e3128876f50ea907b99c938f95995fd` | `2026-07-19T22:54:28.611456789Z` | simulated |
 
 ## Proof
 
-- Winner: `carrier-alpha` / `bid-alpha-final-737b059f` / `0.0.9215954`
-- winningBidHash: `sha256:2b8e364115f1e0353bf38081610667aa0728066a2d8a87d1e6c292565c603694`
-- evaluatedBidSetHash: `sha256:5e74d53e2fd0f12960e927de3a40b38c9824f6b0c867c2d0b9c026962342e48b`
-- decisionManifestHash: `sha256:aa74f3eb7bc21b616e07a23ded0babed324cab1b5ba6e5942c18b04e4b2c2577`
-- Reconciliation: `mirror:topic:0.0.9700000:1-4`
-- Barrier consensus: `2026-07-19T13:25:20.405456789Z`
-- Auction ends: `2026-07-19T13:25:15.284Z`
+- Winner: `carrier-alpha` / `bid-alpha-final-e7212cfa` / `0.0.9215954`
+- winningBidHash: `sha256:f846225f2fd85ae32d36c554935b57c6c356d2dd14c0ec440bc3f7e9f2484e1a`
+- evaluatedBidSetHash: `sha256:ad48bc3c6266f98570ea96312b9d01af2d5c9b099fe7de2f193bfa156fcb6bc4`
+- decisionManifestHash: `sha256:8f210b9f64afd60a5f90bc05e6e0d09a49cefd8c6181a64ff432e88829b3095b`
+- Reconciliation: `mirror:topic:0.0.9700000:1-4` *(simulated — not a live network identifier)*
+- Barrier consensus: `2026-07-19T22:54:28.291456789Z`
+- Auction ends: `2026-07-19T22:54:23.170Z`
 
 ## Payment (ReservationService)
 
@@ -52,8 +52,8 @@ Earlier exploratory Phase 5 auction run. Its private random commitment materials
 - Facilitator fee: `NOT_MODELED_AS_SEPARATE_X402_CHARGE`
 - RouteGuard platform fee: `NOT_MODELED_AS_SEPARATE_CHARGE`
 - Payer `0.0.9197513` → receiver `0.0.9215954`
-- Tx: `0.0.9197513@1784467520.555000000`
-- Consensus: `2026-07-19T13:25:20.605456789Z`
+- Tx: `0.0.9197513@1784501668.100000000` *(simulated — not a live network identifier)*
+- Consensus: `2026-07-19T22:54:28.491456789Z`
 - Settle count (process): 1
 
 ### Payment economics lines
@@ -69,16 +69,21 @@ Earlier exploratory Phase 5 auction run. Its private random commitment materials
 ## ROUTE_RESERVED
 
 - Sequence: 5
-- Byte count: 941 (limit 1024)
+- Byte count: 941 (strict limit: must be < 1024)
 - Conservative budget: 949
-- Record hash: `sha256:fbc2ac94cdf7c803c545f64c68441225413f6b908c7b02e51729042cbaf1bda6`
+- Record hash: `sha256:abcf344117f97babf93078c84fde650f64fdb20ca16ac1ad07830c709d5e9086`
 
 ## Webhooks
 
-- `evt-route-reserved-reservation-final-737b059f-shipper` hash `sha256:274e19e97b931e054089da6b4edb1085233ac07eeb9dc2f4ef2d3c5de2750fcb`
-- `evt-route-reserved-reservation-final-737b059f-carrier` hash `sha256:fb3d9a813327d93e1ddafb83cb338b55ee68cd4fe202957eb422bbf9c6b51fbf`
+- `evt-route-reserved-reservation-final-e7212cfa-shipper` hash `sha256:747b4e87ac0ae408b3d62a1211477c5dbe83f2edc39cd1ae93e3e4b626390c95`
+- `evt-route-reserved-reservation-final-e7212cfa-carrier` hash `sha256:47676e5256d926fa6c94c44f1b35704c0599adca953019381136733239537425`
 
 ## Network writes
 
-Real network: **false**
+Real network: **false** — zero network writes (topicCreates/hcs/payments counts below are local mock counters only).
 Counts: topicCreates=1, hcs=5, payments=1
+Simulated identifiers only — no HashScan links are published for dry-run evidence.
+
+## Attribution
+
+RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC.

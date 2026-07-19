@@ -30,6 +30,7 @@ import { isFinalDemoDryRun } from "../src/final-demo/guards";
 import { runFinalDemoLiveExecution } from "../src/final-demo/live-execution";
 import { FinalDemoError } from "../src/final-demo/errors";
 import {
+  DRY_SYNTHETIC_DATA_DISCLOSURE,
   HISTORICAL_PHASE5_TOPIC_ID,
   HISTORICAL_TOPIC_DISCLOSURE,
   SYNTHETIC_DATA_DISCLOSURE,
@@ -39,7 +40,6 @@ export async function main(): Promise<void> {
   await import("dotenv/config");
 
   console.log("RouteGuard final auction demonstration");
-  console.log(`Disclosure: ${SYNTHETIC_DATA_DISCLOSURE}`);
   console.log(
     `Historical topic ${HISTORICAL_PHASE5_TOPIC_ID}: ${HISTORICAL_TOPIC_DISCLOSURE}`,
   );
@@ -52,6 +52,7 @@ export async function main(): Promise<void> {
 
   if (isFinalDemoDryRun(process.env)) {
     console.log("Mode: OFFLINE_DRY_RUN (default — no network writes)");
+    console.log(`Disclosure: ${DRY_SYNTHETIC_DATA_DISCLOSURE}`);
     const result = await runFinalDemoDryRun();
     console.log("Dry-run COMPLETED");
     console.log(`  attemptId     : ${result.materials.attemptId}`);
@@ -84,6 +85,7 @@ export async function main(): Promise<void> {
   }
 
   console.log("Mode: LIVE_FINAL_DEMO (all live flags detected)");
+  console.log(`Disclosure: ${SYNTHETIC_DATA_DISCLOSURE}`);
   console.log("Wiring production transports (topic/HCS/Mirror/x402/facilitator)...");
   const result = await runFinalDemoLiveExecution({
     env: process.env,
