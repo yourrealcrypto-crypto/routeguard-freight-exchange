@@ -1003,7 +1003,8 @@ export async function runFinalDemoOrchestration(
         await clock.sleep(ms);
       }
     },
-    confirmationTimeoutMs: deps.confirmationTimeoutMs ?? (isLive ? 60_000 : 2_000),
+    // Live window ≥ 300 s (F-001): Mirror indexing may lag well past 60 s.
+    confirmationTimeoutMs: deps.confirmationTimeoutMs ?? (isLive ? 300_000 : 2_000),
     mirrorPollIntervalMs: deps.mirrorPollIntervalMs ?? (isLive ? 2_000 : 10),
   });
   deps.onReservationServiceCreated?.(service);
@@ -1113,7 +1114,10 @@ export async function runFinalDemoOrchestration(
     if (
       reservation.transactionId &&
       (reservation.state === "FACILITATOR_SETTLED" ||
-        reservation.state === "MIRROR_CONFIRMATION_PENDING")
+        reservation.state === "MIRROR_CONFIRMATION_PENDING" ||
+        // F-001: settled payment whose confirmation window expired resumes the
+        // exact same transaction through the guarded recovery path.
+        reservation.state === "CONFIRMATION_TIMED_OUT")
     ) {
       reservation = await service.resumePaymentConfirmation(
         reservation.reservationId,

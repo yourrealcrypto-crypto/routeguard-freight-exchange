@@ -102,11 +102,26 @@ const LEGAL: ReadonlyMap<ReservationState, readonly ReservationState[]> =
     ["COMPLETED", []],
     ["PAYMENT_REJECTED", []],
     ["SETTLEMENT_FAILED", []],
-    ["CONFIRMATION_TIMED_OUT", []],
+    // Guarded recovery only (F-001): a settled payment whose Mirror confirmation
+    // exceeded the bounded window may re-enter confirmation for the SAME
+    // transaction, or be routed to manual review. No other exit exists.
+    [
+      "CONFIRMATION_TIMED_OUT",
+      ["MIRROR_CONFIRMATION_PENDING", "MANUAL_REVIEW_REQUIRED"],
+    ],
     ["CONFIRMATION_FAILED", []],
     ["EXPIRED", []],
     ["MANUAL_REVIEW_REQUIRED", []],
   ]);
+
+/**
+ * Terminal-state exits permitted ONLY through dedicated guarded recovery code
+ * paths (never through submitPayment). Each entry is "<from>→<to>".
+ */
+const GUARDED_RECOVERY_TRANSITIONS: ReadonlySet<string> = new Set([
+  "CONFIRMATION_TIMED_OUT→MIRROR_CONFIRMATION_PENDING",
+  "CONFIRMATION_TIMED_OUT→MANUAL_REVIEW_REQUIRED",
+]);
 
 export function assertLegalTransition(
   from: ReservationState,
@@ -136,8 +151,13 @@ export function assertLegalTransition(
     }
   }
 
-  // Terminal payment failures cannot transition to alternate asset attempts
-  if (TERMINAL_PAYMENT_FAILURE_STATES.has(from) && from !== to) {
+  // Terminal payment failures cannot transition to alternate asset attempts.
+  // The single exception is the guarded same-transaction confirmation recovery.
+  if (
+    TERMINAL_PAYMENT_FAILURE_STATES.has(from) &&
+    from !== to &&
+    !GUARDED_RECOVERY_TRANSITIONS.has(`${from}→${to}`)
+  ) {
     throw new IllegalReservationTransitionError(
       from,
       to,

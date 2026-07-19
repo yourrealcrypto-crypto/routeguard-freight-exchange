@@ -1,6 +1,6 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Date:** 2026-07-19
 **Project:** `routeguard-freight-exchange@0.1.0` — Hedera x402 bounty submission: deterministic software-to-software freight-capacity reservation over x402 + Hedera testnet (USDC primary, HBAR secondary), with HCS auction evidence.
 **Branch:** `fix/live-readiness-winning-demo` (local only — do not push during this session)
@@ -26,7 +26,7 @@ At `a84c3c8` (audited baseline):
 
 | ID | Sev | Summary | Status |
 |---|---|---|---|
-| F-001 | HIGH | `CONFIRMATION_TIMED_OUT` is terminal; settled payment unrecoverable after slow Mirror | OPEN |
+| F-001 | HIGH | `CONFIRMATION_TIMED_OUT` is terminal; settled payment unrecoverable after slow Mirror | **RESOLVED** (0.2.0) |
 | v1.5 P1 | HIGH | Client txId + validity not persisted before facilitator settle | OPEN |
 | v1.5 P2 | HIGH | Deterministic conclusive-failure rule (exact tx + 180 s + 60 s buffer) substituted, `reconcile:payment` missing | OPEN |
 | F-002 | MED | No facilitator `/supported` preflight in live final-demo path | OPEN |
@@ -41,17 +41,21 @@ At `a84c3c8` (audited baseline):
 | F-012 | LOW | No repo-wide verify command | OPEN |
 | N-004 | NOTE | Wire-level HTTP 402 exists only on smoke paths; final flow is in-process | ASSESS (thin adapter or documented wording) |
 
-## Files changed (this version)
+## Files changed (this version 0.2.0 — F-001)
 
-- `PROJECT_STATUS.md` — created (this file).
+- `src/reservation/state-machine.ts` — `CONFIRMATION_TIMED_OUT` gains exactly two guarded exits (`MIRROR_CONFIRMATION_PENDING`, `MANUAL_REVIEW_REQUIRED`); terminal-state guard exception limited to those two pairs.
+- `src/reservation/reservation-service.ts` — new exported pure guard `assessTimedOutConfirmationRecovery` (txId, selection, settle claim, settle success, tx-id match, payload fingerprint, claim/selected binding, mirror-poll tx match) + private `recoverTimedOutConfirmation` (fresh durable deadline, same transaction, never settles/signs); `resumePaymentConfirmation` routes `CONFIRMATION_TIMED_OUT` through it.
+- `src/final-demo/orchestration.ts` — live confirmation window raised 60 s → **300 s**; rerun resume branch now includes `CONFIRMATION_TIMED_OUT` (with transactionId) so a live rerun resumes instead of dead-ending at `PAYMENT_PAYLOAD_GATE`.
+- `test/reservation-confirmation-recovery.test.ts` — new regression suite: timeout → later ledger SUCCESS → resume exact tx, settle count 1, one reservation, one ROUTE_RESERVED; restart durability over the same store; every pure-guard branch; blocked recovery routes to `MANUAL_REVIEW_REQUIRED`.
+- `PROJECT_STATUS.md` — this update.
 
 ## Validation status
 
-- Baseline validated pre-branch (see above). No product code changed yet in this version.
+- `npm run typecheck` PASS · `npx vitest run` **35 files / 470 tests PASS** (466 baseline + 4 new) · focused recovery suite PASS.
 
 ## Current state
 
-Branch created from the audited HEAD; central status file established; Phase 1 (mandatory technical live-readiness repairs) about to begin. No live network writes have occurred and none will occur in this session.
+F-001 (the sole HIGH) repaired: a settled payment whose Mirror confirmation exceeds the window is durably recoverable for the exact same transaction; all conflicting states route to manual review; no second settle is possible. Continuing Phase 1 with v1.5 patches 1–2 (pre-settle txId/validity persistence, deterministic conclusive failure, reconcile command). No live network writes.
 
 ## Owner checkpoints
 
@@ -60,7 +64,6 @@ Branch created from the audited HEAD; central status file established; Phase 1 (
 
 ## Next steps
 
-1. F-001: extend live confirmation window ≥ 300 s; guarded `CONFIRMATION_TIMED_OUT` recovery; regression test.
-2. v1.5 patches 1–2: pre-submission txId/validity persistence; deterministic conclusive failure; `reconcile:payment` command.
-3. F-002, F-006, F-004, F-005, F-008, F-009 with focused tests.
-4. Phase 1 validation bar; then Phases 2–5 (evidence wording, brand assets, Winning Demo report, owner runbook).
+1. v1.5 patches 1–2: pre-submission txId/validity persistence; deterministic conclusive failure; `reconcile:payment` command.
+2. F-002, F-006, F-009 readiness gates; F-004 Mirror resolver; F-005 topic/carrier model; F-008 boundary; wire-level 402 adapter.
+3. Phase 1 validation bar; then Phases 2–5 (evidence wording, brand assets, Winning Demo report, owner runbook).

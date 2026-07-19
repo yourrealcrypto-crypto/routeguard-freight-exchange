@@ -188,6 +188,58 @@ function transition(
   };
 }
 
+/**
+ * Pure F-001 recovery guard. A timed-out confirmation may resume ONLY when the
+ * settled transaction and every binding fact are unchanged. Exported for
+ * direct branch-level testing; the service routes failures to
+ * MANUAL_REVIEW_REQUIRED and never settles or signs during recovery.
+ */
+export function assessTimedOutConfirmationRecovery(
+  record: ReservationRecord,
+): { ok: true } | { ok: false; reason: string } {
+  if (!record.transactionId) {
+    return { ok: false, reason: "no settled transaction ID" };
+  }
+  if (!record.selected) {
+    return { ok: false, reason: "no selected option" };
+  }
+  if (!record.settleClaim) {
+    return { ok: false, reason: "no durable settle claim" };
+  }
+  if (record.facilitatorSettle?.success !== true) {
+    return { ok: false, reason: "no successful facilitator settlement" };
+  }
+  if (
+    record.facilitatorSettle.transactionId &&
+    record.facilitatorSettle.transactionId !== record.transactionId
+  ) {
+    return { ok: false, reason: "settlement transaction ID mismatch" };
+  }
+  const claim = record.settleClaim;
+  if (
+    !record.paymentPayloadHash ||
+    claim.paymentPayloadHash !== record.paymentPayloadHash
+  ) {
+    return { ok: false, reason: "payment payload fingerprint changed" };
+  }
+  if (
+    claim.selectedOptionId !== record.selected.optionId ||
+    claim.asset !== record.selected.asset ||
+    claim.amountAtomic !== record.selected.amountAtomic ||
+    claim.payerAccount !== record.selected.payerAccount ||
+    claim.payTo !== record.selected.payTo
+  ) {
+    return { ok: false, reason: "settle claim no longer matches selected option" };
+  }
+  if (
+    record.mirrorPoll &&
+    record.mirrorPoll.transactionId !== record.transactionId
+  ) {
+    return { ok: false, reason: "mirror poll transaction ID mismatch" };
+  }
+  return { ok: true };
+}
+
 export class ReservationService {
   /**
    * Observability only — NOT the settle-once authority. The durable settle
@@ -782,8 +834,68 @@ export class ReservationService {
   }
 
   /**
+   * Guarded F-001 recovery: a payment that settled successfully but whose
+   * bounded Mirror confirmation timed out may re-enter confirmation for the
+   * SAME transaction only. Every binding fact must be unchanged; otherwise the
+   * record is routed to MANUAL_REVIEW_REQUIRED. Never settles or signs again.
+   */
+  private async recoverTimedOutConfirmation(
+    record: ReservationRecord,
+  ): Promise<ReservationRecord> {
+    const assessment = assessTimedOutConfirmationRecovery(record);
+    if (!assessment.ok) {
+      let next = transition(
+        record,
+        "MANUAL_REVIEW_REQUIRED",
+        `confirmation recovery blocked: ${assessment.reason}`,
+        nowIso(this.deps),
+      );
+      next = {
+        ...next,
+        failureCode: "CONFIRMATION_RECOVERY_BLOCKED",
+        failureReason: `Guarded confirmation recovery refused: ${assessment.reason}`,
+      };
+      return this.commit(record, next);
+    }
+
+    // All guards passed: re-enter confirmation with a fresh durable deadline
+    // for the exact same transaction. No settle, no new payload, no new asset.
+    const settledTxId = requireTransactionIdForSettlement(record.transactionId);
+    const at = nowIso(this.deps);
+    const timeoutMs = this.deps.confirmationTimeoutMs ?? 30_000;
+    const newDeadline = new Date(Date.parse(at) + timeoutMs).toISOString();
+    let next = transition(
+      record,
+      "MIRROR_CONFIRMATION_PENDING",
+      "guarded recovery of settled payment — same transaction, new confirmation window",
+      at,
+    );
+    next = {
+      ...next,
+      confirmationDeadline: newDeadline,
+      mirrorPoll: {
+        transactionId: settledTxId,
+        confirmationStartedAt:
+          record.mirrorPoll?.confirmationStartedAt ?? at,
+        confirmationDeadline: newDeadline,
+        pollAttemptCount: record.mirrorPoll?.pollAttemptCount ?? 0,
+        lastPollAt: record.mirrorPoll?.lastPollAt ?? null,
+        lastMirrorStatus: record.mirrorPoll?.lastMirrorStatus ?? null,
+        lastMirrorErrorCode: null,
+        lastMirrorError: null,
+        consensusTimestamp: record.mirrorPoll?.consensusTimestamp ?? null,
+        verifiedTransfer: record.mirrorPoll?.verifiedTransfer ?? null,
+      },
+      failureCode: null,
+      failureReason: null,
+    };
+    return this.commit(record, next);
+  }
+
+  /**
    * Resume ledger confirmation after restart. Never verifies/settles again,
-   * never regenerates the challenge, never changes selected asset.
+   * never regenerates the challenge, never changes selected asset. Includes
+   * the guarded CONFIRMATION_TIMED_OUT recovery (F-001).
    */
   async resumePaymentConfirmation(
     reservationId: string,
@@ -817,6 +929,14 @@ export class ReservationService {
           "Settle claim exists without authoritative transaction ID — do not auto-settle",
       };
       return this.commit(record, next);
+    }
+
+    // F-001: guarded recovery of a settled payment after a timed-out window.
+    if (record.state === "CONFIRMATION_TIMED_OUT") {
+      record = await this.recoverTimedOutConfirmation(record);
+      if (record.state !== "MIRROR_CONFIRMATION_PENDING") {
+        return record;
+      }
     }
 
     if (
