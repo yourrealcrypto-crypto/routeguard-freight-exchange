@@ -13,35 +13,35 @@ Earlier exploratory Phase 5 auction run. Its private random commitment materials
 ## Attempt
 
 - Mode: `OFFLINE_DRY_RUN`
-- Attempt ID: `final-demo-975bd106-a74c-4e7a-ac58-3f522c07cce1`
-- Short ID: `2c07cce1`
+- Attempt ID: `final-demo-cf113f94-6ca7-46fc-946a-962038b225cd`
+- Short ID: `38b225cd`
 - Final state: `DRY_RUN_COMPLETE`
 
 ## Topic
 
 - Topic ID: `0.0.9700000` *(simulated — not a live network identifier)*
-- Create tx: `0.0.9197513@1785170581.329987774` *(simulated — not a live network identifier)*
-- Memo: `routeguard-final:2c07cce1`
+- Create tx: `0.0.9197513@1785171820.170035154` *(simulated — not a live network identifier)*
+- Memo: `routeguard-final:38b225cd`
 
 ## HCS sequences 1–5
 
 | Seq | Label | Envelope hash | Consensus | Identifier class |
 |-----|-------|---------------|-----------|------------------|
-| 1 | AUCTION_OPEN | `sha256:39f48f047b2fdeb1b0b77a7031a939ff5672e43cd8221546ba23ef2c17ffc974` | `2026-07-27T16:43:01.290456789Z` | simulated |
-| 2 | BID_COMMITMENT_ALPHA | `sha256:7883d620696fd6d1a519484d4f69802d0d16c3158e42034dbbcd2d3914be31a8` | `2026-07-27T16:43:01.410456789Z` | simulated |
-| 3 | BID_COMMITMENT_BETA | `sha256:4ea2df6bb8e6948f8459c46dbdedf41966148e600bd80e8ce25c2eeee9125b47` | `2026-07-27T16:43:01.530456789Z` | simulated |
-| 4 | AUCTION_CLOSE_BARRIER | `sha256:ce5bf44d1cb18ddee5eb801532a98a38bf50f2f95da69f7790e092fa1d9277eb` | `2026-07-27T16:48:06.241456789Z` | simulated |
-| 5 | ROUTE_RESERVED | `sha256:f02643a5b641bb12424c32e369f913d76812c28be4a747f002498bbb17ed4493` | `2026-07-27T16:48:06.561456789Z` | simulated |
+| 1 | AUCTION_OPEN | `sha256:ec52bc1c408db9b152c1f5e8353bf21f88c86f51720e3c45e200c7a9ace0fc5a` | `2026-07-27T17:03:40.737456789Z` | simulated |
+| 2 | BID_COMMITMENT_ALPHA | `sha256:da28336258f2e88eb60c79b2b5c4ac0f85ebd3d63bfeba63f89b6aa4ebcd2340` | `2026-07-27T17:03:40.857456789Z` | simulated |
+| 3 | BID_COMMITMENT_BETA | `sha256:b2a0f12689cff5b560c35d9403a377920e49ad6ce7f85300d0d9f4368f82bc5d` | `2026-07-27T17:03:40.977456789Z` | simulated |
+| 4 | AUCTION_CLOSE_BARRIER | `sha256:606936e458832f2b05e7117961a62505fb7c803fb345237e74369ea34eb8b5fa` | `2026-07-27T17:08:45.688456789Z` | simulated |
+| 5 | ROUTE_RESERVED | `sha256:46191ad127f71a96cfb49597da700ab61d45c0cb6d40848b77fa90456d251271` | `2026-07-27T17:08:46.008456789Z` | simulated |
 
 ## Proof
 
-- Winner: `carrier-alpha` / `bid-alpha-final-2c07cce1` / `0.0.9215954`
-- winningBidHash: `sha256:c06d6ab0c8483866b6a3d4e0fc88ed54c5a168d7ed8d890fd61bed26bac67922`
-- evaluatedBidSetHash: `sha256:f5d863a43a5612af7c4c4adad1103acfd1b6d11e919e9df26d6a727ae64fb497`
-- decisionManifestHash: `sha256:f9bf350a73d64e3197f64b98735363547299bc7c21c3c565c3edead347e8becc`
+- Winner: `carrier-alpha` / `bid-alpha-final-38b225cd` / `0.0.9215954`
+- winningBidHash: `sha256:d38b05e8f315e868cbc2fa9e0be6d8ff14f577550c0d7734e10b77f7d1db89b2`
+- evaluatedBidSetHash: `sha256:75fbebda224253bef1397d21052dbdf182caa5dece50b0fbad44b9280ba37055`
+- decisionManifestHash: `sha256:f22195b7157639f25278cf9fbc105e9b10087c9dcc9c232be2f084df500cf2ea`
 - Reconciliation: `mirror:topic:0.0.9700000:1-4` *(simulated — not a live network identifier)*
-- Barrier consensus: `2026-07-27T16:48:06.241456789Z`
-- Auction ends: `2026-07-27T16:48:01.120Z`
+- Barrier consensus: `2026-07-27T17:08:45.688456789Z`
+- Auction ends: `2026-07-27T17:08:40.567Z`
 
 ## Payment (ReservationService)
 
@@ -52,8 +52,8 @@ Earlier exploratory Phase 5 auction run. Its private random commitment materials
 - Facilitator fee: `NOT_MODELED_AS_SEPARATE_X402_CHARGE`
 - RouteGuard platform fee: `NOT_MODELED_AS_SEPARATE_CHARGE`
 - Payer `0.0.9197513` → receiver `0.0.9215954`
-- Tx: `0.0.9197513@1785170886.100000000` *(simulated — not a live network identifier)*
-- Consensus: `2026-07-27T16:48:06.441456789Z`
+- Tx: `0.0.9197513@1785172125.100000000` *(simulated — not a live network identifier)*
+- Consensus: `2026-07-27T17:08:45.888456789Z`
 - Settle count (process): 1
 
 ### Payment economics lines
@@ -71,12 +71,12 @@ Earlier exploratory Phase 5 auction run. Its private random commitment materials
 - Sequence: 5
 - Byte count: 941 (strict limit: must be < 1024)
 - Conservative budget: 949
-- Record hash: `sha256:9155fb129ee0bd83ca6ed72a4a787518f560fae90fcae1de3070db50c7684a54`
+- Record hash: `sha256:816783e60c24cf81d8c6d63cf12a88c9a924908f5fcf230c00255cecd72b6fd6`
 
 ## Webhooks
 
-- `evt-route-reserved-reservation-final-2c07cce1-shipper` hash `sha256:8f37c4fccfc63161126d8829a775814121e8824b766308cf8f91e3aaff6a9127`
-- `evt-route-reserved-reservation-final-2c07cce1-carrier` hash `sha256:b2fcb6ad3ccc4f93bec865d8e86d9266bd739cd7876b1ec99a869e2eca825bc4`
+- `evt-route-reserved-reservation-final-38b225cd-shipper` hash `sha256:cbf339b983e8cfde8c6285e242bdc274e8fdb5c562ffa190d3e5def3e9d51f67`
+- `evt-route-reserved-reservation-final-38b225cd-carrier` hash `sha256:6da778ecfd11572f475e2a8130ec66ab49e60cedd6f71d837b345f92ed426fe9`
 
 ## Network writes
 

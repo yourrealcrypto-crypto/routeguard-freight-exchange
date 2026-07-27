@@ -766,20 +766,6 @@ export function renderFinalDemoReportHtml(
         </details>
       </section>
 
-      <section aria-labelledby="limits-heading">
-        <h2 id="limits-heading">Honest limitations</h2>
-        <details open>
-          <summary>What we do NOT claim</summary>
-          <ul>
-            <li>RouteGuard sees bid contents (not a fully trustless sealed-bid auction).</li>
-            <li>Hedera consensus and local durable state are not a single atomic transaction; recovery is designed for eventual consistency.</li>
-            <li>Demo carrier identities and auction business data are synthetic.</li>
-            <li>${isLive ? "Live run uses real testnet settlement under owner guards." : "This dry-run performed zero network writes."}</li>
-          </ul>
-          <p>${escapeHtml(PRIVATE_BID_COMMITMENT_SENTENCE)}</p>
-        </details>
-        <p class="footnote"><strong>Synthetic-data disclosure:</strong> ${escapeHtml(disclosure)}</p>
-      </section>
     </main>
 
     <footer class="site-footer" role="contentinfo">
@@ -791,6 +777,11 @@ export function renderFinalDemoReportHtml(
         <img src="${escapeHtml(hederaLogo)}" alt="Hedera trademark logo" />
       </div>
       <p class="disclaimer">${escapeHtml(HEDERA_NON_AFFILIATION_DISCLAIMER)}</p>
+      <p class="footnote">${escapeHtml(
+        isLive
+          ? "Demo carrier identities and auction data are synthetic for reproducibility. Hedera testnet consensus messages and USDC settlement are real."
+          : disclosure,
+      )}</p>
       <p class="footnote">Report generated from final-demo evidence JSON. No private keys or signed payment payloads are rendered.</p>
     </footer>
   </div>

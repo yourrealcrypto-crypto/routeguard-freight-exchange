@@ -6,25 +6,60 @@ Carrier systems submit signed freight-capacity bids. Hedera Consensus Service es
 
 ## Current status
 
-Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, and offline dry-run are implemented.
+Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, offline dry-run, and the **completed live final demonstration** are implemented.
 
-Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. A real live run is an **owner checkpoint** (private keys, funded accounts, testnet settlement, HCS writes).
+Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. **No further live Hedera execution should be performed** for this submission; the successful live proof is already recorded.
+
+### Live proof (Hedera testnet — completed 2026-07-27)
+
+| Fact | Value |
+| --- | --- |
+| Mode | `LIVE_FINAL_DEMO` |
+| HCS topic | `0.0.9794225` |
+| Payment transaction | `0.0.7162784@1785173890.867086556` |
+| Payer | `0.0.9197513` |
+| Receiver (carrier-alpha) | `0.0.9215954` |
+| Token / amount | `0.0.429274` · **10000** atomic USDC (0.01 USDC) |
+| HCS | Sequences **1–5** complete; sequence 5 = `ROUTE_RESERVED` |
+| Ordering | **Settlement precedes reservation** (payment consensus `2026-07-27T17:38:16.977444275Z` → ROUTE_RESERVED `2026-07-27T17:38:23.453477104Z`) |
+
+**HashScan (testnet):**
+
+- Topic: https://hashscan.io/testnet/topic/0.0.9794225
+- Payment: https://hashscan.io/testnet/transaction/0.0.7162784@1785173890.867086556
+
+**Disclosures:** Demo carrier identities and auction business data are **synthetic** for reproducibility. Hedera testnet consensus messages and the USDC settlement transaction are **real**.
+
+**Open the generated Winning Demo report:**
+
+```bash
+npm run report:final-demo
+# then open: evidence/final-demo-report.html
+```
+
+Authoritative live evidence: `evidence/final-demo-result.json`, `evidence/final-demo-result.md`, `evidence/final-demo-live-attempt.json`.
 
 ### Final demonstration (Phase 6B.3 / 6B.4)
 
 ```bash
-npm run demo:final-auction   # OFFLINE_DRY_RUN by default
+npm run demo:final-auction   # OFFLINE_DRY_RUN by default — do not re-run live
+npm run report:final-demo    # regenerate static HTML from existing evidence (no network writes)
 npm run check:secrets        # fail closed on private-key fields in public paths
 ```
 
 Public synthetic template: `demo/fixtures/final-auction-template.json`.
 
-**Historical HCS topic `0.0.9587459`:** earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration. The final live run creates a **new** HCS topic and sequences 1–5 on that topic only.
+**Historical HCS topic `0.0.9587459`:** earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration. The authoritative live topic is **`0.0.9794225`** with sequences 1–5.
 
-All auction and carrier data in the final demonstration is deliberately synthetic and publicly disclosed for reproducibility. Hedera payment and consensus transactions are real testnet transactions when executed live under full guards. Offline dry-run evidence is rehearsal-only (zero network writes) and must not be read as live HashScan proof.
+All auction and carrier data in the final demonstration is deliberately synthetic and publicly disclosed for reproducibility. Hedera payment and consensus transactions on the live proof are real testnet transactions. Offline dry-run evidence is rehearsal-only (zero network writes) and must not be read as live HashScan proof.
 
-Private off-chain bids with salted, consensus-timestamped HCS commitments and
-reproducible deterministic evaluation.
+<details>
+<summary>Technical scope</summary>
+
+- RouteGuard currently evaluates private off-chain bid contents and anchors salted commitments on HCS.
+- Hedera consensus and local durable state use guarded recovery for eventual consistency.
+
+</details>
 
 **RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC.**
 

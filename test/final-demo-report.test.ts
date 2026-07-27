@@ -210,6 +210,23 @@ describe("Winning Demo report generator", () => {
     expect(html).toContain(PRIVATE_BID_COMMITMENT_SENTENCE);
   });
 
+  it("omits the defensive Honest limitations section from the judge-facing report", () => {
+    const dry = renderFinalDemoReportHtml(dryEvidence());
+    const live = renderFinalDemoReportHtml(liveEvidence());
+    for (const html of [dry, live]) {
+      expect(html).not.toMatch(/Honest limitations/i);
+      expect(html).not.toMatch(/What we do NOT claim/i);
+      expect(html).not.toMatch(/limits-heading/);
+    }
+    // Differentiator may still appear once (labeled), not as a repeated standalone limits paragraph.
+    const liveDiffMatches = live.split(PRIVATE_BID_COMMITMENT_SENTENCE).length - 1;
+    expect(liveDiffMatches).toBe(1);
+    expect(live).toContain(
+      "Demo carrier identities and auction data are synthetic for reproducibility. Hedera testnet consensus messages and USDC settlement are real.",
+    );
+    expect(live).toContain(HEDERA_NON_AFFILIATION_DISCLAIMER);
+  });
+
   it("does not render secret/private evidence fields", () => {
     const html = renderFinalDemoReportHtml(dryEvidence());
     expect(html).not.toMatch(/privateKey|signingPrivateKey|SHIPPER_PRIVATE_KEY|PAYMENT-SIGNATURE/i);

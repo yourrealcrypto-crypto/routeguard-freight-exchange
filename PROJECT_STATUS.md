@@ -1,12 +1,122 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.4.2
+**Version:** 0.4.3
 **Date:** 2026-07-27
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `fix/live-readiness-winning-demo` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `f10c419fc8657d107d1a7362bd7be1d845921255` (v0.4.1)
+**Prior checkpoint HEAD:** `ab2f94bf8bb77438f9fc99414fb859ca7e697da9` (v0.4.2 recovery fix)
 **Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Live final demo completed + report presentation (v0.4.3)
+
+Successful recovery resume and live final execution on Hedera testnet, plus a
+narrow judge-facing report presentation cleanup. **Zero further live network
+writes in this documentation checkpoint.**
+
+### Successful recovery and final execution
+
+| Field | Value |
+|---|---|
+| Mode | `LIVE_FINAL_DEMO` |
+| `realNetwork` | `true` |
+| runId / reservation | `final-8b73c264` / `reservation-final-8b73c264` |
+| Topic ID | **`0.0.9794225`** |
+| Topic create | exactly **once** (`0.0.9197513@1785171882.373802899`) |
+| Topic admin key | **none** (immutable config: no admin key, no submit key) |
+| Topic submit key | **none** |
+| Winner | `carrier-alpha` / `0.0.9215954` |
+| Carrier beta | `0.0.9793912` (sequence 3 submitter) |
+| HCS sequences | **1–5 complete** (all `SUCCESS` / `CONFIRMED`) |
+| Submitter order | operator → alpha → beta → operator → operator |
+| Payment status | Mirror **`SUCCESS`** |
+| Payment transaction | **`0.0.7162784@1785173890.867086556`** |
+| Payer | `0.0.9197513` |
+| Receiver | `0.0.9215954` |
+| Asset / amount | `0.0.429274` / **10000** atomic USDC (0.01 USDC) |
+| Payment consensus | `2026-07-27T17:38:16.977444275Z` |
+| ROUTE_RESERVED consensus | `2026-07-27T17:38:23.453477104Z` |
+| Settlement before reservation | **YES** (payment precedes sequence 5) |
+| Facilitator settle count | **exactly 1** (`settleCallCount: 1`) |
+| Duplicate payment | **none** (single confirmed payment claim + single settle) |
+
+Recovery path: v0.4.2 cleared a pre-submission `PAYMENT_SUBMISSION_CLAIMED`
+claim with null transaction id; resume reused topic `0.0.9794225` and
+confirmed sequences 1–4; then constructed/settled one USDC payment and
+published sequence 5 `ROUTE_RESERVED` only after Mirror SUCCESS.
+
+### Report presentation cleanup (same checkpoint)
+
+Removed the overly defensive **Honest limitations / What we do NOT claim**
+section from the generated Winning Demo HTML (source:
+`scripts/render-final-demo-report.ts`). Also removed the repeated standalone
+differentiator sentence that sat under that section.
+
+**Retained disclosures:**
+
+| Location | Content |
+|---|---|
+| Report footer (live) | Concise: synthetic demo data; real testnet HCS + USDC settlement |
+| Report footer | Independent-project / Hedera non-affiliation disclaimer (unchanged) |
+| Report body | Labeled differentiator sentence (once) |
+| README collapsed **Technical scope** | Off-chain bid evaluation + eventual-consistency recovery caveats |
+| Evidence JSON / MD | Full synthetic + real-testnet disclosure strings |
+
+Authoritative live evidence JSON was **not** rewritten for presentation; only
+the HTML generator and regenerated reports changed for that cleanup.
+
+### Changed / generated files
+
+| File | Change |
+|---|---|
+| `evidence/final-demo-result.json` | **New** — authoritative live result |
+| `evidence/final-demo-result.md` | **New** — authoritative live markdown |
+| `evidence/final-demo-report.html` | **New** — live Winning Demo report (regenerated) |
+| `evidence/final-demo-live-attempt.json` | Completed live attempt (seq 5 + payment confirmed) |
+| `evidence/final-demo-live-authoritative-materials.json` | Preserved live materials |
+| `data/final-demo-live-reservations/reservation-final-8b73c264.json` | Completed reservation + Mirror SUCCESS |
+| `evidence/final-demo-dry-run*.json/md/html` | Deterministic dry regeneration (tracked artifacts) |
+| `scripts/render-final-demo-report.ts` | Remove limitations section; concise live footer disclosure |
+| `test/final-demo-report.test.ts` | Assert limitations section absent; footer disclosure present |
+| `test/final-demo-payment-claim-recovery.test.ts` | Use frozen pre-submission fixtures (not completed live attempt) |
+| `test/fixtures/final-demo-live-attempt-pre-submission-8b73c264.json` | **New** — frozen stuck attempt for recovery tests |
+| `test/fixtures/final-demo-live-reservation-pre-submission-8b73c264.json` | **New** — frozen pre-payment reservation for recovery tests |
+| `README.md` | Live-proof section + collapsed Technical scope |
+| `PROJECT_STATUS.md` | This version |
+
+### Validation (v0.4.3)
+
+- `npm run report:final-demo`: **PASS** (read-only render from existing evidence)
+- `npm run typecheck`: **PASS**
+- `npx vitest run`: **PASS** — 44 files / **552** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 189 files scanned
+- `git diff --check`: **PASS** (CRLF warnings only)
+
+**No further live execution should be performed.** This checkpoint performs
+**0** topic creates, **0** HCS submissions, and **0** payments.
+
+### Current state
+
+Live final demonstration is **complete and evidenced**. Local branch holds
+recovery fix + live evidence + presentation polish. Ready for final audit,
+video capture, push, and bounty submission — **without** re-running the live
+demo.
+
+### Remaining next steps (no network writes)
+
+1. Final audit of live evidence and `evidence/final-demo-report.html` at 1920×1080.
+2. Record submission video from the live report + HashScan links.
+3. Push branch / open PR when owner authorizes publish.
+4. Bounty submission package (repo URL, HashScan, report, disclosures).
+
+### Explicit prohibitions
+
+- **Do not** run `npm run demo:final-auction` under live flags again.
+- **Do not** create another topic or re-submit HCS / payment.
+- **Do not** delete recovery or live-attempt evidence.
+- **Do not** push until owner-authorized.
 
 ---
 

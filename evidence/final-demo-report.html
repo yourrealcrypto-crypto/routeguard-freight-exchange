@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RouteGuard Freight Exchange — OFFLINE_DRY_RUN Report</title>
+  <title>RouteGuard Freight Exchange — LIVE_FINAL_DEMO Report</title>
   <style>
     :root {
       --bg: #0f1115;
@@ -251,12 +251,12 @@
   </style>
 </head>
 <body>
-  <div class="mode-banner mode-dry" role="status">○ OFFLINE_DRY_RUN — rehearsal only — zero network writes — identifiers are simulated — no live HashScan links</div>
+  <div class="mode-banner mode-live" role="status">● LIVE_FINAL_DEMO — real Hedera testnet transactions — topic 0.0.9794225</div>
   <div class="wrap">
     <header class="hero" role="banner">
       <div class="brand-row">
         <div class="rg-mark">RouteGuard</div>
-        <div class="chip"><strong>OFFLINE_DRY_RUN</strong></div>
+        <div class="chip"><strong>LIVE_FINAL_DEMO</strong></div>
       </div>
       <h1>RouteGuard Freight Exchange</h1>
       <p class="tagline">Carrier software offers transport capacity. Shipper software accepts the winning offer by paying an x402 reservation fee on Hedera. Confirmed settlement — not a promise — creates the route reservation.</p>
@@ -302,13 +302,13 @@
       <section aria-labelledby="timeline-heading">
         <h2 id="timeline-heading">Seven-step timeline</h2>
         <div class="timeline" role="list">
-          <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">2026-07-27T17:03:40.737456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">2026-07-27T17:03:40.857456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">3 · HCS</div><div class="t">Bid committed — beta (seq 3)</div><div class="ts">2026-07-27T17:03:40.977456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">4 · HCS</div><div class="t">Close barrier (seq 4)</div><div class="ts">2026-07-27T17:08:45.688456789Z</div></div>
-          <div class="step neutral" role="listitem"><div class="n">5 · Evaluate</div><div class="t">Winner selected (deterministic replay)</div><div class="ts mono">sha256:f22195b7157639f25…</div></div>
-          <div class="step pay" role="listitem"><div class="n">6 · x402 payment</div><div class="t">402 challenge → verify → settle</div><div class="ts">2026-07-27T17:08:45.888456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">7 · HCS</div><div class="t">Settled ✓ → ROUTE_RESERVED (seq 5)</div><div class="ts">2026-07-27T17:08:46.008456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">2026-07-27T17:04:52.344786737Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">2026-07-27T17:04:56.180326104Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">3 · HCS</div><div class="t">Bid committed — beta (seq 3)</div><div class="ts">2026-07-27T17:05:01.726960104Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">4 · HCS</div><div class="t">Close barrier (seq 4)</div><div class="ts">2026-07-27T17:11:54.604991539Z</div></div>
+          <div class="step neutral" role="listitem"><div class="n">5 · Evaluate</div><div class="t">Winner selected (deterministic replay)</div><div class="ts mono">sha256:1f0e40ccb0a14673f…</div></div>
+          <div class="step pay" role="listitem"><div class="n">6 · x402 payment</div><div class="t">402 challenge → verify → settle</div><div class="ts">2026-07-27T17:38:16.977444275Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">7 · HCS</div><div class="t">Settled ✓ → ROUTE_RESERVED (seq 5)</div><div class="ts">2026-07-27T17:38:23.453477104Z</div></div>
         </div>
         <p class="settle-arrow" aria-label="Settlement order">Settlement precedes reservation — step 6 completes before step 7 ROUTE_RESERVED</p>
       </section>
@@ -325,19 +325,19 @@
             <div class="econ-row"><div class="k">RouteGuard fee</div><div class="v mono">NOT_MODELED_AS_SEPARATE_CHARGE</div></div>
             <div class="econ-row"><div class="k">Carrier received</div><div class="v">0.01 USDC — network cost NOT deducted (10000 atomic)</div></div>
             <div class="econ-row"><div class="k">Payer → Receiver</div><div class="v mono">0.0.9197513 → 0.0.9215954</div></div>
-            <div class="econ-row"><div class="k">Transaction</div><div class="v mono">0.0.9197513@1785172125.100000000 (simulated)</div></div>
-            <div class="econ-row"><div class="k">Consensus</div><div class="v mono">2026-07-27T17:08:45.888456789Z</div></div>
+            <div class="econ-row"><div class="k">Transaction</div><div class="v mono">0.0.7162784@1785173890.867086556</div></div>
+            <div class="econ-row"><div class="k">Consensus</div><div class="v mono">2026-07-27T17:38:16.977444275Z</div></div>
             <div class="econ-row"><div class="k">Facilitator path</div><div class="v">verify → settle → Mirror SUCCESS</div></div>
             <p class="footnote">$0.0001 / $0.001 are the challenge-stated fixed Hedera transfer costs — not the reservation price, not deducted from the carrier, never summed with HBAR amounts.</p>
           </div>
           <div class="panel hcs-panel">
             <h3>Verify it yourself</h3>
-            <p><span class="link-btn link-btn-disabled" title="Not available for this evidence mode">Payment on HashScan (unavailable)</span>
-               <span class="link-btn link-btn-disabled" title="Not available for this evidence mode">Topic on HashScan (unavailable)</span>
-               <span class="link-btn link-btn-disabled" title="Not available for this evidence mode">Topic-create tx (unavailable)</span></p>
-            <p class="footnote">Dry-run: HashScan links are intentionally disabled. Identifiers are simulated; zero network writes.</p>
+            <p><a class="link-btn" href="https://hashscan.io/testnet/transaction/0.0.7162784@1785173890.867086556" rel="noopener noreferrer" target="_blank">Payment on HashScan</a>
+               <a class="link-btn" href="https://hashscan.io/testnet/topic/0.0.9794225" rel="noopener noreferrer" target="_blank">Topic on HashScan</a>
+               <a class="link-btn" href="https://hashscan.io/testnet/transaction/0.0.9197513@1785171882.373802899" rel="noopener noreferrer" target="_blank">Topic-create tx</a></p>
+            <p class="footnote">Open HashScan to inspect live testnet records.</p>
             <h3>Topic sequences 1–5</h3>
-            <p class="mono">Topic 0.0.9700000 (simulated)</p>
+            <p class="mono">Topic 0.0.9794225</p>
             <table>
               <thead>
                 <tr>
@@ -352,37 +352,37 @@
                 <tr>
         <th scope="row">1</th>
         <td>AUCTION_OPEN</td>
-        <td><code title="sha256:ec52bc1c408db9b152c1f5e8353bf21f88c86f51720e3c45e200c7a9ace0fc5a">sha256:ec52bc1c408db9b…</code></td>
-        <td><time datetime="2026-07-27T17:03:40.737456789Z">2026-07-27T17:03:40.737456789Z</time></td>
-        <td>simulated</td>
+        <td><code title="sha256:fbc7d5df65a775b59d95b00afbfe12206ef0b87ae297506557e3d0e1f65f05e0">sha256:fbc7d5df65a775b…</code></td>
+        <td><time datetime="2026-07-27T17:04:52.344786737Z">2026-07-27T17:04:52.344786737Z</time></td>
+        <td>live testnet</td>
       </tr>
 <tr>
         <th scope="row">2</th>
         <td>BID_COMMITMENT_ALPHA</td>
-        <td><code title="sha256:da28336258f2e88eb60c79b2b5c4ac0f85ebd3d63bfeba63f89b6aa4ebcd2340">sha256:da28336258f2e88…</code></td>
-        <td><time datetime="2026-07-27T17:03:40.857456789Z">2026-07-27T17:03:40.857456789Z</time></td>
-        <td>simulated</td>
+        <td><code title="sha256:d31c6d1587e9f3b65cb7fd258a0b2e08cca8a20d148f0eea89198a4ece0b095a">sha256:d31c6d1587e9f3b…</code></td>
+        <td><time datetime="2026-07-27T17:04:56.180326104Z">2026-07-27T17:04:56.180326104Z</time></td>
+        <td>live testnet</td>
       </tr>
 <tr>
         <th scope="row">3</th>
         <td>BID_COMMITMENT_BETA</td>
-        <td><code title="sha256:b2a0f12689cff5b560c35d9403a377920e49ad6ce7f85300d0d9f4368f82bc5d">sha256:b2a0f12689cff5b…</code></td>
-        <td><time datetime="2026-07-27T17:03:40.977456789Z">2026-07-27T17:03:40.977456789Z</time></td>
-        <td>simulated</td>
+        <td><code title="sha256:f827ec1721a140f2bc515108e20e14510a5e318bd41aeb11f4f5158c100a7eda">sha256:f827ec1721a140f…</code></td>
+        <td><time datetime="2026-07-27T17:05:01.726960104Z">2026-07-27T17:05:01.726960104Z</time></td>
+        <td>live testnet</td>
       </tr>
 <tr>
         <th scope="row">4</th>
         <td>AUCTION_CLOSE_BARRIER</td>
-        <td><code title="sha256:606936e458832f2b05e7117961a62505fb7c803fb345237e74369ea34eb8b5fa">sha256:606936e458832f2…</code></td>
-        <td><time datetime="2026-07-27T17:08:45.688456789Z">2026-07-27T17:08:45.688456789Z</time></td>
-        <td>simulated</td>
+        <td><code title="sha256:e24bb60e501513b58ffc3e36a32edaa1f6a517587ccb236988a49060eb5b30b6">sha256:e24bb60e501513b…</code></td>
+        <td><time datetime="2026-07-27T17:11:54.604991539Z">2026-07-27T17:11:54.604991539Z</time></td>
+        <td>live testnet</td>
       </tr>
 <tr>
         <th scope="row">5</th>
         <td>ROUTE_RESERVED</td>
-        <td><code title="sha256:46191ad127f71a96cfb49597da700ab61d45c0cb6d40848b77fa90456d251271">sha256:46191ad127f71a9…</code></td>
-        <td><time datetime="2026-07-27T17:08:46.008456789Z">2026-07-27T17:08:46.008456789Z</time></td>
-        <td>simulated</td>
+        <td><code title="sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035">sha256:b4c0a18896ac542…</code></td>
+        <td><time datetime="2026-07-27T17:38:23.453477104Z">2026-07-27T17:38:23.453477104Z</time></td>
+        <td>live testnet</td>
       </tr>
               </tbody>
             </table>
@@ -408,21 +408,21 @@
           </thead>
           <tbody>
             <tr>
-              <td class="mono">bid-alpha-final-38b225cd</td>
+              <td class="mono">bid-alpha-final-8b73c264</td>
               <td>2</td>
               <td><strong>QUALIFIED · WINNER</strong></td>
               <td>carrier-alpha</td>
             </tr>
             <tr>
-              <td class="mono">bid-beta-final-38b225cd</td>
+              <td class="mono">bid-beta-final-8b73c264</td>
               <td>3</td>
               <td>QUALIFIED · not selected</td>
               <td>carrier-beta</td>
             </tr>
           </tbody>
         </table>
-        <p class="footnote mono">decisionManifestHash: sha256:f22195b7157639f25278cf9fbc105e9b10087c9dcc9c232be2f084df500cf2ea</p>
-        <p class="footnote mono">evaluatedBidSetHash: sha256:75fbebda224253bef1397d21052dbdf182caa5dece50b0fbad44b9280ba37055</p>
+        <p class="footnote mono">decisionManifestHash: sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425</p>
+        <p class="footnote mono">evaluatedBidSetHash: sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3</p>
         <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence.</p>
         <p class="footnote"><strong>Differentiator:</strong> Private off-chain bids with salted, consensus-timestamped HCS commitments and reproducible deterministic evaluation.</p>
       </section>
@@ -454,7 +454,7 @@
         <img src="../public/brand/hedera/hedera-primary-logo-alt.svg" alt="Hedera trademark logo" />
       </div>
       <p class="disclaimer">RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC.</p>
-      <p class="footnote">OFFLINE_DRY_RUN rehearsal only. All auction, carrier, topic, and payment identifiers in this evidence are deliberately synthetic and simulated for reproducibility. Zero network writes occurred: no Hedera topic was created, no HCS messages were submitted, and no payment was settled. These are not real testnet transactions and must not be treated as live HashScan evidence.</p>
+      <p class="footnote">Demo carrier identities and auction data are synthetic for reproducibility. Hedera testnet consensus messages and USDC settlement are real.</p>
       <p class="footnote">Report generated from final-demo evidence JSON. No private keys or signed payment payloads are rendered.</p>
     </footer>
   </div>

@@ -42,6 +42,19 @@ import type { ReservationRecord } from "../src/reservation/types";
 import { FileSystemReservationStore } from "../src/reservation/attempt-store";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
+/** Frozen pre-submission snapshot — not the completed live evidence file. */
+const PRE_SUBMISSION_ATTEMPT_FIXTURE = path.join(
+  REPO_ROOT,
+  "test",
+  "fixtures",
+  "final-demo-live-attempt-pre-submission-8b73c264.json",
+);
+const PRE_SUBMISSION_RESERVATION_FIXTURE = path.join(
+  REPO_ROOT,
+  "test",
+  "fixtures",
+  "final-demo-live-reservation-pre-submission-8b73c264.json",
+);
 const LIVE_ATTEMPT = path.join(
   REPO_ROOT,
   "evidence",
@@ -71,21 +84,21 @@ function tempDir(): string {
   return dir;
 }
 
-function loadLiveAttemptSnapshot(): FinalDemoAttemptRecord {
-  const raw = JSON.parse(readFileSync(LIVE_ATTEMPT, "utf8"));
+function loadPreSubmissionAttemptSnapshot(): FinalDemoAttemptRecord {
+  const raw = JSON.parse(readFileSync(PRE_SUBMISSION_ATTEMPT_FIXTURE, "utf8"));
   return parseFinalDemoAttempt(raw);
 }
 
-function loadLiveReservationSnapshot(): ReservationRecord {
+function loadPreSubmissionReservationSnapshot(): ReservationRecord {
   return JSON.parse(
-    readFileSync(LIVE_RESERVATION, "utf8"),
+    readFileSync(PRE_SUBMISSION_RESERVATION_FIXTURE, "utf8"),
   ) as ReservationRecord;
 }
 
 function emptyPreSubmissionReservation(
   overrides: Partial<ReservationRecord> = {},
 ): ReservationRecord {
-  const base = loadLiveReservationSnapshot();
+  const base = loadPreSubmissionReservationSnapshot();
   return {
     ...base,
     state: "PAYMENT_CHALLENGE_ISSUED",
@@ -103,8 +116,8 @@ function emptyPreSubmissionReservation(
 
 describe("pre-submission payment claim recovery — pure guards", () => {
   it("exact existing pre-submission claim is safely resumable", () => {
-    const attempt = loadLiveAttemptSnapshot();
-    const reservation = loadLiveReservationSnapshot();
+    const attempt = loadPreSubmissionAttemptSnapshot();
+    const reservation = loadPreSubmissionReservationSnapshot();
 
     expect(attempt.status).toBe("PAYMENT_SUBMISSION_CLAIMED");
     expect(attempt.paymentSubmissionClaim.status).toBe("CLAIMED");
@@ -140,14 +153,17 @@ describe("pre-submission payment claim recovery — pure guards", () => {
   });
 
   it("claim with any transaction identity is not treated as safe pre-submission", () => {
-    const attempt = withFinalDemoAttemptUpdate(loadLiveAttemptSnapshot(), {
-      paymentSubmissionClaim: {
-        claimedAt: "2026-07-27T17:11:58.475Z",
-        claimId: "pay-claim-e7246d88-02e5-4b09-a44b-62c2385da82e",
-        status: "CLAIMED",
-        transactionId: "0.0.9197513@1785172400.000000001",
+    const attempt = withFinalDemoAttemptUpdate(
+      loadPreSubmissionAttemptSnapshot(),
+      {
+        paymentSubmissionClaim: {
+          claimedAt: "2026-07-27T17:11:58.475Z",
+          claimId: "pay-claim-e7246d88-02e5-4b09-a44b-62c2385da82e",
+          status: "CLAIMED",
+          transactionId: "0.0.9197513@1785172400.000000001",
+        },
       },
-    });
+    );
     const reservation = emptyPreSubmissionReservation();
     expect(isSafePreSubmissionPaymentClaim(attempt, reservation)).toBe(false);
     expect(() =>
@@ -159,7 +175,7 @@ describe("pre-submission payment claim recovery — pure guards", () => {
   });
 
   it("payment payload hash blocks safe pre-submission treatment", () => {
-    const attempt = loadLiveAttemptSnapshot();
+    const attempt = loadPreSubmissionAttemptSnapshot();
     const reservation = emptyPreSubmissionReservation({
       paymentPayloadHash: "sha256:" + "ab".repeat(32),
     });
@@ -167,7 +183,7 @@ describe("pre-submission payment claim recovery — pure guards", () => {
   });
 
   it("settle claim or facilitator result blocks fresh payment construction", () => {
-    const attempt = loadLiveAttemptSnapshot();
+    const attempt = loadPreSubmissionAttemptSnapshot();
     const withSettle = emptyPreSubmissionReservation({
       settleClaim: {
         claimId: "settle-1",
@@ -204,7 +220,7 @@ describe("pre-submission payment claim recovery — pure guards", () => {
   });
 
   it("ambiguous mid-payment reservation states fail closed", () => {
-    const attempt = loadLiveAttemptSnapshot();
+    const attempt = loadPreSubmissionAttemptSnapshot();
     for (const state of [
       "PAYMENT_SUBMISSION_STARTED",
       "FACILITATOR_VERIFIED",
@@ -222,7 +238,7 @@ describe("pre-submission payment claim recovery — pure guards", () => {
   });
 
   it("sequence 5 progress blocks pre-submission clear", () => {
-    const attempt = loadLiveAttemptSnapshot();
+    const attempt = loadPreSubmissionAttemptSnapshot();
     const withSeq5 = withFinalDemoAttemptUpdate(attempt, {
       messageOutbox: attempt.messageOutbox.map((m) =>
         m.logicalLabel === "ROUTE_RESERVED"
@@ -257,9 +273,9 @@ describe("pre-submission recovery — orchestrated resume (offline, temp copy)",
 
   it("reuses topic and sequences 1–4; no second topic; settle ≤1; seq5 after settlement", async () => {
     if (
-      !existsSync(LIVE_ATTEMPT) ||
-      !existsSync(LIVE_MATERIALS) ||
-      !existsSync(LIVE_RESERVATION)
+      !existsSync(PRE_SUBMISSION_ATTEMPT_FIXTURE) ||
+      !existsSync(PRE_SUBMISSION_RESERVATION_FIXTURE) ||
+      !existsSync(LIVE_MATERIALS)
     ) {
       return;
     }
@@ -272,16 +288,18 @@ describe("pre-submission recovery — orchestrated resume (offline, temp copy)",
     );
     const reservationDir = path.join(dir, "live-reservations");
     mkdirSync(reservationDir, { recursive: true });
-    copyFileSync(LIVE_ATTEMPT, attemptPath);
+    // Temp copies of frozen pre-submission fixtures only — never mutate live evidence.
+    copyFileSync(PRE_SUBMISSION_ATTEMPT_FIXTURE, attemptPath);
     copyFileSync(LIVE_MATERIALS, materialsPath);
     copyFileSync(
-      LIVE_RESERVATION,
+      PRE_SUBMISSION_RESERVATION_FIXTURE,
       path.join(reservationDir, "reservation-final-8b73c264.json"),
     );
 
     const liveAttempt = loadFinalDemoAttempt(attemptPath)!;
     const topicId = liveAttempt.topicId!;
     expect(topicId).toBe("0.0.9794225");
+    expect(liveAttempt.status).toBe("PAYMENT_SUBMISSION_CLAIMED");
 
     const materials = JSON.parse(readFileSync(materialsPath, "utf8")) as {
       auctionEndsAt: string;
@@ -378,6 +396,15 @@ describe("pre-submission recovery — orchestrated resume (offline, temp copy)",
       return found;
     };
 
+    // Capture real live evidence hashes before the offline resume so we can
+    // prove the test only mutates temp copies.
+    const liveAttemptBefore = existsSync(LIVE_ATTEMPT)
+      ? readFileSync(LIVE_ATTEMPT, "utf8")
+      : null;
+    const liveReservationBefore = existsSync(LIVE_RESERVATION)
+      ? readFileSync(LIVE_RESERVATION, "utf8")
+      : null;
+
     const result = await runFinalDemoOrchestration({
       mode: FINAL_DEMO_MODE_LIVE,
       env: fullLiveEnv,
@@ -433,12 +460,14 @@ describe("pre-submission recovery — orchestrated resume (offline, temp copy)",
     expect(finalReservation?.paymentPayloadHash).toMatch(/^sha256:/);
     expect(finalReservation?.settleClaim).toBeTruthy();
 
-    // Real live files must remain untouched
-    const liveStill = loadFinalDemoAttempt(LIVE_ATTEMPT)!;
-    expect(liveStill.status).toBe("PAYMENT_SUBMISSION_CLAIMED");
-    expect(liveStill.paymentSubmissionClaim.transactionId).toBeNull();
-    const liveResStill = loadLiveReservationSnapshot();
-    expect(liveResStill.paymentPayloadHash).toBeNull();
-    expect(liveResStill.transactionId).toBeNull();
+    // Real live files must remain byte-identical (temp-copy isolation).
+    if (liveAttemptBefore !== null) {
+      expect(readFileSync(LIVE_ATTEMPT, "utf8")).toBe(liveAttemptBefore);
+    }
+    if (liveReservationBefore !== null) {
+      expect(readFileSync(LIVE_RESERVATION, "utf8")).toBe(
+        liveReservationBefore,
+      );
+    }
   });
 });

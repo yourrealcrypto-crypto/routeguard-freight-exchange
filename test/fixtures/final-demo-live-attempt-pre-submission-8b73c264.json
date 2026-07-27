@@ -1,10 +1,10 @@
 {
   "schemaVersion": "final-demo-live-attempt-1.1",
-  "recordVersion": 25,
+  "recordVersion": 14,
   "attemptId": "final-demo-bf7ea243-fdc0-4771-9553-befe8b73c264",
   "shortAttemptId": "8b73c264",
   "mode": "LIVE_FINAL_DEMO",
-  "status": "COMPLETED",
+  "status": "PAYMENT_SUBMISSION_CLAIMED",
   "network": "hedera:testnet",
   "preparationStartedAt": "2026-07-27T17:04:48.876Z",
   "runBaseTime": "2026-07-27T17:06:48.786Z",
@@ -169,50 +169,26 @@
       "logicalLabel": "ROUTE_RESERVED",
       "expectedSequence": 5,
       "expectedTopic": "0.0.9794225",
-      "envelope": {
-        "schemaVersion": "routeguard-hcs-1.0",
-        "messageType": "ROUTE_RESERVED",
-        "runId": "reservation-reservation-final-8b73c264",
-        "tenderId": "tender-final-8b73c264",
-        "tenderVersion": 1,
-        "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
-        "createdAt": "2026-07-27T17:38:22.600Z",
-        "payloadHash": "sha256:b7f0b0f47e9d9e08ce214d9e5f2958b52833c53f76abbceebbbbc9aca466e655",
-        "payload": {
-          "reservationId": "reservation-final-8b73c264",
-          "winningBidId": "bid-alpha-final-8b73c264",
-          "carrierId": "carrier-alpha",
-          "carrierAccount": "0.0.9215954",
-          "selectedOptionId": "USDC",
-          "paymentAsset": "0.0.429274",
-          "paymentAmountAtomic": "10000",
-          "payerAccount": "0.0.9197513",
-          "paymentTransactionId": "0.0.7162784@1785173890.867086556",
-          "paymentConsensusTimestamp": "2026-07-27T17:38:16.977444275Z",
-          "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
-          "closeBarrierSequence": 4,
-          "reservationEvidenceVersion": "rg-res-ev-1"
-        }
-      },
-      "envelopeHash": "sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035",
-      "encodedByteCount": 941,
-      "claimedAt": "2026-07-27T17:38:22.721Z",
-      "submitAttemptId": "submit-ROUTE_RESERVED-4094e578-fee3-4454-a78c-1cad5da7d7e5",
-      "status": "CONFIRMED",
-      "transactionId": "0.0.9197513@1785173898.453716083",
-      "consensusTimestamp": "2026-07-27T17:38:23.453477104Z",
-      "sequence": 5,
-      "receiptStatus": "SUCCESS"
+      "envelope": null,
+      "envelopeHash": null,
+      "encodedByteCount": null,
+      "claimedAt": null,
+      "submitAttemptId": null,
+      "status": "PENDING",
+      "transactionId": null,
+      "consensusTimestamp": null,
+      "sequence": null,
+      "receiptStatus": null
     }
   ],
   "paymentSubmissionClaim": {
-    "claimedAt": "2026-07-27T17:38:13.148Z",
-    "claimId": "pay-claim-d39e14bc-ccdb-4c27-a22f-83b3342bffb0",
-    "status": "CONFIRMED",
-    "transactionId": "0.0.7162784@1785173890.867086556"
+    "claimedAt": "2026-07-27T17:11:58.475Z",
+    "claimId": "pay-claim-e7246d88-02e5-4b09-a44b-62c2385da82e",
+    "status": "CLAIMED",
+    "transactionId": null
   },
-  "reservationServiceRecordPath": "reservation:reservation-final-8b73c264",
-  "routeReservedRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+  "reservationServiceRecordPath": null,
+  "routeReservedRecordHash": null,
   "finalHashes": {
     "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
     "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
@@ -220,9 +196,9 @@
     "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425"
   },
   "evidenceWrite": {
-    "status": "WRITTEN",
-    "claimedAt": "2026-07-27T17:38:28.144Z",
-    "claimId": "ev-112900d2-4b43-44a8-a7d2-38fdcac16900",
+    "status": "NONE",
+    "claimedAt": null,
+    "claimId": null,
     "expectedEvidenceHash": null,
     "jsonHash": null,
     "mdHash": null
@@ -230,11 +206,11 @@
   "evidencePaths": {
     "materials": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-live-authoritative-materials.json",
     "attempt": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-live-attempt.json",
-    "resultJson": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-result.json",
-    "resultMd": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-result.md"
+    "resultJson": null,
+    "resultMd": null
   },
   "failureCode": null,
   "failureReason": null,
   "createdAt": "2026-07-27T17:04:48.876Z",
-  "updatedAt": "2026-07-27T17:38:28.169Z"
+  "updatedAt": "2026-07-27T17:11:58.478Z"
 }
