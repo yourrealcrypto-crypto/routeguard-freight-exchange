@@ -19,6 +19,7 @@ import {
 } from "../src/domain/hedera-transfer-costs";
 import {
   DRY_SYNTHETIC_DATA_DISCLOSURE,
+  FINAL_DEMO_CARRIER_BETA_ACCOUNT,
   FINAL_DEMO_MODE_DRY,
   FINAL_DEMO_MODE_LIVE,
   HEDERA_NON_AFFILIATION_DISCLAIMER,
@@ -649,7 +650,7 @@ export function renderFinalDemoReportHtml(
           <article class="actor">
             <div class="role">Carrier beta</div>
             <div class="name">carrier-beta</div>
-            <div class="acct mono">0.0.9100002</div>
+            <div class="acct mono">${escapeHtml(FINAL_DEMO_CARRIER_BETA_ACCOUNT)}</div>
             <div class="note">Losing bid · synthetic demo identity</div>
           </article>
         </div>

@@ -43,7 +43,7 @@
     },
     "beta": {
       "carrierId": "carrier-beta",
-      "carrierAccountId": "0.0.9100002",
+      "carrierAccountId": "0.0.9793912",
       "displayName": "Synthetic Beta Logistics (fictional)",
       "allowedEquipment": ["Curtainsider"],
       "freightPriceCents": 375000
@@ -70,7 +70,7 @@
   "accounts": {
     "payerAccountId": "0.0.9197513",
     "winnerReceiverAccountId": "0.0.9215954",
-    "carrierBetaDemoAccountId": "0.0.9100002",
+    "carrierBetaDemoAccountId": "0.0.9793912",
     "facilitatorFeePayer": "0.0.7162784"
   },
   "writeBudgets": {

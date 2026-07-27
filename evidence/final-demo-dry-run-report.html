@@ -293,7 +293,7 @@
           <article class="actor">
             <div class="role">Carrier beta</div>
             <div class="name">carrier-beta</div>
-            <div class="acct mono">0.0.9100002</div>
+            <div class="acct mono">0.0.9793912</div>
             <div class="note">Losing bid · synthetic demo identity</div>
           </article>
         </div>
@@ -302,13 +302,13 @@
       <section aria-labelledby="timeline-heading">
         <h2 id="timeline-heading">Seven-step timeline</h2>
         <div class="timeline" role="list">
-          <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">2026-07-19T22:49:23.340456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">2026-07-19T22:49:23.460456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">3 · HCS</div><div class="t">Bid committed — beta (seq 3)</div><div class="ts">2026-07-19T22:49:23.580456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">4 · HCS</div><div class="t">Close barrier (seq 4)</div><div class="ts">2026-07-19T22:54:28.291456789Z</div></div>
-          <div class="step neutral" role="listitem"><div class="n">5 · Evaluate</div><div class="t">Winner selected (deterministic replay)</div><div class="ts mono">sha256:8f210b9f64afd60a5…</div></div>
-          <div class="step pay" role="listitem"><div class="n">6 · x402 payment</div><div class="t">402 challenge → verify → settle</div><div class="ts">2026-07-19T22:54:28.491456789Z</div></div>
-          <div class="step hcs" role="listitem"><div class="n">7 · HCS</div><div class="t">Settled ✓ → ROUTE_RESERVED (seq 5)</div><div class="ts">2026-07-19T22:54:28.611456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">2026-07-27T16:43:01.290456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">2026-07-27T16:43:01.410456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">3 · HCS</div><div class="t">Bid committed — beta (seq 3)</div><div class="ts">2026-07-27T16:43:01.530456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">4 · HCS</div><div class="t">Close barrier (seq 4)</div><div class="ts">2026-07-27T16:48:06.241456789Z</div></div>
+          <div class="step neutral" role="listitem"><div class="n">5 · Evaluate</div><div class="t">Winner selected (deterministic replay)</div><div class="ts mono">sha256:f9bf350a73d64e319…</div></div>
+          <div class="step pay" role="listitem"><div class="n">6 · x402 payment</div><div class="t">402 challenge → verify → settle</div><div class="ts">2026-07-27T16:48:06.441456789Z</div></div>
+          <div class="step hcs" role="listitem"><div class="n">7 · HCS</div><div class="t">Settled ✓ → ROUTE_RESERVED (seq 5)</div><div class="ts">2026-07-27T16:48:06.561456789Z</div></div>
         </div>
         <p class="settle-arrow" aria-label="Settlement order">Settlement precedes reservation — step 6 completes before step 7 ROUTE_RESERVED</p>
       </section>
@@ -325,8 +325,8 @@
             <div class="econ-row"><div class="k">RouteGuard fee</div><div class="v mono">NOT_MODELED_AS_SEPARATE_CHARGE</div></div>
             <div class="econ-row"><div class="k">Carrier received</div><div class="v">0.01 USDC — network cost NOT deducted (10000 atomic)</div></div>
             <div class="econ-row"><div class="k">Payer → Receiver</div><div class="v mono">0.0.9197513 → 0.0.9215954</div></div>
-            <div class="econ-row"><div class="k">Transaction</div><div class="v mono">0.0.9197513@1784501668.100000000 (simulated)</div></div>
-            <div class="econ-row"><div class="k">Consensus</div><div class="v mono">2026-07-19T22:54:28.491456789Z</div></div>
+            <div class="econ-row"><div class="k">Transaction</div><div class="v mono">0.0.9197513@1785170886.100000000 (simulated)</div></div>
+            <div class="econ-row"><div class="k">Consensus</div><div class="v mono">2026-07-27T16:48:06.441456789Z</div></div>
             <div class="econ-row"><div class="k">Facilitator path</div><div class="v">verify → settle → Mirror SUCCESS</div></div>
             <p class="footnote">$0.0001 / $0.001 are the challenge-stated fixed Hedera transfer costs — not the reservation price, not deducted from the carrier, never summed with HBAR amounts.</p>
           </div>
@@ -352,36 +352,36 @@
                 <tr>
         <th scope="row">1</th>
         <td>AUCTION_OPEN</td>
-        <td><code title="sha256:3aeb97208cf7b71232b461d927f8cc59c5557916c2699b2822e11a6d4643e3fd">sha256:3aeb97208cf7b71…</code></td>
-        <td><time datetime="2026-07-19T22:49:23.340456789Z">2026-07-19T22:49:23.340456789Z</time></td>
+        <td><code title="sha256:39f48f047b2fdeb1b0b77a7031a939ff5672e43cd8221546ba23ef2c17ffc974">sha256:39f48f047b2fdeb…</code></td>
+        <td><time datetime="2026-07-27T16:43:01.290456789Z">2026-07-27T16:43:01.290456789Z</time></td>
         <td>simulated</td>
       </tr>
 <tr>
         <th scope="row">2</th>
         <td>BID_COMMITMENT_ALPHA</td>
-        <td><code title="sha256:9b993775c2b00ae5c60e5a8dd49205b4e0a909f60bd33bdcdb6967063570e34a">sha256:9b993775c2b00ae…</code></td>
-        <td><time datetime="2026-07-19T22:49:23.460456789Z">2026-07-19T22:49:23.460456789Z</time></td>
+        <td><code title="sha256:7883d620696fd6d1a519484d4f69802d0d16c3158e42034dbbcd2d3914be31a8">sha256:7883d620696fd6d…</code></td>
+        <td><time datetime="2026-07-27T16:43:01.410456789Z">2026-07-27T16:43:01.410456789Z</time></td>
         <td>simulated</td>
       </tr>
 <tr>
         <th scope="row">3</th>
         <td>BID_COMMITMENT_BETA</td>
-        <td><code title="sha256:7dd41cbe8e20af44a8f02c001a37e53364d62330aacba916a01de57876c99f27">sha256:7dd41cbe8e20af4…</code></td>
-        <td><time datetime="2026-07-19T22:49:23.580456789Z">2026-07-19T22:49:23.580456789Z</time></td>
+        <td><code title="sha256:4ea2df6bb8e6948f8459c46dbdedf41966148e600bd80e8ce25c2eeee9125b47">sha256:4ea2df6bb8e6948…</code></td>
+        <td><time datetime="2026-07-27T16:43:01.530456789Z">2026-07-27T16:43:01.530456789Z</time></td>
         <td>simulated</td>
       </tr>
 <tr>
         <th scope="row">4</th>
         <td>AUCTION_CLOSE_BARRIER</td>
-        <td><code title="sha256:8a0d055a16b557aa2f435c050f42867bd4cd516243bc441aaf39a940db242ee0">sha256:8a0d055a16b557a…</code></td>
-        <td><time datetime="2026-07-19T22:54:28.291456789Z">2026-07-19T22:54:28.291456789Z</time></td>
+        <td><code title="sha256:ce5bf44d1cb18ddee5eb801532a98a38bf50f2f95da69f7790e092fa1d9277eb">sha256:ce5bf44d1cb18dd…</code></td>
+        <td><time datetime="2026-07-27T16:48:06.241456789Z">2026-07-27T16:48:06.241456789Z</time></td>
         <td>simulated</td>
       </tr>
 <tr>
         <th scope="row">5</th>
         <td>ROUTE_RESERVED</td>
-        <td><code title="sha256:5dfd31a70e84c79f428e3a61a0d9c6c47e3128876f50ea907b99c938f95995fd">sha256:5dfd31a70e84c79…</code></td>
-        <td><time datetime="2026-07-19T22:54:28.611456789Z">2026-07-19T22:54:28.611456789Z</time></td>
+        <td><code title="sha256:f02643a5b641bb12424c32e369f913d76812c28be4a747f002498bbb17ed4493">sha256:f02643a5b641bb1…</code></td>
+        <td><time datetime="2026-07-27T16:48:06.561456789Z">2026-07-27T16:48:06.561456789Z</time></td>
         <td>simulated</td>
       </tr>
               </tbody>
@@ -408,21 +408,21 @@
           </thead>
           <tbody>
             <tr>
-              <td class="mono">bid-alpha-final-e7212cfa</td>
+              <td class="mono">bid-alpha-final-2c07cce1</td>
               <td>2</td>
               <td><strong>QUALIFIED · WINNER</strong></td>
               <td>carrier-alpha</td>
             </tr>
             <tr>
-              <td class="mono">bid-beta-final-e7212cfa</td>
+              <td class="mono">bid-beta-final-2c07cce1</td>
               <td>3</td>
               <td>QUALIFIED · not selected</td>
               <td>carrier-beta</td>
             </tr>
           </tbody>
         </table>
-        <p class="footnote mono">decisionManifestHash: sha256:8f210b9f64afd60a5f90bc05e6e0d09a49cefd8c6181a64ff432e88829b3095b</p>
-        <p class="footnote mono">evaluatedBidSetHash: sha256:ad48bc3c6266f98570ea96312b9d01af2d5c9b099fe7de2f193bfa156fcb6bc4</p>
+        <p class="footnote mono">decisionManifestHash: sha256:f9bf350a73d64e3197f64b98735363547299bc7c21c3c565c3edead347e8becc</p>
+        <p class="footnote mono">evaluatedBidSetHash: sha256:f5d863a43a5612af7c4c4adad1103acfd1b6d11e919e9df26d6a727ae64fb497</p>
         <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence.</p>
         <p class="footnote"><strong>Differentiator:</strong> Private off-chain bids with salted, consensus-timestamped HCS commitments and reproducible deterministic evaluation.</p>
       </section>

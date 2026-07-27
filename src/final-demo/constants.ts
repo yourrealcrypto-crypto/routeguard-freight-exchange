@@ -9,7 +9,15 @@ export const FINAL_DEMO_MODE_DRY = "OFFLINE_DRY_RUN" as const;
 
 export const FINAL_DEMO_PAYER_ACCOUNT = "0.0.9197513" as const;
 export const FINAL_DEMO_WINNER_ACCOUNT = "0.0.9215954" as const;
-export const FINAL_DEMO_CARRIER_BETA_ACCOUNT = "0.0.9100002" as const;
+/**
+ * Carrier-beta HCS identity. Migrated 2026-07-27: the previous beta account was
+ * not owner-accessible (no controlled key, so it could not be funded or sign
+ * sequence 3), and an owner-controlled testnet account replaces it. Must stay
+ * distinct from {@link FINAL_DEMO_PAYER_ACCOUNT} and
+ * {@link FINAL_DEMO_WINNER_ACCOUNT}, hold its own ECDSA key, and keep at least
+ * 1 HBAR — see `checkFinalDemoHcsIdentityReadiness`.
+ */
+export const FINAL_DEMO_CARRIER_BETA_ACCOUNT = "0.0.9793912" as const;
 export const FINAL_DEMO_FACILITATOR_FEE_PAYER = "0.0.7162784" as const;
 
 export const FINAL_DEMO_USDC_TOKEN = "0.0.429274" as const;
