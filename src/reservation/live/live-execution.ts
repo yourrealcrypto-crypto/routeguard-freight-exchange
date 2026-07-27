@@ -10,6 +10,7 @@
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
+import { paymentPayloadForCanonicalHash } from "../../domain/payment-payload-canonical";
 import { HCS_MAX_MESSAGE_BYTES } from "../../hcs/types";
 import {
   FileSystemReservationStore,
@@ -382,7 +383,9 @@ export async function runPhase6bLiveExecution(
         description: challenge.description,
       },
     });
-  const recomputedHash = canonicalSha256(paymentPayload);
+  const recomputedHash = canonicalSha256(
+    paymentPayloadForCanonicalHash(paymentPayload),
+  );
   if (recomputedHash !== paymentPayloadHash) {
     throw new Phase6bAttemptError(
       "paymentPayloadHash mismatch vs in-memory payload",

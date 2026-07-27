@@ -110,6 +110,10 @@ import type {
   SessionFacilitatorTransport,
 } from "./transports";
 import {
+  clearSafePreSubmissionPaymentClaim,
+  isSafePreSubmissionPaymentClaim,
+} from "./payment-claim-recovery";
+import {
   assertUsdcReadinessPass,
   offlineUsdcReadinessPass,
 } from "./usdc-readiness";
@@ -1257,13 +1261,21 @@ export async function runFinalDemoOrchestration(
           "PAYMENT_AMBIGUOUS",
         );
       }
+    } else if (isSafePreSubmissionPaymentClaim(attempt, reservation)) {
+      // Proven pre-submission failure (e.g. serialization before any client
+      // identity was persisted). Clear the outer claim via validated transition
+      // and fall through to a single fresh construction — same topic, seqs 1–4.
+      attempt = clearSafePreSubmissionPaymentClaim(attempt, reservation);
+      attempt = await persistAttempt(attemptStore, attempt);
     } else {
       throw new FinalDemoError(
         "PAYMENT_SUBMISSION_CLAIMED without safe resume path",
         "PAYMENT_AMBIGUOUS",
       );
     }
-  } else if (!reservation.routeReserved) {
+  }
+
+  if (!reservation.routeReserved) {
     if (
       reservation.transactionId &&
       (reservation.state === "FACILITATOR_SETTLED" ||
@@ -1285,7 +1297,7 @@ export async function runFinalDemoOrchestration(
     ) {
       // continue to outbox / evidence
     } else {
-      // Fresh payment path
+      // Fresh payment path (including post pre-submission claim clear).
       // Payment payload generation gate (H5): only from PAYMENT_CHALLENGE_ISSUED
       // with no prior claim/hash/tx.
       if (

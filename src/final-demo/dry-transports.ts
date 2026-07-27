@@ -6,6 +6,7 @@
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
 import { canonicalSha256 } from "../domain/canonical-hash";
+import { paymentPayloadForCanonicalHash } from "../domain/payment-payload-canonical";
 import {
   envelopeHash,
   serializeEnvelopeForSubmit,
@@ -186,7 +187,9 @@ function createDryRunPaymentPayloadFactory(
       extra: { dryRun: true },
     } as unknown as PaymentRequirements;
 
-    const paymentPayloadHash = canonicalSha256(paymentPayload);
+    const paymentPayloadHash = canonicalSha256(
+      paymentPayloadForCanonicalHash(paymentPayload),
+    );
 
     // Dry client-frozen transaction identity from the mock network clock —
     // clearly synthetic (payer@clock), never persisted as live evidence.

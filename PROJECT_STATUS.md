@@ -1,12 +1,159 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.4.1
+**Version:** 0.4.2
 **Date:** 2026-07-27
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `fix/live-readiness-winning-demo` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `54db2b1d92f44a63c9dac4569f27f9513a89ce46` (v0.4.0)
+**Prior checkpoint HEAD:** `f10c419fc8657d107d1a7362bd7be1d845921255` (v0.4.1)
 **Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Live payment pre-submission recovery (v0.4.2)
+
+Critical live-state recovery. **Zero live network writes in this checkpoint.**
+
+### Existing live attempt (do not discard)
+
+| Field | Value |
+|---|---|
+| runId | `final-8b73c264` |
+| reservationId | `reservation-final-8b73c264` |
+| topicId | **`0.0.9794225`** |
+| topic-create tx | `0.0.9197513@1785171882.373802899` |
+| attempt status | `PAYMENT_SUBMISSION_CLAIMED` |
+| reservation state | `PAYMENT_CHALLENGE_ISSUED` |
+
+### Confirmed HCS sequences 1–4 (SUCCESS — reuse only)
+
+| Seq | Label | Transaction ID |
+|---|---|---|
+| 1 | AUCTION_OPEN | `0.0.9197513@1785171886.464403601` |
+| 2 | BID_COMMITMENT_ALPHA | `0.0.9215954@1785171891.401438362` |
+| 3 | BID_COMMITMENT_BETA | `0.0.9793912@1785171896.489501448` |
+| 4 | AUCTION_CLOSE_BARRIER | `0.0.9197513@1785172306.496939544` |
+| 5 | ROUTE_RESERVED | **PENDING** — not submitted |
+
+### Exact failure
+
+```
+Unsupported value at $.extensions: undefined object property.
+```
+
+Root cause: `@x402/core` v2 `createPaymentPayload` always assigns
+`extensions: mergeExtensions(...)`. When no extensions are declared,
+`mergeExtensions` returns `undefined`, so the payload object carries a real
+property `extensions: undefined`. RouteGuard then hashes with strict
+`canonicalSha256` / `canonicalize`, which correctly **rejects** undefined
+object properties fail-closed.
+
+The outer payment claim was written **before** construction completed, so the
+durable attempt stayed `PAYMENT_SUBMISSION_CLAIMED` while construction died on
+hash.
+
+### Proof that no payment transaction existed
+
+| Field | Live value |
+|---|---|
+| `paymentSubmissionClaim.transactionId` | `null` |
+| `paymentPayloadHash` | `null` |
+| `clientTransaction` | `null` |
+| `settleClaim` | `null` |
+| `facilitatorSettle` | `null` |
+| `transactionId` | `null` |
+| `mirrorConfirmation` | `null` |
+| Reconcile CLI | `NOT_RECONCILABLE` — pre-submission; nothing signed for submission |
+
+**PAYMENT_WAS_PREVIOUSLY_SUBMITTED = NO**  
+**PAYMENT_WAS_PREVIOUSLY_SETTLED = NO**  
+**SAFE_TO_RESUME_EXISTING_ATTEMPT = YES**
+
+### Repair (narrow)
+
+1. **`paymentPayloadForCanonicalHash`** (`src/domain/payment-payload-canonical.ts`)  
+   Shallow-omits optional top-level keys whose value is strictly `undefined`
+   (notably `extensions`) **before** strict canonical hashing.  
+   - Does **not** weaken `canonicalize`.  
+   - Does **not** convert `undefined` → `null`.  
+   - Nested undefined still fails closed.  
+   - Non-empty `extensions` pass through and still bind hashes.
+
+2. Wired into live payer factory, phase6b hash recompute, and dry payload factory.
+
+3. **Pre-submission claim recovery** (`src/final-demo/payment-claim-recovery.ts`)  
+   When claim is `CLAIMED` with **no** tx id / payload hash / clientTransaction /
+   settle / facilitator / reservation tx, a validated transition clears the
+   claim to `NONE` and sets attempt status `PAYMENT_READY` so a single fresh
+   construction may proceed. Any identity or mid-payment state fails closed.
+
+4. Orchestration resume reuses the existing topic and confirmed sequences 1–4;
+   sequence 5 remains gated on Mirror SUCCESS after settlement.
+
+### Changed files
+
+| File | Change |
+|---|---|
+| `src/domain/payment-payload-canonical.ts` | **New** — omit optional undefined before hash |
+| `src/final-demo/payment-claim-recovery.ts` | **New** — safe pre-submission claim clear |
+| `src/final-demo/orchestration.ts` | Resume path clears proven pre-submission claim |
+| `src/reservation/live/payer-payload.ts` | Hash via `paymentPayloadForCanonicalHash` |
+| `src/reservation/live/live-execution.ts` | Recompute hash via same helper |
+| `src/final-demo/dry-transports.ts` | Dry hash via same helper |
+| `test/payment-payload-canonical.test.ts` | **New** — serialization regression (7) |
+| `test/final-demo-payment-claim-recovery.test.ts` | **New** — recovery + orchestrated resume (7) |
+| `evidence/final-demo-live-attempt.json` | Preserved real live attempt (not rewritten by this fix) |
+| `evidence/final-demo-live-authoritative-materials.json` | Preserved real materials |
+| `PROJECT_STATUS.md` | This section |
+
+### Deliberately not changed
+
+- Auction rules, x402 terms, amount, payer, receiver, token, network
+- Canonical serialization strictness
+- Recovery architecture for settled / mid-payment / ambiguous cases
+- No second topic; no re-submit of sequences 1–4; no blind claim clear
+
+### Owner resume command (after this patch)
+
+Prefer the existing orchestrator recovery path (no new CLI, no manual JSON edit):
+
+```bash
+npm run demo:final-auction
+```
+
+with the **same live env flags** already used for the stuck attempt
+(`ENABLE_FINAL_DEMO_LIVE=true`, `ENABLE_LIVE_HEDERA=true`,
+`ENABLE_LIVE_USDC_PAYMENTS=true`, `ENABLE_LIVE_HCS_WRITES=true`,
+`ENABLE_LIVE_TOPIC_CREATE=true`, `ENABLE_PHASE6B_LIVE_EXECUTE=true`,
+`CONFIRM_FINAL_DEMO=CREATE_NEW_TOPIC_AND_EXECUTE_ONE_USDC_RESERVATION`).
+
+Despite the confirm string naming, resume loads the durable attempt and
+**must not** create a new topic when `topicId` is already set.
+
+### Explicit prohibitions
+
+- **Do not** create another topic.
+- **Do not** blind-rerun after deleting attempt/reservation files.
+- **Do not** clear `paymentSubmissionClaim` by hand.
+- **Do not** re-submit HCS sequences 1–4.
+- **Do not** publish sequence 5 before Mirror SUCCESS on the payment.
+
+### Validation (v0.4.2)
+
+- `npm run typecheck`: **PASS**
+- `npx vitest run`: **PASS** — 44 files / **551** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 184 files scanned
+- `git diff --check`: **PASS** (CRLF warnings only)
+
+Live Hedera network writes in this checkpoint: **0 topic creates, 0 HCS
+submissions, 0 payments**.
+
+### Current state
+
+Code and offline recovery path are ready. Live attempt
+`final-8b73c264` / topic `0.0.9794225` with sequences 1–4 SUCCESS remains
+pre-submission and is safe to resume via the owner command above.
+Sequence 5 and payment still outstanding until that authorized resume.
 
 ---
 

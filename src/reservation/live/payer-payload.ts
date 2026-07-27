@@ -9,6 +9,7 @@
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
+import { paymentPayloadForCanonicalHash } from "../../domain/payment-payload-canonical";
 import { validStartIsoFromTransactionId } from "../client-transaction";
 import {
   PHASE6B_CARRIER_ACCOUNT,
@@ -229,7 +230,12 @@ export function createLivePayerPaymentPayloadFactory(options: {
       transactionValidDurationSeconds: durationSeconds,
     };
 
-    const paymentPayloadHash = canonicalSha256(paymentPayload);
+    // x402 v2 may leave optional `extensions: undefined` on the payload object.
+    // Omit optional undefined properties before strict canonical hashing;
+    // do not weaken canonicalize itself.
+    const paymentPayloadHash = canonicalSha256(
+      paymentPayloadForCanonicalHash(paymentPayload),
+    );
     return { paymentPayload, requirement, paymentPayloadHash, clientTransaction };
   };
 }
