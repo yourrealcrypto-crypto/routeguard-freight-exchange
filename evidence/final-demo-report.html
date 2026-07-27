@@ -386,11 +386,39 @@
       </tr>
               </tbody>
             </table>
-            <div class="chips" style="margin-top:12px">
-              <span class="chip">close barrier consensus ≥ auctionEndsAt ✓</span>
-              <span class="chip">all messages &lt; 1024 B ✓</span>
-              <span class="chip">Mirror window complete 1–5 ✓</span>
+            <div class="chips" style="margin-top:12px" aria-label="Computed proof invariants">
+              <span class="chip">close barrier consensus ≥ auctionEndsAt · <strong>PASS</strong></span>
+              <span class="chip">all messages &lt; 1024 B · <strong>PASS</strong></span>
+              <span class="chip">Mirror window sequences 1–5 · <strong>PASS</strong></span>
             </div>
+            <p class="footnote">Sequence 5 <code>ROUTE_RESERVED</code> embeds the payment transaction ID and payment consensus timestamp in its HCS payload. Therefore, settlement-before-reservation can be verified directly from topic 0.0.9794225 without trusting this generated report. Mirror: <a href="https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.9794225/messages" rel="noopener noreferrer" target="_blank">https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.9794225/messages</a></p>
+            <p class="footnote">Resumed-process network writes (not whole-run totals): topicCreates=0, hcsSubmits=1, payments=1. Label: <strong>Writes performed by the resumed process</strong>.</p>
+            <p class="footnote">Recovery note: the time gap between sequence 4 (2026-07-27T17:11:54.604991539Z) and payment consensus (2026-07-27T17:38:16.977444275Z) reflects one fail-closed resume from durable pre-submission state after a canonical-hashing rejection; topic and sequences 1–4 were reused. See PROJECT_STATUS.md v0.4.2.</p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="http402-heading">
+        <h2 id="http402-heading">Two payment surfaces (do not conflate)</h2>
+        <div class="proof-row">
+          <div class="panel pay-panel">
+            <h3>A. Canonical protocol-level HTTP 402 handshake</h3>
+            <p class="footnote">Official <code>@x402/hono paymentMiddleware</code> on <code>GET /api/x402/usdc-smoke</code>. Source: <code>evidence/usdc-smoke-payment.json</code>.</p>
+            <div class="econ-row"><div class="k">Initial HTTP status</div><div class="v mono">402</div></div>
+            <div class="econ-row"><div class="k">Client retry</div><div class="v">Signed x402 payment payload retry</div></div>
+            <div class="econ-row"><div class="k">Final HTTP status</div><div class="v mono">200</div></div>
+            <div class="econ-row"><div class="k">Live payment transaction</div><div class="v mono">0.0.7162784@1784141033.517654222</div></div>
+            <div class="econ-row"><div class="k">Transaction identity matched</div><div class="v mono">true</div></div>
+            <div class="econ-row"><div class="k">Mirror result</div><div class="v mono">SUCCESS</div></div>
+            <div class="econ-row"><div class="k">Settlements</div><div class="v">exactly 1 (oneSettlementAttempt=true)</div></div>
+            <p><a class="link-btn" href="https://hashscan.io/testnet/transaction/0.0.7162784@1784141033.517654222" rel="noopener noreferrer" target="_blank">HTTP 402 smoke payment on HashScan</a></p>
+          </div>
+          <div class="panel hcs-panel">
+            <h3>B. Final freight-reservation orchestration</h3>
+            <p>Reuses x402 v2 <code>exact</code> payment objects and facilitator verify/settle, then publishes <code>ROUTE_RESERVED</code> only after Mirror-confirmed settlement.</p>
+            <p class="footnote"><strong>Do not imply</strong> that the freight reservation endpoint itself returned HTTP 402 if the challenge was returned in a JSON response. Wire-level HTTP 402 proof is surface A (smoke route + <code>@x402/hono</code>).</p>
+            <div class="econ-row"><div class="k">Live reservation payment</div><div class="v mono">0.0.7162784@1785173890.867086556</div></div>
+            <div class="econ-row"><div class="k">Facilitator settle calls (this live execution)</div><div class="v mono">1</div></div>
           </div>
         </div>
       </section>
@@ -423,24 +451,29 @@
         </table>
         <p class="footnote mono">decisionManifestHash: sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425</p>
         <p class="footnote mono">evaluatedBidSetHash: sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3</p>
-        <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence.</p>
+        <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence. HCS sequence numbers are derived from evidence labels, not hard-coded.</p>
         <p class="footnote"><strong>Differentiator:</strong> Private off-chain bids with salted, consensus-timestamped HCS commitments and reproducible deterministic evaluation.</p>
       </section>
 
       <section aria-labelledby="fail-heading">
-        <h2 id="fail-heading">Fail-closed demonstrations</h2>
+        <h2 id="fail-heading">Fail-closed guarantees — verified by automated tests</h2>
         <details>
           <summary>Wrong recipient → BLOCKED before signature — funds moved: 0</summary>
           <p>Payment verifier binds <code>payTo</code> to the winning carrier account. A mismatched recipient is rejected before signature / settlement.</p>
+          <p class="footnote">Tests: <code>test/reservation-payment-verifier.test.ts</code>, <code>test/reservation-challenge-binding.test.ts</code>, <code>test/usdc-smoke-client.test.ts</code>.</p>
         </details>
         <details>
-          <summary>Duplicate retry → cached result — settle calls: 1</summary>
-          <p>Durable settle claim CAS ensures facilitator settle is invoked at most once per reservation attempt. Observed settleCallCount in this evidence: 1.</p>
+          <summary>Duplicate retry → settle at most once (durable claim CAS)</summary>
+          <p>Durable settle claim CAS ensures facilitator settle is invoked at most once per reservation attempt.</p>
+          <p class="footnote">Tests: <code>test/reservation-settle-claim.test.ts</code>, <code>test/reservation-adversarial.test.ts</code>, <code>test/final-demo.test.ts</code>.</p>
         </details>
         <details>
           <summary>Failed settlement → no reservation, no ROUTE_RESERVED</summary>
           <p>ROUTE_RESERVED is published only after Mirror SUCCESS. Failed or inconclusive settlement cannot create an operational reservation.</p>
+          <p class="footnote">Tests: <code>test/reservation-service.test.ts</code>, <code>test/reservation-conclusive-failure.test.ts</code>, <code>test/phase6b-live-reservation.test.ts</code>.</p>
         </details>
+        <p class="footnote"><strong>Live fact (not a negative live experiment):</strong> This live execution recorded exactly one facilitator settle call (<code>settleCallCount: 1</code>).</p>
+        <p class="footnote">Wrong-recipient and duplicate-retry cases are proven by automated tests above — they were not performed as extra adversarial attempts during the live final demo.</p>
       </section>
 
     </main>

@@ -1,0 +1,393 @@
+{
+  "recordVersion": 18,
+  "reservationId": "reservation-final-8b73c264",
+  "state": "COMPLETED",
+  "tenderId": "tender-final-8b73c264",
+  "tenderVersion": 1,
+  "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+  "winningBidId": "bid-alpha-final-8b73c264",
+  "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+  "winningCarrierId": "carrier-alpha",
+  "winningCarrierAccount": "0.0.9215954",
+  "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425",
+  "evaluatedBidSetHash": "sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3",
+  "hcsTopicId": "0.0.9794225",
+  "closeBarrierSequence": 4,
+  "closeBarrierConsensusTimestamp": "2026-07-27T17:11:54.604991539Z",
+  "creationFingerprint": "sha256:77a81cc75596bb748f970c573840ec09ab81e90196a50744bfa8cdcf21f4fb0f",
+  "proofTenderId": "tender-final-8b73c264",
+  "proofManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425",
+  "offer": {
+    "reservationId": "reservation-final-8b73c264",
+    "offerVersion": 1,
+    "tenderId": "tender-final-8b73c264",
+    "winningBidId": "bid-alpha-final-8b73c264",
+    "payTo": "0.0.9215954",
+    "expiresAt": "2026-07-27T18:11:58.262Z",
+    "feeLabel": "Demo reservation fee only — not payment of the freight price.",
+    "options": [
+      {
+        "optionId": "USDC",
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "asset": "0.0.429274",
+        "amountAtomic": "10000",
+        "displayAmount": "0.01",
+        "currencyLabel": "USDC"
+      },
+      {
+        "optionId": "HBAR",
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "asset": "0.0.0",
+        "amountAtomic": "1000000",
+        "displayAmount": "0.01",
+        "currencyLabel": "HBAR"
+      }
+    ],
+    "offerHash": "sha256:89a945a926a53e5131d34edaa7bb5873e06421c07e907364f427b553e5c2cd58"
+  },
+  "selected": {
+    "reservationId": "reservation-final-8b73c264",
+    "offerHash": "sha256:89a945a926a53e5131d34edaa7bb5873e06421c07e907364f427b553e5c2cd58",
+    "offerVersion": 1,
+    "optionId": "USDC",
+    "payerAccount": "0.0.9197513",
+    "payTo": "0.0.9215954",
+    "asset": "0.0.429274",
+    "amountAtomic": "10000",
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "selectedAt": "2026-07-27T17:11:58.275Z",
+    "resourcePath": "/api/reservations/reservation-final-8b73c264/pay/usdc"
+  },
+  "attemptNumber": 1,
+  "paymentChallenge": {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "asset": "0.0.429274",
+    "amount": "10000",
+    "payTo": "0.0.9215954",
+    "resource": "/api/reservations/reservation-final-8b73c264/pay/usdc",
+    "maxTimeoutSeconds": 180,
+    "description": "Demo reservation fee only — not payment of the freight price.",
+    "issuedAt": "2026-07-27T17:11:58.285Z",
+    "challengeHash": "sha256:5f704b6f503258c109d7aa89e7ad74a306fb92cdca5c655e193d7af4cd044e91"
+  },
+  "paymentChallengeHash": "sha256:5f704b6f503258c109d7aa89e7ad74a306fb92cdca5c655e193d7af4cd044e91",
+  "paymentPayloadHash": "sha256:7e8efaea704efcf233e15a6198bdefa2da8f74c6be049c36f4c20b2c3897045e",
+  "clientTransaction": {
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "validStartTimestamp": "2026-07-27T17:38:10.867086556Z",
+    "transactionValidDurationSeconds": 120
+  },
+  "facilitatorVerify": {
+    "isValid": true
+  },
+  "settleClaim": {
+    "settleAttemptId": "5624e5d4-dd3a-4dae-a838-978a88ab32eb",
+    "reservationId": "reservation-final-8b73c264",
+    "attemptNumber": 1,
+    "selectedOptionId": "USDC",
+    "asset": "0.0.429274",
+    "amountAtomic": "10000",
+    "payerAccount": "0.0.9197513",
+    "payTo": "0.0.9215954",
+    "network": "hedera:testnet",
+    "challengeHash": "sha256:5f704b6f503258c109d7aa89e7ad74a306fb92cdca5c655e193d7af4cd044e91",
+    "paymentPayloadHash": "sha256:7e8efaea704efcf233e15a6198bdefa2da8f74c6be049c36f4c20b2c3897045e",
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "validStartTimestamp": "2026-07-27T17:38:10.867086556Z",
+    "transactionValidDurationSeconds": 120,
+    "claimedAt": "2026-07-27T17:38:15.432Z",
+    "recordVersion": 6
+  },
+  "facilitatorSettle": {
+    "success": true,
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "network": "hedera:testnet",
+    "payerAccountId": "0.0.9197513"
+  },
+  "transactionId": "0.0.7162784@1785173890.867086556",
+  "mirrorConfirmation": {
+    "status": "SUCCESS",
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+    "result": "SUCCESS",
+    "hbarTransfers": [
+      {
+        "account": "0.0.802",
+        "amount": "1618836"
+      },
+      {
+        "account": "0.0.7162784",
+        "amount": "-1618836"
+      }
+    ],
+    "tokenTransfers": [
+      {
+        "account": "0.0.9197513",
+        "amount": "-10000",
+        "tokenId": "0.0.429274"
+      },
+      {
+        "account": "0.0.9215954",
+        "amount": "10000",
+        "tokenId": "0.0.429274"
+      }
+    ]
+  },
+  "mirrorPoll": {
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "confirmationStartedAt": "2026-07-27T17:38:18.362Z",
+    "confirmationDeadline": "2026-07-27T17:43:18.362Z",
+    "pollAttemptCount": 3,
+    "lastPollAt": "2026-07-27T17:38:22.517Z",
+    "lastMirrorStatus": "SUCCESS",
+    "lastMirrorErrorCode": null,
+    "lastMirrorError": null,
+    "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+    "verifiedTransfer": {
+      "optionId": "USDC",
+      "asset": "0.0.429274",
+      "amountAtomic": "10000",
+      "payerAccount": "0.0.9197513",
+      "payTo": "0.0.9215954"
+    }
+  },
+  "confirmationDeadline": "2026-07-27T17:43:18.362Z",
+  "routeReserved": {
+    "schemaVersion": "routeguard-reservation-1.0",
+    "reservationId": "reservation-final-8b73c264",
+    "tenderId": "tender-final-8b73c264",
+    "tenderVersion": 1,
+    "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+    "winningBidId": "bid-alpha-final-8b73c264",
+    "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+    "carrierId": "carrier-alpha",
+    "carrierAccount": "0.0.9215954",
+    "selectedOptionId": "USDC",
+    "paymentNetwork": "hedera:testnet",
+    "paymentAsset": "0.0.429274",
+    "paymentAmountAtomic": "10000",
+    "payerAccount": "0.0.9197513",
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+    "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425",
+    "evaluatedBidSetHash": "sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3",
+    "hcsAuctionTopicId": "0.0.9794225",
+    "closeBarrierSequence": 4,
+    "reservedAt": "2026-07-27T17:38:16.977444275Z",
+    "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06"
+  },
+  "webhookEvents": [
+    {
+      "eventId": "evt-route-reserved-reservation-final-8b73c264-shipper",
+      "recipient": "shipper",
+      "eventType": "ROUTE_RESERVED",
+      "payload": {
+        "eventId": "evt-route-reserved-reservation-final-8b73c264-shipper",
+        "eventType": "ROUTE_RESERVED",
+        "reservationId": "reservation-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "winningBidId": "bid-alpha-final-8b73c264",
+        "carrierAccount": "0.0.9215954",
+        "selectedOptionId": "USDC",
+        "paymentAsset": "0.0.429274",
+        "paymentAmountAtomic": "10000",
+        "transactionId": "0.0.7162784@1785173890.867086556",
+        "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+        "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+        "emittedAt": "2026-07-27T17:38:22.576Z"
+      },
+      "payloadHash": "sha256:2932ccae6b1c1714af799ab6e4137cc4221725fd80348efebabbcb11e0c9fc20",
+      "emittedAt": "2026-07-27T17:38:22.576Z",
+      "signatureVersion": "routeguard-webhook-sig-1.0",
+      "signature": "94d889b15594f838eeb31edc6dc0ec1ad150b70e316d1be58d5f2c29b91dd7513dba16ed1ddcfb675ae453e218dcca6b4e7c993dc23ecdc9ba344ade383db7ef",
+      "signedTimestamp": "2026-07-27T17:38:22.576Z"
+    },
+    {
+      "eventId": "evt-route-reserved-reservation-final-8b73c264-carrier",
+      "recipient": "carrier",
+      "eventType": "ROUTE_RESERVED",
+      "payload": {
+        "eventId": "evt-route-reserved-reservation-final-8b73c264-carrier",
+        "eventType": "ROUTE_RESERVED",
+        "reservationId": "reservation-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "winningBidId": "bid-alpha-final-8b73c264",
+        "carrierAccount": "0.0.9215954",
+        "selectedOptionId": "USDC",
+        "paymentAsset": "0.0.429274",
+        "paymentAmountAtomic": "10000",
+        "transactionId": "0.0.7162784@1785173890.867086556",
+        "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+        "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+        "emittedAt": "2026-07-27T17:38:22.576Z"
+      },
+      "payloadHash": "sha256:28241a84557b6920e6d49d1b30fcab13e6817affd9d2dbadb96d06c326477d52",
+      "emittedAt": "2026-07-27T17:38:22.576Z",
+      "signatureVersion": "routeguard-webhook-sig-1.0",
+      "signature": "0973d6185fe373ab51c37a63e9bf38c51834d8ce493b53ad5ecfc116b10a79ed7a19eb9e65a42dd1f2aa9ac2f24a4ee40484ed6703baa3ad752826000a80036f",
+      "signedTimestamp": "2026-07-27T17:38:22.576Z"
+    }
+  ],
+  "webhooks": [
+    {
+      "eventId": "evt-route-reserved-reservation-final-8b73c264-shipper",
+      "recipient": "shipper",
+      "payloadHash": "sha256:2932ccae6b1c1714af799ab6e4137cc4221725fd80348efebabbcb11e0c9fc20",
+      "delivered": true,
+      "deliveryAttemptNumber": 1,
+      "attemptedAt": "2026-07-27T17:38:22.593Z",
+      "lastResponseCode": 200,
+      "lastError": null
+    },
+    {
+      "eventId": "evt-route-reserved-reservation-final-8b73c264-carrier",
+      "recipient": "carrier",
+      "payloadHash": "sha256:28241a84557b6920e6d49d1b30fcab13e6817affd9d2dbadb96d06c326477d52",
+      "delivered": true,
+      "deliveryAttemptNumber": 1,
+      "attemptedAt": "2026-07-27T17:38:22.593Z",
+      "lastResponseCode": 200,
+      "lastError": null
+    }
+  ],
+  "hcsPublicationClaim": {
+    "publishAttemptId": "4ce4cb69-ef50-418b-9005-479c6f742af3",
+    "reservationId": "reservation-final-8b73c264",
+    "expectedTopicId": "0.0.9794225",
+    "messageType": "ROUTE_RESERVED",
+    "envelope": {
+      "schemaVersion": "routeguard-hcs-1.0",
+      "messageType": "ROUTE_RESERVED",
+      "runId": "reservation-reservation-final-8b73c264",
+      "tenderId": "tender-final-8b73c264",
+      "tenderVersion": 1,
+      "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+      "createdAt": "2026-07-27T17:38:22.600Z",
+      "payloadHash": "sha256:b7f0b0f47e9d9e08ce214d9e5f2958b52833c53f76abbceebbbbc9aca466e655",
+      "payload": {
+        "reservationId": "reservation-final-8b73c264",
+        "winningBidId": "bid-alpha-final-8b73c264",
+        "carrierId": "carrier-alpha",
+        "carrierAccount": "0.0.9215954",
+        "selectedOptionId": "USDC",
+        "paymentAsset": "0.0.429274",
+        "paymentAmountAtomic": "10000",
+        "payerAccount": "0.0.9197513",
+        "paymentTransactionId": "0.0.7162784@1785173890.867086556",
+        "paymentConsensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+        "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+        "closeBarrierSequence": 4,
+        "reservationEvidenceVersion": "rg-res-ev-1"
+      }
+    },
+    "envelopeHash": "sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035",
+    "encodedByteCount": 941,
+    "claimedAt": "2026-07-27T17:38:22.601Z",
+    "status": "PUBLISHED",
+    "transactionId": "0.0.9197513@1785173898.453716083",
+    "sequence": 5,
+    "consensusTimestamp": "2026-07-27T17:38:23.453477104Z",
+    "failureCode": null,
+    "failureReason": null
+  },
+  "hcsEvidence": {
+    "messageType": "ROUTE_RESERVED",
+    "envelopeHash": "sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035",
+    "topicId": "0.0.9794225",
+    "sequence": 5,
+    "transactionId": "0.0.9197513@1785173898.453716083",
+    "consensusTimestamp": "2026-07-27T17:38:23.453477104Z",
+    "published": true,
+    "lastError": null
+  },
+  "history": [
+    {
+      "from": "OFFER_CREATED",
+      "to": "OFFER_CREATED",
+      "at": "2026-07-27T17:11:58.262Z",
+      "reason": "created"
+    },
+    {
+      "from": "OFFER_CREATED",
+      "to": "OPTION_SELECTED",
+      "at": "2026-07-27T17:11:58.275Z",
+      "reason": "option selected"
+    },
+    {
+      "from": "OPTION_SELECTED",
+      "to": "PAYMENT_CHALLENGE_ISSUED",
+      "at": "2026-07-27T17:11:58.285Z",
+      "reason": "challenge issued"
+    },
+    {
+      "from": "PAYMENT_CHALLENGE_ISSUED",
+      "to": "PAYMENT_SUBMISSION_STARTED",
+      "at": "2026-07-27T17:38:14.609Z",
+      "reason": "payment submission started"
+    },
+    {
+      "from": "PAYMENT_SUBMISSION_STARTED",
+      "to": "FACILITATOR_VERIFIED",
+      "at": "2026-07-27T17:38:15.424Z",
+      "reason": "verify ok"
+    },
+    {
+      "from": "FACILITATOR_VERIFIED",
+      "to": "FACILITATOR_SETTLE_CLAIMED",
+      "at": "2026-07-27T17:38:15.432Z",
+      "reason": "settle claim persisted"
+    },
+    {
+      "from": "FACILITATOR_SETTLE_CLAIMED",
+      "to": "FACILITATOR_SETTLED",
+      "at": "2026-07-27T17:38:18.355Z",
+      "reason": "settle ok"
+    },
+    {
+      "from": "FACILITATOR_SETTLED",
+      "to": "MIRROR_CONFIRMATION_PENDING",
+      "at": "2026-07-27T17:38:18.362Z",
+      "reason": "awaiting mirror"
+    },
+    {
+      "from": "MIRROR_CONFIRMATION_PENDING",
+      "to": "PAYMENT_CONFIRMED",
+      "at": "2026-07-27T17:38:22.563Z",
+      "reason": "mirror SUCCESS verified"
+    },
+    {
+      "from": "PAYMENT_CONFIRMED",
+      "to": "ROUTE_RESERVED",
+      "at": "2026-07-27T17:38:22.570Z",
+      "reason": "payment confirmed"
+    },
+    {
+      "from": "ROUTE_RESERVED",
+      "to": "WEBHOOKS_DISPATCHED",
+      "at": "2026-07-27T17:38:22.593Z",
+      "reason": "webhooks ok"
+    },
+    {
+      "from": "WEBHOOKS_DISPATCHED",
+      "to": "HCS_EVIDENCE_RECORDED",
+      "at": "2026-07-27T17:38:28.125Z",
+      "reason": "hcs published"
+    },
+    {
+      "from": "HCS_EVIDENCE_RECORDED",
+      "to": "COMPLETED",
+      "at": "2026-07-27T17:38:28.131Z",
+      "reason": "post-reservation done"
+    }
+  ],
+  "createdAt": "2026-07-27T17:11:58.262Z",
+  "updatedAt": "2026-07-27T17:38:28.131Z",
+  "expiresAt": "2026-07-27T18:11:58.262Z",
+  "failureCode": null,
+  "failureReason": null
+}

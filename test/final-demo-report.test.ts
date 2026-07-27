@@ -21,7 +21,10 @@ import {
 } from "../src/final-demo/constants";
 import {
   assertLiveEvidenceReady,
+  CANONICAL_HTTP_402_PROOF,
+  computeProofInvariants,
   FinalDemoReportError,
+  parseEvidenceTimestampMs,
   renderFinalDemoReportHtml,
   type FinalDemoEvidenceJson,
 } from "../scripts/render-final-demo-report";
@@ -71,7 +74,8 @@ function dryEvidence(
       topicMemo: "routeguard-final:drytest01",
     },
     sequences: baseSequences(),
-    auctionEndsAt: "2026-08-01T12:05:00.000Z",
+    // Barrier must be >= auctionEndsAt for computed invariants.
+    auctionEndsAt: "2026-08-01T11:55:00.000Z",
     barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
     finalHashes: {
       tenderHash: "sha256:" + "11".repeat(32),
@@ -109,6 +113,8 @@ function dryEvidence(
       consensusTimestamp: "2026-08-01T12:00:05.100000000Z",
     },
     reservationRecordHash: "sha256:" + "66".repeat(32),
+    conservativeEnvelopeByteCount: 949,
+    envelopeWithinLimit: true,
     networkWrites: {
       topicCreates: 1,
       hcsSubmits: 5,
@@ -292,5 +298,105 @@ describe("Winning Demo report generator", () => {
     const { readFileSync } = await import("node:fs");
     const html = readFileSync(out, "utf8");
     expect(html).not.toMatch(/href=["']https:\/\/hashscan\.io\//i);
+  });
+
+  it("computes proof invariants from evidence (not hard-coded checkmarks)", () => {
+    const ok = computeProofInvariants(liveEvidence());
+    expect(ok.closeBarrierConsensusGeAuctionEndsAt).toBe(true);
+    expect(ok.allHcsMessagesBelow1024Bytes).toBe(true);
+    expect(ok.mirrorSequenceWindow1To5).toBe(true);
+    expect(ok.alphaBidSequence).toBe(2);
+    expect(ok.betaBidSequence).toBe(3);
+    expect(ok.routeReservedSequence).toBe(5);
+    expect(ok.allPass).toBe(true);
+
+    const barrierFail = computeProofInvariants(
+      liveEvidence({
+        auctionEndsAt: "2026-08-01T12:30:00.000Z",
+        barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
+      }),
+    );
+    expect(barrierFail.closeBarrierConsensusGeAuctionEndsAt).toBe(false);
+    expect(barrierFail.allPass).toBe(false);
+
+    const bytesFail = computeProofInvariants(
+      liveEvidence({
+        routeReserved: {
+          ...liveEvidence().routeReserved!,
+          byteCount: 1024,
+        },
+        envelopeWithinLimit: false,
+      }),
+    );
+    expect(bytesFail.allHcsMessagesBelow1024Bytes).toBe(false);
+
+    const seqFail = computeProofInvariants(
+      liveEvidence({ sequences: baseSequences().slice(0, 4) }),
+    );
+    expect(seqFail.mirrorSequenceWindow1To5).toBe(false);
+  });
+
+  it("live report generation fails closed when a required invariant is false", () => {
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({
+          auctionEndsAt: "2026-08-01T12:30:00.000Z",
+          barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
+        }),
+      ),
+    ).toThrow(/barrier consensus/i);
+
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({
+          routeReserved: {
+            ...liveEvidence().routeReserved!,
+            byteCount: 2000,
+          },
+          envelopeWithinLimit: false,
+        }),
+      ),
+    ).toThrow(/1024/i);
+  });
+
+  it("renders PASS/FAIL chips from computed invariants and evidence-derived bid sequences", () => {
+    const html = renderFinalDemoReportHtml(liveEvidence());
+    expect(html).toMatch(/close barrier consensus ≥ auctionEndsAt · <strong>PASS<\/strong>/);
+    expect(html).toMatch(/all messages &lt; 1024 B · <strong>PASS<\/strong>/);
+    expect(html).toMatch(/Mirror window sequences 1–5 · <strong>PASS<\/strong>/);
+    // Bid sequences derived from evidence labels (2 and 3 for standard fixtures).
+    expect(html).toMatch(
+      /bid-alpha-final-drytest01[\s\S]*?<td>2<\/td>[\s\S]*?QUALIFIED · WINNER/,
+    );
+    expect(html).toMatch(
+      /bid-beta-final-drytest01[\s\S]*?<td>3<\/td>[\s\S]*?QUALIFIED · not selected/,
+    );
+  });
+
+  it("surfaces canonical HTTP 402 proof and distinguishes freight reservation surface", () => {
+    const html = renderFinalDemoReportHtml(liveEvidence());
+    expect(html).toMatch(/Two payment surfaces/i);
+    expect(html).toMatch(/Canonical protocol-level HTTP 402 handshake/i);
+    expect(html).toContain(CANONICAL_HTTP_402_PROOF.middleware);
+    expect(html).toContain(String(CANONICAL_HTTP_402_PROOF.initialHttpStatus));
+    expect(html).toContain(String(CANONICAL_HTTP_402_PROOF.finalHttpStatus));
+    expect(html).toContain(CANONICAL_HTTP_402_PROOF.transactionId);
+    expect(html).toMatch(/Final freight-reservation orchestration/i);
+    expect(html).toMatch(/Do not imply/i);
+    expect(html).toMatch(/Fail-closed guarantees — verified by automated tests/);
+    expect(html).toMatch(/reservation-payment-verifier\.test\.ts/);
+    expect(html).toMatch(
+      /This live execution recorded exactly one facilitator settle call/,
+    );
+    expect(html).toMatch(/Writes performed by the resumed process/);
+    expect(html).toMatch(
+      /Sequence 5[\s\S]*ROUTE_RESERVED[\s\S]*payment transaction ID and payment consensus timestamp/i,
+    );
+  });
+
+  it("parses nanosecond consensus timestamps for ordering", () => {
+    const a = parseEvidenceTimestampMs("2026-07-27T17:11:48.786Z");
+    const b = parseEvidenceTimestampMs("2026-07-27T17:11:54.604991539Z");
+    expect(b).toBeGreaterThan(a);
   });
 });

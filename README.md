@@ -22,13 +22,19 @@ Live final demonstration is **guarded** (multiple independent env flags + confir
 | Token / amount | `0.0.429274` · **10000** atomic USDC (0.01 USDC) |
 | HCS | Sequences **1–5** complete; sequence 5 = `ROUTE_RESERVED` |
 | Ordering | **Settlement precedes reservation** (payment consensus `2026-07-27T17:38:16.977444275Z` → ROUTE_RESERVED `2026-07-27T17:38:23.453477104Z`) |
+| Facilitator settle (this live execution) | **exactly 1** |
 
 **HashScan (testnet):**
 
 - Topic: https://hashscan.io/testnet/topic/0.0.9794225
 - Payment: https://hashscan.io/testnet/transaction/0.0.7162784@1785173890.867086556
+- Mirror topic messages: https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.9794225/messages
 
-**Disclosures:** Demo carrier identities and auction business data are **synthetic** for reproducibility. Hedera testnet consensus messages and the USDC settlement transaction are **real**.
+Sequence 5 `ROUTE_RESERVED` embeds the payment transaction ID and payment consensus timestamp in its HCS payload. Therefore, settlement-before-reservation can be verified directly from topic `0.0.9794225` without trusting the generated report.
+
+The live execution resumed once from durable pre-submission state after a fail-closed canonical-hashing rejection. It reused the same topic and confirmed sequences 1–4, then produced exactly one payment and one `ROUTE_RESERVED`. Technical details: `PROJECT_STATUS.md` v0.4.2.
+
+**Disclosures:** Demo carrier identities and auction business data are **synthetic** for reproducibility. Hedera testnet consensus messages and the USDC settlement transaction are **real**. This is a private, **commitment-based** auction (not a sealed-bid auction on-chain).
 
 **Open the generated Winning Demo report:**
 
@@ -37,7 +43,24 @@ npm run report:final-demo
 # then open: evidence/final-demo-report.html
 ```
 
-Authoritative live evidence: `evidence/final-demo-result.json`, `evidence/final-demo-result.md`, `evidence/final-demo-live-attempt.json`.
+Authoritative live evidence: `evidence/final-demo-result.json`, `evidence/final-demo-result.md`, `evidence/final-demo-live-attempt.json`, `evidence/final-demo-live-reservation-record.json` (verbatim copy of the completed reservation record).
+
+### Two payment surfaces (do not conflate)
+
+| Surface | What it proves | Evidence |
+| --- | --- | --- |
+| **A. Canonical protocol-level HTTP 402 handshake** | Official `@x402/hono` middleware; initial HTTP **402** → client retries with signed x402 payment payload → final HTTP **200**; live payment `0.0.7162784@1784141033.517654222`; transaction identity matched; Mirror **SUCCESS**; exactly **one** settlement | `evidence/usdc-smoke-payment.json`, `evidence/usdc-smoke-payment.md` |
+| **B. Final freight-reservation orchestration** | Reuses x402 v2 `exact` payment objects and facilitator verify/settle, then publishes `ROUTE_RESERVED` only after Mirror-confirmed settlement | `evidence/final-demo-result.json`, topic `0.0.9794225` seq 5 |
+
+Do **not** imply that the freight reservation endpoint itself returned HTTP 402 if the challenge was returned in a JSON response. Wire-level HTTP 402 is surface A.
+
+### Fail-closed guarantees — verified by automated tests
+
+| Guarantee | Tests | Live final demo |
+| --- | --- | --- |
+| Wrong recipient blocked before signature | `test/reservation-payment-verifier.test.ts`, `test/reservation-challenge-binding.test.ts`, `test/usdc-smoke-client.test.ts` | Not re-run as a live attack |
+| Duplicate retry settles at most once | `test/reservation-settle-claim.test.ts`, `test/reservation-adversarial.test.ts`, `test/final-demo.test.ts` | This live execution recorded **exactly one** facilitator settle call |
+| Failed settlement → no `ROUTE_RESERVED` | `test/reservation-service.test.ts`, `test/reservation-conclusive-failure.test.ts`, `test/phase6b-live-reservation.test.ts` | Live path published seq 5 only after Mirror SUCCESS |
 
 ### Final demonstration (Phase 6B.3 / 6B.4)
 
@@ -62,6 +85,10 @@ All auction and carrier data in the final demonstration is deliberately syntheti
 </details>
 
 **RouteGuard is an independent open-source project built on the Hedera testnet. It is not affiliated with, sponsored by, or endorsed by Hedera Hashgraph, LLC.**
+
+## License
+
+ISC — see root `LICENSE` (Copyright 2026 yourrealcrypto-crypto).
 
 ## Target network
 

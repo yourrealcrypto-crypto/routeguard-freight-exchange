@@ -40,6 +40,7 @@ export type FinalDemoEvidenceSequence = {
   envelopeHash: string;
   transactionId: string | null;
   consensusTimestamp: string;
+  byteCount?: number;
 };
 
 export type FinalDemoEvidenceJson = {
@@ -99,6 +100,9 @@ export type FinalDemoEvidenceJson = {
     consensusTimestamp?: string;
   };
   reservationRecordHash?: string;
+  conservativeEnvelopeByteCount?: number;
+  dryRunEnvelopeByteCount?: number;
+  envelopeWithinLimit?: boolean;
   networkWrites?: {
     topicCreates?: number;
     hcsSubmits?: number;
@@ -108,9 +112,146 @@ export type FinalDemoEvidenceJson = {
   hashScanTopic?: string | null;
   hashScanTopicCreate?: string | null;
   hashScanPayment?: string | null;
+  mirrorTopic?: string | null;
   finalState?: string;
   settleCallCount?: number | null;
 };
+
+/**
+ * Canonical protocol-level HTTP 402 handshake proof.
+ * Source of truth: evidence/usdc-smoke-payment.json (+ .md).
+ * Distinct from the freight-reservation orchestration surface.
+ */
+export const CANONICAL_HTTP_402_PROOF = {
+  middleware: "@x402/hono paymentMiddleware",
+  path: "GET /api/x402/usdc-smoke",
+  initialHttpStatus: 402,
+  finalHttpStatus: 200,
+  transactionId: "0.0.7162784@1784141033.517654222",
+  transactionIdMatch: true,
+  mirrorNodeResult: "SUCCESS",
+  successfulPayments: 1,
+  oneSettlementAttempt: true,
+  evidenceJson: "evidence/usdc-smoke-payment.json",
+  evidenceMd: "evidence/usdc-smoke-payment.md",
+  hashScan:
+    "https://hashscan.io/testnet/transaction/0.0.7162784@1784141033.517654222",
+} as const;
+
+export const HCS_MESSAGE_BYTE_LIMIT = 1024;
+
+export type ComputedProofInvariants = {
+  closeBarrierConsensusGeAuctionEndsAt: boolean;
+  allHcsMessagesBelow1024Bytes: boolean;
+  mirrorSequenceWindow1To5: boolean;
+  alphaBidSequence: number | null;
+  betaBidSequence: number | null;
+  closeBarrierSequence: number | null;
+  routeReservedSequence: number | null;
+  allPass: boolean;
+};
+
+/**
+ * Parse ISO-ish consensus timestamps (including nanosecond fraction) for
+ * ordering comparisons. Returns NaN when unparseable.
+ */
+export function parseEvidenceTimestampMs(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return Number.NaN;
+  // Truncate fractional seconds to milliseconds for Date.parse safety.
+  const normalized = trimmed.replace(
+    /(\.\d{3})\d*(Z)?$/i,
+    (_m, ms: string, z?: string) => `${ms}${z ?? ""}`,
+  );
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? ms : Number.NaN;
+}
+
+export function computeProofInvariants(
+  evidence: FinalDemoEvidenceJson,
+): ComputedProofInvariants {
+  const sequences = [...(evidence.sequences ?? [])].sort(
+    (a, b) => a.sequence - b.sequence,
+  );
+
+  const barrierTs =
+    evidence.barrierConsensusTimestamp ??
+    sequences.find((s) => s.sequence === 4)?.consensusTimestamp ??
+    sequences.find((s) => /CLOSE_BARRIER|AUCTION_CLOSE/i.test(s.label))
+      ?.consensusTimestamp;
+  const endsAt = evidence.auctionEndsAt;
+  let closeBarrierConsensusGeAuctionEndsAt = false;
+  if (endsAt && barrierTs) {
+    const endsMs = parseEvidenceTimestampMs(endsAt);
+    const barrierMs = parseEvidenceTimestampMs(barrierTs);
+    closeBarrierConsensusGeAuctionEndsAt =
+      Number.isFinite(endsMs) &&
+      Number.isFinite(barrierMs) &&
+      barrierMs >= endsMs;
+  }
+
+  const byteCounts: number[] = [];
+  if (typeof evidence.routeReserved?.byteCount === "number") {
+    byteCounts.push(evidence.routeReserved.byteCount);
+  }
+  if (typeof evidence.conservativeEnvelopeByteCount === "number") {
+    byteCounts.push(evidence.conservativeEnvelopeByteCount);
+  }
+  if (typeof evidence.dryRunEnvelopeByteCount === "number") {
+    byteCounts.push(evidence.dryRunEnvelopeByteCount);
+  }
+  for (const s of sequences) {
+    if (typeof s.byteCount === "number") byteCounts.push(s.byteCount);
+  }
+  const allKnownBelow =
+    byteCounts.length > 0 &&
+    byteCounts.every((b) => b < HCS_MESSAGE_BYTE_LIMIT);
+  const flagOk = evidence.envelopeWithinLimit === true;
+  // Prefer measured counts when present; otherwise require explicit flag.
+  const allHcsMessagesBelow1024Bytes =
+    byteCounts.length > 0
+      ? allKnownBelow && (evidence.envelopeWithinLimit !== false)
+      : flagOk;
+
+  const mirrorSequenceWindow1To5 = [1, 2, 3, 4, 5].every((n) => {
+    const row = sequences.find((s) => s.sequence === n);
+    return Boolean(row?.envelopeHash && row.consensusTimestamp);
+  });
+
+  const alphaBidSequence =
+    sequences.find((s) => /BID_COMMITMENT_ALPHA/i.test(s.label))?.sequence ??
+    null;
+  const betaBidSequence =
+    sequences.find((s) => /BID_COMMITMENT_BETA/i.test(s.label))?.sequence ??
+    null;
+  const closeBarrierSequence =
+    sequences.find((s) => /CLOSE_BARRIER|AUCTION_CLOSE/i.test(s.label))
+      ?.sequence ?? null;
+  const routeReservedSequence =
+    sequences.find((s) => /ROUTE_RESERVED/i.test(s.label))?.sequence ??
+    evidence.routeReserved?.sequence ??
+    null;
+
+  const allPass =
+    closeBarrierConsensusGeAuctionEndsAt &&
+    allHcsMessagesBelow1024Bytes &&
+    mirrorSequenceWindow1To5;
+
+  return {
+    closeBarrierConsensusGeAuctionEndsAt,
+    allHcsMessagesBelow1024Bytes,
+    mirrorSequenceWindow1To5,
+    alphaBidSequence,
+    betaBidSequence,
+    closeBarrierSequence,
+    routeReservedSequence,
+    allPass,
+  };
+}
+
+function passFailLabel(ok: boolean): string {
+  return ok ? "PASS" : "FAIL";
+}
 
 export class FinalDemoReportError extends Error {
   readonly code: string;
@@ -246,6 +387,43 @@ export function assertLiveEvidenceReady(evidence: FinalDemoEvidenceJson): void {
       "LIVE_PLACEHOLDER_IDENTIFIERS",
     );
   }
+
+  const invariants = computeProofInvariants(evidence);
+  if (!invariants.closeBarrierConsensusGeAuctionEndsAt) {
+    throw new FinalDemoReportError(
+      "Live report requires close barrier consensus >= auctionEndsAt",
+      "LIVE_BARRIER_BEFORE_DEADLINE",
+    );
+  }
+  if (!invariants.allHcsMessagesBelow1024Bytes) {
+    throw new FinalDemoReportError(
+      "Live report requires all HCS messages below 1024 bytes",
+      "LIVE_HCS_BYTE_LIMIT",
+    );
+  }
+  if (!invariants.mirrorSequenceWindow1To5) {
+    throw new FinalDemoReportError(
+      "Live report requires Mirror sequence window 1–5",
+      "LIVE_MISSING_SEQUENCES",
+    );
+  }
+
+  const payTs = evidence.payment?.consensusTimestamp;
+  const reservedTs = evidence.routeReserved?.consensusTimestamp;
+  if (payTs && reservedTs) {
+    const payMs = parseEvidenceTimestampMs(payTs);
+    const reservedMs = parseEvidenceTimestampMs(reservedTs);
+    if (
+      Number.isFinite(payMs) &&
+      Number.isFinite(reservedMs) &&
+      payMs > reservedMs
+    ) {
+      throw new FinalDemoReportError(
+        "Live report requires settlement before reservation",
+        "LIVE_SETTLEMENT_AFTER_RESERVATION",
+      );
+    }
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -315,6 +493,7 @@ export function renderFinalDemoReportHtml(
   const sequences = [...(evidence.sequences ?? [])].sort(
     (a, b) => a.sequence - b.sequence,
   );
+  const invariants = computeProofInvariants(evidence);
   const paymentTx = evidence.payment?.transactionId ?? "missing";
   const disclosure = isLive
     ? evidence.disclosure ?? SYNTHETIC_DATA_DISCLOSURE
@@ -326,6 +505,32 @@ export function renderFinalDemoReportHtml(
   const hashScanTopicCreate = isLive
     ? evidence.hashScanTopicCreate ?? null
     : null;
+  const mirrorTopic = isLive ? evidence.mirrorTopic ?? null : null;
+  const seq4Ts =
+    sequences.find((s) => s.sequence === 4)?.consensusTimestamp ??
+    evidence.barrierConsensusTimestamp ??
+    "";
+  const paymentConsensusTs = evidence.payment?.consensusTimestamp ?? "";
+  const networkWrites = evidence.networkWrites;
+  const alphaSeqLabel =
+    invariants.alphaBidSequence != null
+      ? String(invariants.alphaBidSequence)
+      : "—";
+  const betaSeqLabel =
+    invariants.betaBidSequence != null
+      ? String(invariants.betaBidSequence)
+      : "—";
+  const routeReservedSeqLabel =
+    invariants.routeReservedSequence != null
+      ? String(invariants.routeReservedSequence)
+      : "5";
+
+  const liveProofFootnotes = isLive
+    ? `
+            <p class="footnote">Sequence ${escapeHtml(routeReservedSeqLabel)} <code>ROUTE_RESERVED</code> embeds the payment transaction ID and payment consensus timestamp in its HCS payload. Therefore, settlement-before-reservation can be verified directly from topic ${escapeHtml(topicId)} without trusting this generated report.${mirrorTopic ? ` Mirror: <a href="${escapeHtml(mirrorTopic)}" rel="noopener noreferrer" target="_blank">${escapeHtml(mirrorTopic)}</a>` : hashScanTopic ? ` HashScan topic: <a href="${escapeHtml(hashScanTopic)}" rel="noopener noreferrer" target="_blank">${escapeHtml(hashScanTopic)}</a>` : ""}</p>
+            <p class="footnote">Resumed-process network writes (not whole-run totals): topicCreates=${escapeHtml(String(networkWrites?.topicCreates ?? "n/a"))}, hcsSubmits=${escapeHtml(String(networkWrites?.hcsSubmits ?? "n/a"))}, payments=${escapeHtml(String(networkWrites?.payments ?? "n/a"))}. Label: <strong>Writes performed by the resumed process</strong>.</p>
+            <p class="footnote">Recovery note: the time gap between sequence 4 (${escapeHtml(seq4Ts)}) and payment consensus (${escapeHtml(paymentConsensusTs)}) reflects one fail-closed resume from durable pre-submission state after a canonical-hashing rejection; topic and sequences 1–4 were reused. See PROJECT_STATUS.md v0.4.2.</p>`
+    : "";
 
   const banner = isLive
     ? `<div class="mode-banner mode-live" role="status">● LIVE_FINAL_DEMO — real Hedera testnet transactions — topic ${escapeHtml(topicId)}</div>`
@@ -709,11 +914,36 @@ export function renderFinalDemoReportHtml(
                 ${seqRows}
               </tbody>
             </table>
-            <div class="chips" style="margin-top:12px">
-              <span class="chip">close barrier consensus ≥ auctionEndsAt ✓</span>
-              <span class="chip">all messages &lt; 1024 B ✓</span>
-              <span class="chip">Mirror window complete 1–5 ✓</span>
-            </div>
+            <div class="chips" style="margin-top:12px" aria-label="Computed proof invariants">
+              <span class="chip">close barrier consensus ≥ auctionEndsAt · <strong>${passFailLabel(invariants.closeBarrierConsensusGeAuctionEndsAt)}</strong></span>
+              <span class="chip">all messages &lt; 1024 B · <strong>${passFailLabel(invariants.allHcsMessagesBelow1024Bytes)}</strong></span>
+              <span class="chip">Mirror window sequences 1–5 · <strong>${passFailLabel(invariants.mirrorSequenceWindow1To5)}</strong></span>
+            </div>${liveProofFootnotes}
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="http402-heading">
+        <h2 id="http402-heading">Two payment surfaces (do not conflate)</h2>
+        <div class="proof-row">
+          <div class="panel pay-panel">
+            <h3>A. Canonical protocol-level HTTP 402 handshake</h3>
+            <p class="footnote">Official <code>${escapeHtml(CANONICAL_HTTP_402_PROOF.middleware)}</code> on <code>${escapeHtml(CANONICAL_HTTP_402_PROOF.path)}</code>. Source: <code>${escapeHtml(CANONICAL_HTTP_402_PROOF.evidenceJson)}</code>.</p>
+            <div class="econ-row"><div class="k">Initial HTTP status</div><div class="v mono">${CANONICAL_HTTP_402_PROOF.initialHttpStatus}</div></div>
+            <div class="econ-row"><div class="k">Client retry</div><div class="v">Signed x402 payment payload retry</div></div>
+            <div class="econ-row"><div class="k">Final HTTP status</div><div class="v mono">${CANONICAL_HTTP_402_PROOF.finalHttpStatus}</div></div>
+            <div class="econ-row"><div class="k">Live payment transaction</div><div class="v mono">${escapeHtml(CANONICAL_HTTP_402_PROOF.transactionId)}</div></div>
+            <div class="econ-row"><div class="k">Transaction identity matched</div><div class="v mono">${CANONICAL_HTTP_402_PROOF.transactionIdMatch ? "true" : "false"}</div></div>
+            <div class="econ-row"><div class="k">Mirror result</div><div class="v mono">${escapeHtml(CANONICAL_HTTP_402_PROOF.mirrorNodeResult)}</div></div>
+            <div class="econ-row"><div class="k">Settlements</div><div class="v">exactly ${CANONICAL_HTTP_402_PROOF.successfulPayments} (oneSettlementAttempt=${CANONICAL_HTTP_402_PROOF.oneSettlementAttempt ? "true" : "false"})</div></div>
+            <p>${linkButton("HTTP 402 smoke payment on HashScan", isLive ? CANONICAL_HTTP_402_PROOF.hashScan : null, isLive)}</p>
+          </div>
+          <div class="panel hcs-panel">
+            <h3>B. Final freight-reservation orchestration</h3>
+            <p>Reuses x402 v2 <code>exact</code> payment objects and facilitator verify/settle, then publishes <code>ROUTE_RESERVED</code> only after Mirror-confirmed settlement.</p>
+            <p class="footnote"><strong>Do not imply</strong> that the freight reservation endpoint itself returned HTTP 402 if the challenge was returned in a JSON response. Wire-level HTTP 402 proof is surface A (smoke route + <code>@x402/hono</code>).</p>
+            <div class="econ-row"><div class="k">Live reservation payment</div><div class="v mono">${escapeHtml(paymentTx)}</div></div>
+            <div class="econ-row"><div class="k">Facilitator settle calls (this live execution)</div><div class="v mono">${escapeHtml(String(evidence.settleCallCount ?? "n/a"))}</div></div>
           </div>
         </div>
       </section>
@@ -732,13 +962,13 @@ export function renderFinalDemoReportHtml(
           <tbody>
             <tr>
               <td class="mono">${escapeHtml(evidence.winner?.bidId ?? evidence.materials?.bidAlphaId ?? "bid-alpha")}</td>
-              <td>2</td>
+              <td>${escapeHtml(alphaSeqLabel)}</td>
               <td><strong>QUALIFIED · WINNER</strong></td>
               <td>carrier-alpha</td>
             </tr>
             <tr>
               <td class="mono">${escapeHtml(evidence.materials?.bidBetaId ?? "bid-beta")}</td>
-              <td>3</td>
+              <td>${escapeHtml(betaSeqLabel)}</td>
               <td>QUALIFIED · not selected</td>
               <td>carrier-beta</td>
             </tr>
@@ -746,24 +976,29 @@ export function renderFinalDemoReportHtml(
         </table>
         <p class="footnote mono">decisionManifestHash: ${escapeHtml(evidence.finalHashes?.decisionManifestHash ?? "")}</p>
         <p class="footnote mono">evaluatedBidSetHash: ${escapeHtml(evidence.finalHashes?.evaluatedBidSetHash ?? "")}</p>
-        <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence.</p>
+        <p class="footnote">Same inputs ⇒ same winner. The manifest hash is anchored in the HCS evidence. HCS sequence numbers are derived from evidence labels, not hard-coded.</p>
         <p class="footnote"><strong>Differentiator:</strong> ${escapeHtml(PRIVATE_BID_COMMITMENT_SENTENCE)}</p>
       </section>
 
       <section aria-labelledby="fail-heading">
-        <h2 id="fail-heading">Fail-closed demonstrations</h2>
+        <h2 id="fail-heading">Fail-closed guarantees — verified by automated tests</h2>
         <details>
           <summary>Wrong recipient → BLOCKED before signature — funds moved: 0</summary>
           <p>Payment verifier binds <code>payTo</code> to the winning carrier account. A mismatched recipient is rejected before signature / settlement.</p>
+          <p class="footnote">Tests: <code>test/reservation-payment-verifier.test.ts</code>, <code>test/reservation-challenge-binding.test.ts</code>, <code>test/usdc-smoke-client.test.ts</code>.</p>
         </details>
         <details>
-          <summary>Duplicate retry → cached result — settle calls: 1</summary>
-          <p>Durable settle claim CAS ensures facilitator settle is invoked at most once per reservation attempt. Observed settleCallCount in this evidence: ${escapeHtml(String(evidence.settleCallCount ?? "n/a"))}.</p>
+          <summary>Duplicate retry → settle at most once (durable claim CAS)</summary>
+          <p>Durable settle claim CAS ensures facilitator settle is invoked at most once per reservation attempt.</p>
+          <p class="footnote">Tests: <code>test/reservation-settle-claim.test.ts</code>, <code>test/reservation-adversarial.test.ts</code>, <code>test/final-demo.test.ts</code>.</p>
         </details>
         <details>
           <summary>Failed settlement → no reservation, no ROUTE_RESERVED</summary>
           <p>ROUTE_RESERVED is published only after Mirror SUCCESS. Failed or inconclusive settlement cannot create an operational reservation.</p>
+          <p class="footnote">Tests: <code>test/reservation-service.test.ts</code>, <code>test/reservation-conclusive-failure.test.ts</code>, <code>test/phase6b-live-reservation.test.ts</code>.</p>
         </details>
+        <p class="footnote"><strong>Live fact (not a negative live experiment):</strong> This live execution recorded exactly one facilitator settle call${evidence.settleCallCount != null ? ` (<code>settleCallCount: ${escapeHtml(String(evidence.settleCallCount))}</code>)` : ""}.</p>
+        <p class="footnote">Wrong-recipient and duplicate-retry cases are proven by automated tests above — they were not performed as extra adversarial attempts during the live final demo.</p>
       </section>
 
     </main>

@@ -1,12 +1,90 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.4.3
+**Version:** 0.4.4
 **Date:** 2026-07-27
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `fix/live-readiness-winning-demo` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `ab2f94bf8bb77438f9fc99414fb859ca7e697da9` (v0.4.2 recovery fix)
+**Prior checkpoint HEAD:** `fc5bde370202470ced4180df8bbf18a2aa18dd9e` (v0.4.3 live evidence + report footer)
 **Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Submission-readiness corrections (v0.4.4)
+
+Narrow documentation, evidence packaging, report-generator, and test fixes from the
+read-only Opus audit. **Zero live Hedera network writes.** Authoritative live
+evidence JSON/MD (payment, topic, sequences 1–5) is **unchanged**. **No further
+live execution is permitted.**
+
+### What changed
+
+| Item | Detail |
+|---|---|
+| LICENSE | Root `LICENSE` — standard ISC text; Copyright 2026 `yourrealcrypto-crypto` (repo owner from git/package repository URL) |
+| HTTP 402 proof visible | README + generated live report surface canonical `@x402/hono` 402 → signed retry → 200 proof from `evidence/usdc-smoke-payment.json` (tx `0.0.7162784@1784141033.517654222`) |
+| Surfaces distinguished | **A** protocol HTTP 402 handshake vs **B** freight-reservation orchestration (reuses x402 exact + facilitator; does **not** claim reservation endpoint returned HTTP 402) |
+| Fail-closed framing | Section renamed to **Fail-closed guarantees — verified by automated tests** with test file refs; live fact: exactly one facilitator settle call (not live wrong-recipient/duplicate experiments) |
+| Computed report invariants | Report derives PASS/FAIL for barrier≥endsAt, HCS messages under 1024 B, Mirror sequences 1–5; bid sequence numbers from evidence labels; live generation fails closed if invariants false |
+| Live reservation record tracked | Verbatim copy: `evidence/final-demo-live-reservation-record.json` ← `data/final-demo-live-reservations/reservation-final-8b73c264.json` |
+| Sequence 5 payment binding | README + report: seq 5 embeds payment tx id + payment consensus timestamp; verifiable from topic `0.0.9794225` |
+| Recovery wording | One restrained README sentence; compact report footnote for seq4→payment time gap (no stack trace) |
+| Network write counts | Labeled **Writes performed by the resumed process** (`topicCreates: 0`, `hcsSubmits: 1`, `payments: 1`) — not whole-run totals |
+| Video script | `docs/demo-script.md` replaced with evidence-based five-minute script; **private, commitment-based auction**; no live payment on camera |
+
+### Changed / added files (v0.4.4)
+
+| File | Change |
+|---|---|
+| `LICENSE` | **New** — ISC, Copyright 2026 yourrealcrypto-crypto |
+| `README.md` | HTTP 402 proof; surface A/B; fail-closed tests table; seq 5 binding; recovery sentence; license; reservation record ref |
+| `PROJECT_STATUS.md` | This version |
+| `docs/demo-script.md` | Evidence-based five-minute video script (no live re-run) |
+| `scripts/render-final-demo-report.ts` | Computed invariants; HTTP 402 section; fail-closed rename; recovery footnote; resumed-process write label; evidence-derived bid sequences |
+| `test/final-demo-report.test.ts` | Regression tests for invariants, fail-closed live gates, HTTP 402 section, framing |
+| `evidence/final-demo-live-reservation-record.json` | **New** — verbatim tracked copy of live reservation record |
+| `evidence/final-demo-report.html` | Regenerated (presentation only) |
+| `evidence/final-demo-dry-run-report.html` | Regenerated (presentation only) |
+
+### Authoritative live evidence (unchanged)
+
+| Artifact | Status |
+|---|---|
+| `evidence/final-demo-result.json` | Unchanged authoritative live result |
+| `evidence/final-demo-result.md` | Unchanged |
+| `evidence/final-demo-live-attempt.json` | Unchanged |
+| `data/final-demo-live-reservations/reservation-final-8b73c264.json` | Unchanged source record |
+| Topic / payment / sequences 1–5 | Unchanged live facts |
+
+### Validation (v0.4.4)
+
+- `npm run report:final-demo`: expected PASS (read-only render)
+- `npm run typecheck`: expected PASS
+- `npx vitest run`: expected PASS
+- `npm run check:secrets`: expected PASS (includes new reservation record)
+- `git diff --check`: expected PASS (CRLF warnings only)
+
+**No further live execution should be performed.** This checkpoint performs
+**0** topic creates, **0** HCS submissions, and **0** payments.
+
+### Current state
+
+Live final demonstration is **complete and evidenced**. Submission-readiness
+docs/report/test polish applied. Ready to **record video**, then push / merge /
+submit when the owner authorizes — **without** re-running the live demo.
+
+### Remaining next steps (no network writes)
+
+1. Record submission video from completed evidence + `docs/demo-script.md` (no live payment).
+2. Push branch / open PR when owner authorizes publish.
+3. Merge and complete bounty submission package.
+
+### Explicit prohibitions
+
+- **Do not** run `npm run demo:final-auction` under live flags again.
+- **Do not** create another topic or re-submit HCS / payment.
+- **Do not** delete recovery or live-attempt evidence.
+- **Do not** push until owner-authorized.
 
 ---
 
