@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { demoClientTransaction } from "./reservation-helpers";
 
 import { canonicalSha256 } from "../src/domain/canonical-hash";
 import {
@@ -112,7 +113,7 @@ describe("Reservation webhooks", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -146,7 +147,7 @@ describe("Stable webhook event semantics (M3)", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,

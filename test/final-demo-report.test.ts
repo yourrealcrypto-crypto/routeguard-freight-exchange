@@ -1,0 +1,402 @@
+/**
+ * Winning Demo report generator tests — read-only over evidence shapes.
+ */
+
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  HEDERA_TRANSFER_COSTS,
+  challengeStatedNetworkTransferCostUsd,
+} from "../src/domain/hedera-transfer-costs";
+import {
+  DRY_SYNTHETIC_DATA_DISCLOSURE,
+  FINAL_DEMO_MODE_DRY,
+  FINAL_DEMO_MODE_LIVE,
+  HEDERA_NON_AFFILIATION_DISCLAIMER,
+  PRIVATE_BID_COMMITMENT_SENTENCE,
+} from "../src/final-demo/constants";
+import {
+  assertLiveEvidenceReady,
+  CANONICAL_HTTP_402_PROOF,
+  computeProofInvariants,
+  FinalDemoReportError,
+  parseEvidenceTimestampMs,
+  renderFinalDemoReportHtml,
+  type FinalDemoEvidenceJson,
+} from "../scripts/render-final-demo-report";
+
+const dirs: string[] = [];
+afterEach(() => {
+  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  dirs.length = 0;
+});
+
+function baseSequences() {
+  return [1, 2, 3, 4, 5].map((sequence) => ({
+    sequence,
+    label:
+      sequence === 1
+        ? "AUCTION_OPEN"
+        : sequence === 2
+          ? "BID_COMMITMENT_ALPHA"
+          : sequence === 3
+            ? "BID_COMMITMENT_BETA"
+            : sequence === 4
+              ? "AUCTION_CLOSE_BARRIER"
+              : "ROUTE_RESERVED",
+    envelopeHash: `sha256:${String(sequence).repeat(64).slice(0, 64)}`,
+    transactionId: `0.0.9197513@1784500000.10000000${sequence}`,
+    consensusTimestamp: `2026-08-01T12:00:0${sequence}.000000000Z`,
+  }));
+}
+
+function dryEvidence(
+  overrides: Partial<FinalDemoEvidenceJson> = {},
+): FinalDemoEvidenceJson {
+  return {
+    mode: FINAL_DEMO_MODE_DRY,
+    disclosure: DRY_SYNTHETIC_DATA_DISCLOSURE,
+    materials: {
+      attemptId: "final-demo-dry-test",
+      shortAttemptId: "drytest01",
+      tenderId: "tender-final-drytest01",
+      bidAlphaId: "bid-alpha-final-drytest01",
+      bidBetaId: "bid-beta-final-drytest01",
+      reservationId: "reservation-final-drytest01",
+    },
+    topic: {
+      topicId: "0.0.9700000",
+      topicCreateTransactionId: "0.0.9197513@1784500000.1",
+      topicMemo: "routeguard-final:drytest01",
+    },
+    sequences: baseSequences(),
+    // Barrier must be >= auctionEndsAt for computed invariants.
+    auctionEndsAt: "2026-08-01T11:55:00.000Z",
+    barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
+    finalHashes: {
+      tenderHash: "sha256:" + "11".repeat(32),
+      winningBidHash: "sha256:" + "22".repeat(32),
+      evaluatedBidSetHash: "sha256:" + "33".repeat(32),
+      decisionManifestHash: "sha256:" + "44".repeat(32),
+    },
+    winner: {
+      bidId: "bid-alpha-final-drytest01",
+      carrierId: "carrier-alpha",
+      carrierAccount: "0.0.9215954",
+    },
+    payment: {
+      selectedOptionId: "USDC",
+      payer: "0.0.9197513",
+      receiver: "0.0.9215954",
+      token: "0.0.429274",
+      amount: "10000",
+      carrierReceivedAmountAtomic: "10000",
+      challengeStatedHederaNetworkTransferCostUsd: "0.001",
+      economics: {
+        reservationPaymentDisplayAmount: "0.01",
+        reservationPaymentCurrencyLabel: "USDC",
+        facilitatorFee: { status: "NOT_MODELED_AS_SEPARATE_X402_CHARGE" },
+        routeGuardPlatformFee: { status: "NOT_MODELED_AS_SEPARATE_CHARGE" },
+      },
+      transactionId: "0.0.9197513@1784500100.100000000",
+      consensusTimestamp: "2026-08-01T12:00:05.000000000Z",
+    },
+    routeReserved: {
+      sequence: 5,
+      envelopeHash: "sha256:" + "55".repeat(32),
+      byteCount: 900,
+      transactionId: null,
+      consensusTimestamp: "2026-08-01T12:00:05.100000000Z",
+    },
+    reservationRecordHash: "sha256:" + "66".repeat(32),
+    conservativeEnvelopeByteCount: 949,
+    envelopeWithinLimit: true,
+    networkWrites: {
+      topicCreates: 1,
+      hcsSubmits: 5,
+      payments: 1,
+      realNetwork: false,
+    },
+    settleCallCount: 1,
+    hashScanTopic: null,
+    hashScanPayment: null,
+    hashScanTopicCreate: null,
+    ...overrides,
+  };
+}
+
+function liveEvidence(
+  overrides: Partial<FinalDemoEvidenceJson> = {},
+): FinalDemoEvidenceJson {
+  return {
+    ...dryEvidence(),
+    mode: FINAL_DEMO_MODE_LIVE,
+    disclosure:
+      "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.",
+    networkWrites: {
+      topicCreates: 1,
+      hcsSubmits: 5,
+      payments: 1,
+      realNetwork: true,
+    },
+    hashScanTopic: "https://hashscan.io/testnet/topic/0.0.9700000",
+    hashScanPayment:
+      "https://hashscan.io/testnet/transaction/0.0.9197513@1784500100.100000000",
+    hashScanTopicCreate:
+      "https://hashscan.io/testnet/transaction/0.0.9197513@1784500000.1",
+    ...overrides,
+  };
+}
+
+describe("Winning Demo report generator", () => {
+  it("dry report has no active HashScan URLs", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    expect(html).not.toMatch(/href=["']https:\/\/hashscan\.io\//i);
+    expect(html).toMatch(/OFFLINE_DRY_RUN/);
+    expect(html).toMatch(/zero network writes/i);
+    expect(html).toMatch(/simulated/i);
+  });
+
+  it("dry and live reports cannot be confused", () => {
+    const dry = renderFinalDemoReportHtml(dryEvidence());
+    const live = renderFinalDemoReportHtml(liveEvidence());
+    expect(dry).toMatch(/OFFLINE_DRY_RUN/);
+    expect(dry).not.toMatch(/LIVE_FINAL_DEMO — real Hedera/);
+    expect(live).toMatch(/LIVE_FINAL_DEMO/);
+    expect(live).not.toMatch(/OFFLINE_DRY_RUN — rehearsal only/);
+    expect(live).toMatch(/href=["']https:\/\/hashscan\.io\/testnet\/topic\//i);
+  });
+
+  it("live generator rejects dry evidence", () => {
+    expect(() => assertLiveEvidenceReady(dryEvidence())).toThrow(
+      /rejects OFFLINE_DRY_RUN/i,
+    );
+    expect(() => assertLiveEvidenceReady(dryEvidence())).toThrow(
+      FinalDemoReportError,
+    );
+  });
+
+  it("exact fee strings come from the domain source", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    expect(challengeStatedNetworkTransferCostUsd("USDC")).toBe(
+      HEDERA_TRANSFER_COSTS.HTS_STABLECOIN.networkFeeUsd,
+    );
+    expect(challengeStatedNetworkTransferCostUsd("HBAR")).toBe(
+      HEDERA_TRANSFER_COSTS.HBAR.networkFeeUsd,
+    );
+    expect(html).toContain(`$${HEDERA_TRANSFER_COSTS.HTS_STABLECOIN.networkFeeUsd}`);
+    expect(html).toContain(`$${HEDERA_TRANSFER_COSTS.HBAR.networkFeeUsd}`);
+  });
+
+  it("settlement appears before reservation in the timeline", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    const payIdx = html.indexOf("6 · x402 payment");
+    const resIdx = html.indexOf("7 · HCS");
+    const arrowIdx = html.indexOf("Settlement precedes reservation");
+    expect(payIdx).toBeGreaterThan(0);
+    expect(resIdx).toBeGreaterThan(payIdx);
+    expect(arrowIdx).toBeGreaterThan(resIdx);
+  });
+
+  it("sequences 1–5 appear", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(html).toMatch(new RegExp(`<th scope="row">${n}</th>`));
+    }
+    expect(html).toMatch(/HCS sequences 1–5|sequences 1–5/i);
+  });
+
+  it("disclaimer and differentiator exist", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    expect(html).toContain(HEDERA_NON_AFFILIATION_DISCLAIMER);
+    expect(html).toContain(PRIVATE_BID_COMMITMENT_SENTENCE);
+  });
+
+  it("omits the defensive Honest limitations section from the judge-facing report", () => {
+    const dry = renderFinalDemoReportHtml(dryEvidence());
+    const live = renderFinalDemoReportHtml(liveEvidence());
+    for (const html of [dry, live]) {
+      expect(html).not.toMatch(/Honest limitations/i);
+      expect(html).not.toMatch(/What we do NOT claim/i);
+      expect(html).not.toMatch(/limits-heading/);
+    }
+    // Differentiator may still appear once (labeled), not as a repeated standalone limits paragraph.
+    const liveDiffMatches = live.split(PRIVATE_BID_COMMITMENT_SENTENCE).length - 1;
+    expect(liveDiffMatches).toBe(1);
+    expect(live).toContain(
+      "Demo carrier identities and auction data are synthetic for reproducibility. Hedera testnet consensus messages and USDC settlement are real.",
+    );
+    expect(live).toContain(HEDERA_NON_AFFILIATION_DISCLAIMER);
+  });
+
+  it("does not render secret/private evidence fields", () => {
+    const html = renderFinalDemoReportHtml(dryEvidence());
+    expect(html).not.toMatch(/privateKey|signingPrivateKey|SHIPPER_PRIVATE_KEY|PAYMENT-SIGNATURE/i);
+  });
+
+  it("unsupported evidence schema fails closed", () => {
+    expect(() =>
+      renderFinalDemoReportHtml({
+        mode: "NOT_A_MODE",
+      } as FinalDemoEvidenceJson),
+    ).toThrow(/Unsupported evidence mode|schema/i);
+  });
+
+  it("live fail-closed on missing payment, topic, sequences, settlement, reservation", () => {
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({ payment: { ...liveEvidence().payment!, transactionId: "" } }),
+      ),
+    ).toThrow(/payment transaction/i);
+
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({ topic: { topicId: "PLACEHOLDER" } }),
+      ),
+    ).toThrow(/topic/i);
+
+    expect(() =>
+      assertLiveEvidenceReady(liveEvidence({ sequences: baseSequences().slice(0, 3) })),
+    ).toThrow(/sequences/i);
+
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({
+          payment: {
+            ...liveEvidence().payment!,
+            consensusTimestamp: "",
+          },
+        }),
+      ),
+    ).toThrow(/settlement confirmation/i);
+
+    const missingReservation = liveEvidence();
+    delete (missingReservation as { routeReserved?: unknown }).routeReserved;
+    expect(() => assertLiveEvidenceReady(missingReservation)).toThrow(
+      /reservation proof/i,
+    );
+  });
+
+  it("writes dry report without hashscan href when given a fixture file", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "rg-report-"));
+    dirs.push(dir);
+    const evidencePath = path.join(dir, "dry.json");
+    writeFileSync(evidencePath, JSON.stringify(dryEvidence()), "utf8");
+    const mod = await import("../scripts/render-final-demo-report");
+    const evidence = mod.loadFinalDemoEvidence(evidencePath);
+    expect(evidence.mode).toBe(FINAL_DEMO_MODE_DRY);
+    const out = path.join(dir, "out.html");
+    mod.writeFinalDemoReport({
+      evidencePath,
+      outputPath: out,
+      expectMode: FINAL_DEMO_MODE_DRY,
+    });
+    const { readFileSync } = await import("node:fs");
+    const html = readFileSync(out, "utf8");
+    expect(html).not.toMatch(/href=["']https:\/\/hashscan\.io\//i);
+  });
+
+  it("computes proof invariants from evidence (not hard-coded checkmarks)", () => {
+    const ok = computeProofInvariants(liveEvidence());
+    expect(ok.closeBarrierConsensusGeAuctionEndsAt).toBe(true);
+    expect(ok.allHcsMessagesBelow1024Bytes).toBe(true);
+    expect(ok.mirrorSequenceWindow1To5).toBe(true);
+    expect(ok.alphaBidSequence).toBe(2);
+    expect(ok.betaBidSequence).toBe(3);
+    expect(ok.routeReservedSequence).toBe(5);
+    expect(ok.allPass).toBe(true);
+
+    const barrierFail = computeProofInvariants(
+      liveEvidence({
+        auctionEndsAt: "2026-08-01T12:30:00.000Z",
+        barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
+      }),
+    );
+    expect(barrierFail.closeBarrierConsensusGeAuctionEndsAt).toBe(false);
+    expect(barrierFail.allPass).toBe(false);
+
+    const bytesFail = computeProofInvariants(
+      liveEvidence({
+        routeReserved: {
+          ...liveEvidence().routeReserved!,
+          byteCount: 1024,
+        },
+        envelopeWithinLimit: false,
+      }),
+    );
+    expect(bytesFail.allHcsMessagesBelow1024Bytes).toBe(false);
+
+    const seqFail = computeProofInvariants(
+      liveEvidence({ sequences: baseSequences().slice(0, 4) }),
+    );
+    expect(seqFail.mirrorSequenceWindow1To5).toBe(false);
+  });
+
+  it("live report generation fails closed when a required invariant is false", () => {
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({
+          auctionEndsAt: "2026-08-01T12:30:00.000Z",
+          barrierConsensusTimestamp: "2026-08-01T12:00:04.000000000Z",
+        }),
+      ),
+    ).toThrow(/barrier consensus/i);
+
+    expect(() =>
+      assertLiveEvidenceReady(
+        liveEvidence({
+          routeReserved: {
+            ...liveEvidence().routeReserved!,
+            byteCount: 2000,
+          },
+          envelopeWithinLimit: false,
+        }),
+      ),
+    ).toThrow(/1024/i);
+  });
+
+  it("renders PASS/FAIL chips from computed invariants and evidence-derived bid sequences", () => {
+    const html = renderFinalDemoReportHtml(liveEvidence());
+    expect(html).toMatch(/close barrier consensus ≥ auctionEndsAt · <strong>PASS<\/strong>/);
+    expect(html).toMatch(/all messages &lt; 1024 B · <strong>PASS<\/strong>/);
+    expect(html).toMatch(/Mirror window sequences 1–5 · <strong>PASS<\/strong>/);
+    // Bid sequences derived from evidence labels (2 and 3 for standard fixtures).
+    expect(html).toMatch(
+      /bid-alpha-final-drytest01[\s\S]*?<td>2<\/td>[\s\S]*?QUALIFIED · WINNER/,
+    );
+    expect(html).toMatch(
+      /bid-beta-final-drytest01[\s\S]*?<td>3<\/td>[\s\S]*?QUALIFIED · not selected/,
+    );
+  });
+
+  it("surfaces canonical HTTP 402 proof and distinguishes freight reservation surface", () => {
+    const html = renderFinalDemoReportHtml(liveEvidence());
+    expect(html).toMatch(/Two payment surfaces/i);
+    expect(html).toMatch(/Canonical protocol-level HTTP 402 handshake/i);
+    expect(html).toContain(CANONICAL_HTTP_402_PROOF.middleware);
+    expect(html).toContain(String(CANONICAL_HTTP_402_PROOF.initialHttpStatus));
+    expect(html).toContain(String(CANONICAL_HTTP_402_PROOF.finalHttpStatus));
+    expect(html).toContain(CANONICAL_HTTP_402_PROOF.transactionId);
+    expect(html).toMatch(/Final freight-reservation orchestration/i);
+    expect(html).toMatch(/Do not imply/i);
+    expect(html).toMatch(/Fail-closed guarantees — verified by automated tests/);
+    expect(html).toMatch(/reservation-payment-verifier\.test\.ts/);
+    expect(html).toMatch(
+      /This live execution recorded exactly one facilitator settle call/,
+    );
+    expect(html).toMatch(/Writes performed by the resumed process/);
+    expect(html).toMatch(
+      /Sequence 5[\s\S]*ROUTE_RESERVED[\s\S]*payment transaction ID and payment consensus timestamp/i,
+    );
+  });
+
+  it("parses nanosecond consensus timestamps for ordering", () => {
+    const a = parseEvidenceTimestampMs("2026-07-27T17:11:48.786Z");
+    const b = parseEvidenceTimestampMs("2026-07-27T17:11:54.604991539Z");
+    expect(b).toBeGreaterThan(a);
+  });
+});

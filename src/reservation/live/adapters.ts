@@ -493,7 +493,7 @@ export class LiveHcsPublisherAdapter implements HcsPublisherTransport {
     assertMessageSize(envelope);
     const exactBytes = serializeEnvelopeForSubmit(envelope);
     this.lastPublishedBytes = exactBytes;
-    if (exactBytes.byteLength > HCS_MAX_MESSAGE_BYTES) {
+    if (exactBytes.byteLength >= HCS_MAX_MESSAGE_BYTES) {
       throw new Phase6bAttemptError(
         `HCS envelope ${exactBytes.byteLength} exceeds ${HCS_MAX_MESSAGE_BYTES}`,
         "HCS_MESSAGE_TOO_LARGE",

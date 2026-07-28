@@ -10,6 +10,7 @@
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
+import { paymentPayloadForCanonicalHash } from "../../domain/payment-payload-canonical";
 import { HCS_MAX_MESSAGE_BYTES } from "../../hcs/types";
 import {
   FileSystemReservationStore,
@@ -86,6 +87,12 @@ export type PayerPaymentPayloadFactory = (input: {
   paymentPayload: PaymentPayload;
   requirement: PaymentRequirements;
   paymentPayloadHash: string;
+  /** v1.5 §22.4 — exact identity decoded from the signed transaction. */
+  clientTransaction: {
+    transactionId: string;
+    validStartTimestamp: string;
+    transactionValidDurationSeconds: number;
+  };
 }>;
 
 /** Facilitator that can hold an in-memory signed payload session. */
@@ -95,6 +102,7 @@ export type SessionFacilitator = FacilitatorTransport & {
     requirement: PaymentRequirements;
     paymentPayloadHash: string;
     challengeHash: string;
+    clientTransactionId?: string;
   }): void;
   clearPaymentSession(): void;
 };
@@ -227,7 +235,7 @@ export async function runPhase6bLiveExecution(
     decisionManifestHash: reconstructed.proof.manifest.decisionManifestHash,
     evaluatedBidSetHash: reconstructed.proof.manifest.evaluatedBidSetHash,
   });
-  if (conservative.byteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (conservative.byteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new Phase6bAttemptError(
       `Conservative envelope ${conservative.byteCount} exceeds limit — abort before payment`,
       "HCS_MESSAGE_TOO_LARGE",
@@ -360,7 +368,7 @@ export async function runPhase6bLiveExecution(
   persistPhase6bAttempt(attempt, attemptPath);
 
   // 6–7. Payer-side payload in memory; only hash enters ReservationService
-  const { paymentPayload, requirement, paymentPayloadHash } =
+  const { paymentPayload, requirement, paymentPayloadHash, clientTransaction } =
     await deps.createPaymentPayload({
       selected: challenged.selected!,
       challenge: {
@@ -375,7 +383,9 @@ export async function runPhase6bLiveExecution(
         description: challenge.description,
       },
     });
-  const recomputedHash = canonicalSha256(paymentPayload);
+  const recomputedHash = canonicalSha256(
+    paymentPayloadForCanonicalHash(paymentPayload),
+  );
   if (recomputedHash !== paymentPayloadHash) {
     throw new Phase6bAttemptError(
       "paymentPayloadHash mismatch vs in-memory payload",
@@ -388,6 +398,7 @@ export async function runPhase6bLiveExecution(
     requirement,
     paymentPayloadHash,
     challengeHash: challenge.challengeHash,
+    clientTransactionId: clientTransaction.transactionId,
   });
 
   // 8–16. ReservationService orchestration (verify → claim → settle → mirror → RR → webhooks → HCS)
@@ -398,6 +409,8 @@ export async function runPhase6bLiveExecution(
       reservationId: PHASE6B_RESERVATION_ID,
       optionId: "USDC",
       paymentPayloadHash,
+      // v1.5 §22.4 — exact client-frozen transaction identity.
+      clientTransaction,
     });
   } catch (e) {
     attempt = withAttemptUpdate(attempt, {
@@ -441,7 +454,7 @@ export async function runPhase6bLiveExecution(
       consensusTimestamp: final.routeReserved.consensusTimestamp,
       createdAt: final.updatedAt,
     });
-    if (actual.byteCount > HCS_MAX_MESSAGE_BYTES) {
+    if (actual.byteCount >= HCS_MAX_MESSAGE_BYTES) {
       attempt = withAttemptUpdate(attempt, {
         status: "FAILED",
         failureCode: "HCS_MESSAGE_TOO_LARGE",

@@ -1,0 +1,255 @@
+{
+  "schemaVersion": "final-demo-authoritative-materials-1.0",
+  "dataClassification": "PUBLIC_SYNTHETIC_DEMO",
+  "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.",
+  "attemptId": "final-demo-bf7ea243-fdc0-4771-9553-befe8b73c264",
+  "shortAttemptId": "8b73c264",
+  "runId": "final-8b73c264",
+  "runBaseTime": "2026-07-27T17:06:48.786Z",
+  "auctionOpensAt": "2026-07-27T17:06:48.786Z",
+  "network": "hedera:testnet",
+  "tenderBody": {
+    "tenderId": "tender-final-8b73c264",
+    "shipperId": "shipper-final-demo-nordic",
+    "origin": "Hamburg, DE",
+    "destination": "Istanbul, TR",
+    "cargo": {
+      "type": "general-merchandise",
+      "weightKg": 7500,
+      "pallets": 10,
+      "dangerousGoods": false
+    },
+    "requiredEquipment": "Curtainsider",
+    "pickupWindow": {
+      "earliest": "2026-07-28T17:11:48.786Z",
+      "latest": "2026-07-29T05:11:48.786Z"
+    },
+    "deliveryDeadline": "2026-08-01T05:11:48.786Z",
+    "auctionEndsAt": "2026-07-27T17:11:48.786Z",
+    "maximumFreightPriceCents": 420000,
+    "selectionPolicy": "LOWEST_QUALIFIED_PRICE_V1",
+    "version": 1
+  },
+  "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+  "rulesHash": "sha256:51274182eb41071ddee80950a4fd3416b1453faa48486eb6e71f7780eba7c571",
+  "auctionEndsAt": "2026-07-27T17:11:48.786Z",
+  "relativeTimestamps": {
+    "auctionWindowSeconds": 300,
+    "prepBufferSeconds": 120,
+    "pickupEarliest": "2026-07-28T17:11:48.786Z",
+    "pickupLatest": "2026-07-29T05:11:48.786Z",
+    "deliveryDeadline": "2026-08-01T05:11:48.786Z",
+    "bidValidUntil": "2026-07-28T05:11:48.786Z"
+  },
+  "routeGuardPublicKey": "03aa8d4436d6ffa63fa9327d2c3f1a1f6e59a2562fce104d10e7cdb380662427c1",
+  "carriers": [
+    {
+      "carrierId": "carrier-alpha",
+      "carrierAccountId": "0.0.9215954",
+      "signingPublicKey": "028847faae751cccd10a3cdd9fa5e9a677a223b838e04633a09ac17969196ee2c7",
+      "active": true,
+      "allowedEquipment": [
+        "Curtainsider",
+        "Box"
+      ],
+      "registryVersion": 1
+    },
+    {
+      "carrierId": "carrier-beta",
+      "carrierAccountId": "0.0.9793912",
+      "signingPublicKey": "03ca9c9272b6fa64b532c2c208bf4d4421f7a8860135b9fe26b8638446bc9ccdd1",
+      "active": true,
+      "allowedEquipment": [
+        "Curtainsider"
+      ],
+      "registryVersion": 1
+    }
+  ],
+  "signedBids": [
+    {
+      "bid": {
+        "bidId": "bid-alpha-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "carrierId": "carrier-alpha",
+        "carrierAccountId": "0.0.9215954",
+        "freightPriceCents": 350000,
+        "equipment": "Curtainsider",
+        "proposedPickupAt": "2026-07-28T18:11:48.786Z",
+        "estimatedDelivery": "2026-07-31T05:11:48.786Z",
+        "capacityConfirmed": true,
+        "bidValidUntil": "2026-07-28T05:11:48.786Z",
+        "reservationPaymentOptions": [
+          {
+            "optionId": "USDC",
+            "scheme": "exact",
+            "network": "hedera:testnet",
+            "asset": "0.0.429274",
+            "amountAtomic": "10000",
+            "payTo": "0.0.9215954"
+          },
+          {
+            "optionId": "HBAR",
+            "scheme": "exact",
+            "network": "hedera:testnet",
+            "asset": "0.0.0",
+            "amountAtomic": "1000000",
+            "payTo": "0.0.9215954"
+          }
+        ],
+        "commitmentSalt": "166f290b79d77d9b0d7ce42619246f6466af46224d5c4fec7ff49537bb49b366",
+        "nonce": "nonce-alpha-62f70c98642addd1",
+        "version": 1
+      },
+      "signature": "55ab39dca281a04dd4e2b2e26e850f576b84108bfa1a3953e8ab581152df9fb316be31abd71c871729451a3d0bb6464c47363c7ae3e5f69cb6d416e9c5ca956d"
+    },
+    {
+      "bid": {
+        "bidId": "bid-beta-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "carrierId": "carrier-beta",
+        "carrierAccountId": "0.0.9793912",
+        "freightPriceCents": 375000,
+        "equipment": "Curtainsider",
+        "proposedPickupAt": "2026-07-28T19:11:48.786Z",
+        "estimatedDelivery": "2026-07-30T17:11:48.786Z",
+        "capacityConfirmed": true,
+        "bidValidUntil": "2026-07-28T05:11:48.786Z",
+        "reservationPaymentOptions": [
+          {
+            "optionId": "USDC",
+            "scheme": "exact",
+            "network": "hedera:testnet",
+            "asset": "0.0.429274",
+            "amountAtomic": "10000",
+            "payTo": "0.0.9793912"
+          },
+          {
+            "optionId": "HBAR",
+            "scheme": "exact",
+            "network": "hedera:testnet",
+            "asset": "0.0.0",
+            "amountAtomic": "1000000",
+            "payTo": "0.0.9793912"
+          }
+        ],
+        "commitmentSalt": "2fbb6eeaec4871b70ab5a1a693c76e59b64dd9539905a73b959509ade404a57a",
+        "nonce": "nonce-beta-54e2ede4ace4cb07",
+        "version": 1
+      },
+      "signature": "74167cc0238d53a79431311ebae639ea6678ad6ba4198908928d613c5d2f323632af53ff8bf9c54ce9b608c71d3280041e1c7dafda896c510f8b6c56b93c9863"
+    }
+  ],
+  "signedReceipts": [
+    {
+      "receipt": {
+        "receiptId": "receipt-bid-alpha-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "bidId": "bid-alpha-final-8b73c264",
+        "bidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+        "acceptedAt": "2026-07-27T17:06:48.786Z",
+        "version": 1
+      },
+      "signature": "f005654c0bd02b52265437d7e8417b4232e2b363a086f3f90971e93cb8b76ffd0ddf70940aab217240d8dc56044ba2257bd95ecf9eabe4ab595bfbc75cfde1fa"
+    },
+    {
+      "receipt": {
+        "receiptId": "receipt-bid-beta-final-8b73c264",
+        "tenderId": "tender-final-8b73c264",
+        "bidId": "bid-beta-final-8b73c264",
+        "bidHash": "sha256:3d168e11b0cb1802b76022d5096ce7db1f876aacfd4d21850bee113f1edcb385",
+        "acceptedAt": "2026-07-27T17:06:48.786Z",
+        "version": 1
+      },
+      "signature": "a04522b56bd9be71ec4d79abb088c709cee4d051f25e41d89ccb0d392843cda030324d617aa462edc3519f92625bc58cdb8f416a8a8f62cc654bc7c65b4874d2"
+    }
+  ],
+  "bidHashes": {
+    "alpha": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+    "beta": "sha256:3d168e11b0cb1802b76022d5096ce7db1f876aacfd4d21850bee113f1edcb385"
+  },
+  "receiptHashes": {
+    "alpha": "sha256:86be55b9ac260f2aef60e737410040672b71d650bbac332b70bc06a6d99a8aa5",
+    "beta": "sha256:480860d32d4f98dc5fee0cb705912fc133109e8d34c1a96d4f2b1b71b626c8ec"
+  },
+  "commitmentPayloads": {
+    "alpha": {
+      "schemaVersion": "routeguard-hcs-1.0",
+      "messageType": "BID_COMMITMENT",
+      "runId": "final-8b73c264",
+      "tenderId": "tender-final-8b73c264",
+      "tenderVersion": 1,
+      "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+      "createdAt": "2026-07-27T17:06:48.786Z",
+      "payloadHash": "sha256:60dd7176cee05e4f0c7005dfc7d603465c64b7b1defce6628ff47fecf644b5ad",
+      "payload": {
+        "bidId": "bid-alpha-final-8b73c264",
+        "carrierId": "carrier-alpha",
+        "bidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+        "acceptanceReceiptHash": "sha256:86be55b9ac260f2aef60e737410040672b71d650bbac332b70bc06a6d99a8aa5",
+        "bidVersion": 1,
+        "commitmentSchemaVersion": "routeguard-bid-commitment-1.0"
+      }
+    },
+    "beta": {
+      "schemaVersion": "routeguard-hcs-1.0",
+      "messageType": "BID_COMMITMENT",
+      "runId": "final-8b73c264",
+      "tenderId": "tender-final-8b73c264",
+      "tenderVersion": 1,
+      "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+      "createdAt": "2026-07-27T17:06:48.786Z",
+      "payloadHash": "sha256:36b099b996822043a17ab296f7fe9910b41a3198da6c55028e03ca0facda6119",
+      "payload": {
+        "bidId": "bid-beta-final-8b73c264",
+        "carrierId": "carrier-beta",
+        "bidHash": "sha256:3d168e11b0cb1802b76022d5096ce7db1f876aacfd4d21850bee113f1edcb385",
+        "acceptanceReceiptHash": "sha256:480860d32d4f98dc5fee0cb705912fc133109e8d34c1a96d4f2b1b71b626c8ec",
+        "bidVersion": 1,
+        "commitmentSchemaVersion": "routeguard-bid-commitment-1.0"
+      }
+    }
+  },
+  "commitmentEnvelopeHashes": {
+    "alpha": "sha256:d31c6d1587e9f3b65cb7fd258a0b2e08cca8a20d148f0eea89198a4ece0b095a",
+    "beta": "sha256:f827ec1721a140f2bc515108e20e14510a5e318bd41aeb11f4f5158c100a7eda"
+  },
+  "auctionOpenEnvelope": {
+    "schemaVersion": "routeguard-hcs-1.0",
+    "messageType": "AUCTION_OPEN",
+    "runId": "final-8b73c264",
+    "tenderId": "tender-final-8b73c264",
+    "tenderVersion": 1,
+    "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+    "createdAt": "2026-07-27T17:06:48.786Z",
+    "payloadHash": "sha256:af3d134023c4d031bb7ee0d8bc8930fb65a1d0f822bf6503191f0aa7f6dcd81f",
+    "payload": {
+      "tenderId": "tender-final-8b73c264",
+      "tenderVersion": 1,
+      "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+      "auctionEndsAt": "2026-07-27T17:11:48.786Z",
+      "selectionPolicy": "LOWEST_QUALIFIED_PRICE_V1",
+      "engineVersion": "routeguard-auction-1.0",
+      "rulesHash": "sha256:51274182eb41071ddee80950a4fd3416b1453faa48486eb6e71f7780eba7c571"
+    }
+  },
+  "auctionOpenEnvelopeHash": "sha256:fbc7d5df65a775b59d95b00afbfe12206ef0b87ae297506557e3d0e1f65f05e0",
+  "identifiers": {
+    "tenderId": "tender-final-8b73c264",
+    "bidAlphaId": "bid-alpha-final-8b73c264",
+    "bidBetaId": "bid-beta-final-8b73c264",
+    "reservationId": "reservation-final-8b73c264",
+    "barrierId": "barrier-final-8b73c264"
+  },
+  "expectedWinner": {
+    "carrierId": "carrier-alpha",
+    "carrierAccountId": "0.0.9215954",
+    "bidId": "bid-alpha-final-8b73c264"
+  },
+  "accounts": {
+    "payerAccountId": "0.0.9197513",
+    "winnerReceiverAccountId": "0.0.9215954",
+    "carrierBetaDemoAccountId": "0.0.9793912",
+    "facilitatorFeePayer": "0.0.7162784"
+  },
+  "createdAt": "2026-07-27T17:04:48.837Z"
+}

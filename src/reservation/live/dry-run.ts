@@ -254,7 +254,7 @@ export async function runPhase6bDryRun(
     decisionManifestHash: reconstructed.proof.manifest.decisionManifestHash,
     evaluatedBidSetHash: reconstructed.proof.manifest.evaluatedBidSetHash,
   });
-  if (conservative.byteCount > HCS_MAX_MESSAGE_BYTES) {
+  if (conservative.byteCount >= HCS_MAX_MESSAGE_BYTES) {
     throw new Phase6bAttemptError(
       `Conservative envelope ${conservative.byteCount} exceeds ${HCS_MAX_MESSAGE_BYTES}`,
       "HCS_MESSAGE_TOO_LARGE",
@@ -335,8 +335,8 @@ export async function runPhase6bDryRun(
     conservativeEnvelopeByteCount: conservative.byteCount,
     dryRunEnvelopeByteCount,
     envelopeWithinLimit:
-      dryRunEnvelopeByteCount <= HCS_MAX_MESSAGE_BYTES &&
-      conservative.byteCount <= HCS_MAX_MESSAGE_BYTES,
+      dryRunEnvelopeByteCount < HCS_MAX_MESSAGE_BYTES &&
+      conservative.byteCount < HCS_MAX_MESSAGE_BYTES,
     hcsMaxBytes: HCS_MAX_MESSAGE_BYTES,
     topicPreflight,
     networkWrites: {

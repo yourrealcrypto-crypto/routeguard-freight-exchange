@@ -149,7 +149,7 @@ export function assertClaimableRouteReservedPublication(input: {
   decodeRouteReservedEnvelope(JSON.parse(JSON.stringify(envelope)));
 
   const bytes = encodeHcsEnvelopeUtf8(envelope);
-  if (bytes.byteLength > HCS_MAX_MESSAGE_BYTES) {
+  if (bytes.byteLength >= HCS_MAX_MESSAGE_BYTES) {
     throw new ReservationError(
       "HCS_MESSAGE_TOO_LARGE",
       `ROUTE_RESERVED envelope is ${bytes.byteLength} bytes (limit ${HCS_MAX_MESSAGE_BYTES})`,

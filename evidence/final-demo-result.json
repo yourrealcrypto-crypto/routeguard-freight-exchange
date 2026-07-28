@@ -1,0 +1,188 @@
+{
+  "mode": "LIVE_FINAL_DEMO",
+  "disclosure": "All auction and carrier data in this final demonstration is deliberately synthetic and publicly disclosed for reproducibility. The Hedera payment and consensus transactions are real testnet transactions.",
+  "historicalTopicDisclosure": "Earlier exploratory Phase 5 auction run. Its private random commitment materials were not retained, so it is not used as the authority for the final reservation demonstration.",
+  "materials": {
+    "attemptId": "final-demo-bf7ea243-fdc0-4771-9553-befe8b73c264",
+    "shortAttemptId": "8b73c264",
+    "tenderId": "tender-final-8b73c264",
+    "bidAlphaId": "bid-alpha-final-8b73c264",
+    "bidBetaId": "bid-beta-final-8b73c264",
+    "reservationId": "reservation-final-8b73c264",
+    "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+    "bidHashes": {
+      "alpha": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+      "beta": "sha256:3d168e11b0cb1802b76022d5096ce7db1f876aacfd4d21850bee113f1edcb385"
+    },
+    "receiptHashes": {
+      "alpha": "sha256:86be55b9ac260f2aef60e737410040672b71d650bbac332b70bc06a6d99a8aa5",
+      "beta": "sha256:480860d32d4f98dc5fee0cb705912fc133109e8d34c1a96d4f2b1b71b626c8ec"
+    },
+    "commitmentEnvelopeHashes": {
+      "alpha": "sha256:d31c6d1587e9f3b65cb7fd258a0b2e08cca8a20d148f0eea89198a4ece0b095a",
+      "beta": "sha256:f827ec1721a140f2bc515108e20e14510a5e318bd41aeb11f4f5158c100a7eda"
+    }
+  },
+  "topic": {
+    "topicId": "0.0.9794225",
+    "topicCreateTransactionId": "0.0.9197513@1785171882.373802899",
+    "topicMemo": "routeguard-final:8b73c264"
+  },
+  "sequences": [
+    {
+      "sequence": 1,
+      "label": "AUCTION_OPEN",
+      "envelopeHash": "sha256:fbc7d5df65a775b59d95b00afbfe12206ef0b87ae297506557e3d0e1f65f05e0",
+      "transactionId": "0.0.9197513@1785171886.464403601",
+      "consensusTimestamp": "2026-07-27T17:04:52.344786737Z"
+    },
+    {
+      "sequence": 2,
+      "label": "BID_COMMITMENT_ALPHA",
+      "envelopeHash": "sha256:d31c6d1587e9f3b65cb7fd258a0b2e08cca8a20d148f0eea89198a4ece0b095a",
+      "transactionId": "0.0.9215954@1785171891.401438362",
+      "consensusTimestamp": "2026-07-27T17:04:56.180326104Z"
+    },
+    {
+      "sequence": 3,
+      "label": "BID_COMMITMENT_BETA",
+      "envelopeHash": "sha256:f827ec1721a140f2bc515108e20e14510a5e318bd41aeb11f4f5158c100a7eda",
+      "transactionId": "0.0.9793912@1785171896.489501448",
+      "consensusTimestamp": "2026-07-27T17:05:01.726960104Z"
+    },
+    {
+      "sequence": 4,
+      "label": "AUCTION_CLOSE_BARRIER",
+      "envelopeHash": "sha256:e24bb60e501513b58ffc3e36a32edaa1f6a517587ccb236988a49060eb5b30b6",
+      "transactionId": "0.0.9197513@1785172306.496939544",
+      "consensusTimestamp": "2026-07-27T17:11:54.604991539Z"
+    },
+    {
+      "sequence": 5,
+      "label": "ROUTE_RESERVED",
+      "envelopeHash": "sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035",
+      "transactionId": "0.0.9197513@1785173898.453716083",
+      "consensusTimestamp": "2026-07-27T17:38:23.453477104Z"
+    }
+  ],
+  "auctionEndsAt": "2026-07-27T17:11:48.786Z",
+  "barrierConsensusTimestamp": "2026-07-27T17:11:54.604991539Z",
+  "reconciliationReference": "mirror:topic:0.0.9794225:1-4",
+  "finalHashes": {
+    "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+    "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+    "evaluatedBidSetHash": "sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3",
+    "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425"
+  },
+  "winner": {
+    "bidId": "bid-alpha-final-8b73c264",
+    "carrierId": "carrier-alpha",
+    "carrierAccount": "0.0.9215954"
+  },
+  "payment": {
+    "selectedOptionId": "USDC",
+    "payer": "0.0.9197513",
+    "receiver": "0.0.9215954",
+    "token": "0.0.429274",
+    "amount": "10000",
+    "carrierReceivedAmountAtomic": "10000",
+    "challengeStatedHederaNetworkTransferCostUsd": "0.001",
+    "economics": {
+      "reservationPaymentAmountAtomic": "10000",
+      "reservationPaymentAsset": "0.0.429274",
+      "reservationPaymentOptionId": "USDC",
+      "reservationPaymentDisplayAmount": "0.01",
+      "reservationPaymentCurrencyLabel": "USDC",
+      "hederaNetworkTransferCost": {
+        "label": "Challenge-stated fixed Hedera network transfer cost",
+        "rail": "HTS_STABLECOIN",
+        "networkFeeUsd": "0.001",
+        "unit": "USD",
+        "deductedFromCarrier": false,
+        "includedInX402PaymentAmount": false
+      },
+      "facilitatorFee": {
+        "status": "NOT_MODELED_AS_SEPARATE_X402_CHARGE",
+        "note": "Hosted Blocky402 testnet facilitator acts as Hedera transaction fee payer for settlement submission. RouteGuard does not add a separate facilitator fee line to the x402 reservation payment amount, and does not claim that fee is zero."
+      },
+      "routeGuardPlatformFee": {
+        "status": "NOT_MODELED_AS_SEPARATE_CHARGE",
+        "note": "Bounty demo reservation payment is the exact carrier-bound amount only. No separate RouteGuard platform fee is deducted from or added to the reservation payment amount."
+      },
+      "carrierReceivedAmountAtomic": "10000",
+      "carrierReceivedAsset": "0.0.429274",
+      "totalPayerEconomicsNote": "Carrier reservation payment is 0.01 USDC (10000 atomic units). Challenge-stated fixed Hedera network transfer cost is $0.001 USD and is not deducted from the 0.01 USDC carrier payment."
+    },
+    "transactionId": "0.0.7162784@1785173890.867086556",
+    "consensusTimestamp": "2026-07-27T17:38:16.977444275Z",
+    "tokenTransfers": [
+      {
+        "account": "0.0.9197513",
+        "amount": "-10000",
+        "tokenId": "0.0.429274"
+      },
+      {
+        "account": "0.0.9215954",
+        "amount": "10000",
+        "tokenId": "0.0.429274"
+      }
+    ]
+  },
+  "reservationRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+  "routeReserved": {
+    "sequence": 5,
+    "envelopeHash": "sha256:b4c0a18896ac542929196df251b283702169104d90dbbca5d413adafac680035",
+    "byteCount": 941,
+    "transactionId": "0.0.9197513@1785173898.453716083",
+    "consensusTimestamp": "2026-07-27T17:38:23.453477104Z"
+  },
+  "conservativeEnvelopeByteCount": 949,
+  "dryRunEnvelopeByteCount": 941,
+  "envelopeWithinLimit": true,
+  "networkWrites": {
+    "topicCreates": 0,
+    "hcsSubmits": 1,
+    "payments": 1,
+    "realNetwork": true
+  },
+  "evidencePaths": {
+    "materials": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-live-authoritative-materials.json",
+    "attempt": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-live-attempt.json",
+    "json": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-result.json",
+    "md": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\evidence\\final-demo-result.md",
+    "reservationDir": "F:\\Projects\\RouteGuard\\routeguard-freight-exchange\\data\\final-demo-live-reservations"
+  },
+  "finalState": "COMPLETED",
+  "settleCallCount": 1,
+  "webhookEventIds": [
+    "evt-route-reserved-reservation-final-8b73c264-shipper",
+    "evt-route-reserved-reservation-final-8b73c264-carrier"
+  ],
+  "webhookPayloadHashes": [
+    "sha256:2932ccae6b1c1714af799ab6e4137cc4221725fd80348efebabbcb11e0c9fc20",
+    "sha256:28241a84557b6920e6d49d1b30fcab13e6817affd9d2dbadb96d06c326477d52"
+  ],
+  "attempt": {
+    "attemptId": "final-demo-bf7ea243-fdc0-4771-9553-befe8b73c264",
+    "shortAttemptId": "8b73c264",
+    "mode": "LIVE_FINAL_DEMO",
+    "status": "EVIDENCE_WRITING",
+    "topicId": "0.0.9794225",
+    "topicCreateTransactionId": "0.0.9197513@1785171882.373802899",
+    "plannedTopicCreates": 1,
+    "plannedHcsSubmissions": 5,
+    "plannedPaymentSubmissions": 1,
+    "paymentTransactionId": "0.0.7162784@1785173890.867086556",
+    "routeReservedRecordHash": "sha256:b8908c9ab19127461ab7830ee6b57105b0d9e052247d101726c5dccf98586d06",
+    "finalHashes": {
+      "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+      "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+      "evaluatedBidSetHash": "sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3",
+      "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425"
+    }
+  },
+  "hashScanTopic": "https://hashscan.io/testnet/topic/0.0.9794225",
+  "hashScanTopicCreate": "https://hashscan.io/testnet/transaction/0.0.9197513@1785171882.373802899",
+  "hashScanPayment": "https://hashscan.io/testnet/transaction/0.0.7162784@1785173890.867086556",
+  "mirrorTopic": "https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.9794225/messages"
+}

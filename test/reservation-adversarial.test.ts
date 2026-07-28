@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { demoClientTransaction } from "./reservation-helpers";
 
 import { createReservationApp } from "../src/reservation/routes";
 import { createRouteReservedRecord } from "../src/reservation/route-reserved-record";
@@ -58,7 +59,7 @@ describe("Reservation adversarial", () => {
       ],
       tokenTransfers: [],
     };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -137,6 +138,8 @@ describe("Reservation adversarial", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         paymentPayloadHash: "sha256:" + "cd".repeat(32),
+        // v1.5 §22.4 — mandatory client-frozen transaction identity.
+        clientTransaction: demoClientTransaction(),
       }),
     });
     expect(pay.status).toBe(200);
@@ -157,12 +160,12 @@ describe("Reservation adversarial", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    const a = await service.submitPayment({
+    const a = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
     });
-    const b = await service.submitPayment({
+    const b = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -186,13 +189,13 @@ describe("Reservation adversarial", () => {
       sel,
       controls.settleResult.transactionId!,
     );
-    await service.submitPayment({
+    await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
     });
     await expect(
-      service.submitPayment({
+      service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "USDC",
         paymentPayloadHash: "sha256:" + "ff".repeat(32),

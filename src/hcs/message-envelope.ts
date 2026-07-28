@@ -332,11 +332,20 @@ export function measureHcsMessageBytes(envelope: HcsEnvelope): number {
   return encodeHcsEnvelopeUtf8(envelope).byteLength;
 }
 
+/**
+ * F-008 — the HCS application-message limit is STRICT: a message must be
+ * strictly below HCS_MAX_MESSAGE_BYTES (1,024). Exactly 1,024 is rejected;
+ * 1,023 is accepted. Pure predicate so the boundary is directly testable.
+ */
+export function exceedsHcsMessageLimit(byteCount: number): boolean {
+  return byteCount >= HCS_MAX_MESSAGE_BYTES;
+}
+
 export function assertMessageSize(envelope: HcsEnvelope): void {
   const size = measureHcsMessageBytes(envelope);
-  if (size > HCS_MAX_MESSAGE_BYTES) {
+  if (exceedsHcsMessageLimit(size)) {
     throw new HcsEnvelopeError(
-      `HCS message size ${size} exceeds limit ${HCS_MAX_MESSAGE_BYTES}`,
+      `HCS message size ${size} exceeds strict limit ${HCS_MAX_MESSAGE_BYTES} (must be < ${HCS_MAX_MESSAGE_BYTES})`,
     );
   }
 }

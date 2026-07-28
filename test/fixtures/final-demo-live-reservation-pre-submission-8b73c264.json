@@ -1,0 +1,124 @@
+{
+  "recordVersion": 6,
+  "reservationId": "reservation-final-8b73c264",
+  "state": "PAYMENT_CHALLENGE_ISSUED",
+  "tenderId": "tender-final-8b73c264",
+  "tenderVersion": 1,
+  "tenderHash": "sha256:c4dc6d1d07c274962cdde9b78bfd74cd2a8320fdd687ab58ba9b73ad09b349da",
+  "winningBidId": "bid-alpha-final-8b73c264",
+  "winningBidHash": "sha256:17896569d821d0cafae5b1cbb304322166935713f04d6bbe6a2fe4785fe79827",
+  "winningCarrierId": "carrier-alpha",
+  "winningCarrierAccount": "0.0.9215954",
+  "decisionManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425",
+  "evaluatedBidSetHash": "sha256:5138d1c09bb513a7304c649482da7b9b68494994a2aa1bda21ee70f526c4d6b3",
+  "hcsTopicId": "0.0.9794225",
+  "closeBarrierSequence": 4,
+  "closeBarrierConsensusTimestamp": "2026-07-27T17:11:54.604991539Z",
+  "creationFingerprint": "sha256:77a81cc75596bb748f970c573840ec09ab81e90196a50744bfa8cdcf21f4fb0f",
+  "proofTenderId": "tender-final-8b73c264",
+  "proofManifestHash": "sha256:1f0e40ccb0a14673f70565ed339473baacb5a8dd635546e6e5e7baaab1710425",
+  "offer": {
+    "reservationId": "reservation-final-8b73c264",
+    "offerVersion": 1,
+    "tenderId": "tender-final-8b73c264",
+    "winningBidId": "bid-alpha-final-8b73c264",
+    "payTo": "0.0.9215954",
+    "expiresAt": "2026-07-27T18:11:58.262Z",
+    "feeLabel": "Demo reservation fee only — not payment of the freight price.",
+    "options": [
+      {
+        "optionId": "USDC",
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "asset": "0.0.429274",
+        "amountAtomic": "10000",
+        "displayAmount": "0.01",
+        "currencyLabel": "USDC"
+      },
+      {
+        "optionId": "HBAR",
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "asset": "0.0.0",
+        "amountAtomic": "1000000",
+        "displayAmount": "0.01",
+        "currencyLabel": "HBAR"
+      }
+    ],
+    "offerHash": "sha256:89a945a926a53e5131d34edaa7bb5873e06421c07e907364f427b553e5c2cd58"
+  },
+  "selected": {
+    "reservationId": "reservation-final-8b73c264",
+    "offerHash": "sha256:89a945a926a53e5131d34edaa7bb5873e06421c07e907364f427b553e5c2cd58",
+    "offerVersion": 1,
+    "optionId": "USDC",
+    "payerAccount": "0.0.9197513",
+    "payTo": "0.0.9215954",
+    "asset": "0.0.429274",
+    "amountAtomic": "10000",
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "selectedAt": "2026-07-27T17:11:58.275Z",
+    "resourcePath": "/api/reservations/reservation-final-8b73c264/pay/usdc"
+  },
+  "attemptNumber": 1,
+  "paymentChallenge": {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "asset": "0.0.429274",
+    "amount": "10000",
+    "payTo": "0.0.9215954",
+    "resource": "/api/reservations/reservation-final-8b73c264/pay/usdc",
+    "maxTimeoutSeconds": 180,
+    "description": "Demo reservation fee only — not payment of the freight price.",
+    "issuedAt": "2026-07-27T17:11:58.285Z",
+    "challengeHash": "sha256:5f704b6f503258c109d7aa89e7ad74a306fb92cdca5c655e193d7af4cd044e91"
+  },
+  "paymentChallengeHash": "sha256:5f704b6f503258c109d7aa89e7ad74a306fb92cdca5c655e193d7af4cd044e91",
+  "paymentPayloadHash": null,
+  "clientTransaction": null,
+  "facilitatorVerify": null,
+  "settleClaim": null,
+  "facilitatorSettle": null,
+  "transactionId": null,
+  "mirrorConfirmation": null,
+  "mirrorPoll": null,
+  "confirmationDeadline": null,
+  "routeReserved": null,
+  "webhookEvents": [],
+  "webhooks": [],
+  "hcsPublicationClaim": null,
+  "hcsEvidence": null,
+  "history": [
+    {
+      "from": "OFFER_CREATED",
+      "to": "OFFER_CREATED",
+      "at": "2026-07-27T17:11:58.262Z",
+      "reason": "created"
+    },
+    {
+      "from": "OFFER_CREATED",
+      "to": "OPTION_SELECTED",
+      "at": "2026-07-27T17:11:58.275Z",
+      "reason": "option selected"
+    },
+    {
+      "from": "OPTION_SELECTED",
+      "to": "PAYMENT_CHALLENGE_ISSUED",
+      "at": "2026-07-27T17:11:58.285Z",
+      "reason": "challenge issued"
+    },
+    {
+      "from": "WEBHOOKS_DISPATCHED",
+      "to": "HCS_EVIDENCE_RECORDED",
+      "at": "2026-07-27T17:38:28.125Z",
+      "reason": "hcs published"
+    }
+  ],
+  "createdAt": "2026-07-27T17:11:58.262Z",
+  "updatedAt": "2026-07-27T17:38:28.131Z",
+  "expiresAt": "2026-07-27T18:11:58.262Z",
+  "failureCode": null,
+  "failureReason": null
+}

@@ -3,6 +3,7 @@
  * ambiguous resolution (no automatic resubmit).
  */
 
+import { demoClientTransaction } from "./reservation-helpers";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -55,7 +56,7 @@ async function seedPostWebhook(
     sel,
     controls.settleResult.transactionId!,
   );
-  await service.submitPayment({
+  await service.submitPayment({ clientTransaction: demoClientTransaction(),
     reservationId,
     optionId,
     paymentPayloadHash,
@@ -363,7 +364,7 @@ describe("HCS publication outbox (Phase 6A.2A)", () => {
     // Exact live-shaped fixture count (canonical UTF-8 of the durable envelope).
     // Logged for the Phase 6A.2A report; bound is the standard 1024-byte HCS limit.
     expect(claim.encodedByteCount).toBeGreaterThan(400);
-    expect(claim.encodedByteCount).toBeLessThanOrEqual(1024);
+    expect(claim.encodedByteCount).toBeLessThan(1024);
     const durable = (await store.get(reservationId))!;
     expect(durable.hcsPublicationClaim!.encodedByteCount).toBe(
       claim.encodedByteCount,

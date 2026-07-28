@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { demoClientTransaction } from "./reservation-helpers";
 
 import { isVerifiedAuctionClosureProof } from "../src/auction/closure-proof";
 import { ReservationError } from "../src/reservation/types";
@@ -63,7 +64,7 @@ describe("Reservation service", () => {
       controls.settleResult.transactionId!,
     );
 
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -98,7 +99,7 @@ describe("Reservation service", () => {
       controls.settleResult.transactionId!,
     );
 
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -117,7 +118,7 @@ describe("Reservation service", () => {
       "USDC",
       "res-verify-fail",
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -141,7 +142,7 @@ describe("Reservation service", () => {
       "HBAR",
       "res-settle-fail",
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -150,7 +151,7 @@ describe("Reservation service", () => {
     expect(controls.settleCallCount).toBe(1);
 
     await expect(
-      service.submitPayment({
+      service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "HBAR",
         paymentPayloadHash,
@@ -158,27 +159,33 @@ describe("Reservation service", () => {
     ).rejects.toThrow(/TERMINAL|terminal/i);
   });
 
-  it("missing transaction ID fails closed", async () => {
-    const { service, controls, bundle } = buildService();
+  it("settle response without a transaction ID confirms the exact client-frozen transaction", async () => {
+    // v1.5 §23: the client-frozen ID persisted pre-settle is authoritative.
+    // A success response lacking an ID no longer fails — confirmation runs
+    // against the exact client transaction.
+    const { service, store, controls, bundle } = buildService();
     controls.settleResult = {
       success: true,
       transactionId: null,
       network: "hedera:testnet",
       payerAccountId: DEMO_PAYER_ACCOUNT,
     };
-    const { reservationId, paymentPayloadHash } = await createAndSelect(
-      service,
-      bundle,
-      "HBAR",
-      "res-no-txid",
-    );
+    controls.mirrorImpl = async (txId) => {
+      const rec = await store.get("res-no-txid");
+      return defaultMirrorSuccess(rec!.selected!, txId);
+    };
+    const { reservationId, paymentPayloadHash, clientTransaction } =
+      await createAndSelect(service, bundle, "HBAR", "res-no-txid");
     const final = await service.submitPayment({
+      clientTransaction,
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
     });
-    expect(final.state).toBe("SETTLEMENT_FAILED");
-    expect(final.failureCode).toBe("MISSING_TRANSACTION_ID");
+    expect(final.transactionId).toBe(clientTransaction.transactionId);
+    expect(final.routeReserved?.transactionId).toBe(
+      clientTransaction.transactionId,
+    );
   });
 
   it("mirror pending does not reserve; mirror failure does not reserve", async () => {
@@ -192,7 +199,7 @@ describe("Reservation service", () => {
       tokenTransfers: [],
     };
     const a = await createAndSelect(service, bundle, "HBAR", "res-pending");
-    const pending = await service.submitPayment({
+    const pending = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId: a.reservationId,
       optionId: "HBAR",
       paymentPayloadHash: a.paymentPayloadHash,
@@ -210,7 +217,7 @@ describe("Reservation service", () => {
       tokenTransfers: [],
     };
     const b = await createAndSelect(s2, b2, "USDC", "res-mfail");
-    const failed = await s2.submitPayment({
+    const failed = await s2.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId: b.reservationId,
       optionId: "USDC",
       paymentPayloadHash: b.paymentPayloadHash,
@@ -246,7 +253,7 @@ describe("Reservation service", () => {
     );
     // Start submission by setting verify to hang path - use invalid then
     // Actually after challenge, try reselect after submission started via force
-    await service.submitPayment({
+    await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "USDC",
       paymentPayloadHash,
@@ -271,7 +278,7 @@ describe("Reservation service", () => {
     expect(a.offer.offerHash).toBe(b.offer.offerHash);
   });
 
-  it("recovery from in-progress states is fail-closed", async () => {
+  it("recovery from in-progress states stays reconcilable via the client transaction", async () => {
     const { service, store, bundle } = buildService();
     const { reservationId, paymentPayloadHash } = await createAndSelect(
       service,
@@ -280,15 +287,22 @@ describe("Reservation service", () => {
       "res-recover",
     );
     const rec = (await store.get(reservationId))!;
-    // Valid PAYMENT_SUBMISSION_STARTED snapshot: selection + challenge present.
+    // Valid PAYMENT_SUBMISSION_STARTED snapshot: selection + challenge +
+    // client-frozen transaction binding present (v1.5 §22.4).
     await store.compareAndSet(reservationId, rec.recordVersion, {
       ...rec,
       state: "PAYMENT_SUBMISSION_STARTED",
       attemptNumber: 1,
       paymentPayloadHash,
+      clientTransaction: demoClientTransaction(),
     });
+    // Restart keeps the state deterministically reconcilable — never a blind
+    // retry, never a settle; reconcilePayment applies the exact-tx rule.
     const recovered = await service.recover(reservationId);
-    expect(recovered.state).toBe("MANUAL_REVIEW_REQUIRED");
+    expect(recovered.state).toBe("PAYMENT_SUBMISSION_STARTED");
+    expect(recovered.clientTransaction?.transactionId).toBe(
+      demoClientTransaction().transactionId,
+    );
   });
 
   it("reservedAt equals the Mirror consensus timestamp; clock changes do not alter the record hash", async () => {
@@ -309,7 +323,7 @@ describe("Reservation service", () => {
         sel,
         controls.settleResult.transactionId!,
       );
-      const final = await service.submitPayment({
+      const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
         reservationId,
         optionId: "USDC",
         paymentPayloadHash,
@@ -345,7 +359,7 @@ describe("Reservation service", () => {
     const sel = (await service.getReservation(reservationId))!.selected!;
     const ok = defaultMirrorSuccess(sel, controls.settleResult.transactionId!);
     controls.mirrorResult = { ...ok, consensusTimestamp: null };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -365,7 +379,7 @@ describe("Reservation service", () => {
     const sel = (await service.getReservation(reservationId))!.selected!;
     const ok = defaultMirrorSuccess(sel, controls.settleResult.transactionId!);
     controls.mirrorResult = { ...ok, consensusTimestamp: "not-a-timestamp" };
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,
@@ -403,7 +417,7 @@ describe("Reservation service", () => {
       "HBAR",
       "res-http",
     );
-    const final = await service.submitPayment({
+    const final = await service.submitPayment({ clientTransaction: demoClientTransaction(),
       reservationId,
       optionId: "HBAR",
       paymentPayloadHash,

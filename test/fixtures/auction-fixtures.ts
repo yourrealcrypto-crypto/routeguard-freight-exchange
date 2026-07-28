@@ -50,7 +50,7 @@ export const CARRIER_KEYS = {
       "5bf93b32e395f3aef291796c943df50b88f4b1913b7cb660d1b4191699a231b5",
     publicKey:
       "03e7d77b4c6d1ffb48f73531be8dd4a1f55286cf5fd0bdf48c4e944be9bc29d4bf",
-    accountId: "0.0.9100002",
+    accountId: "0.0.9793912",
     carrierId: "carrier-beta",
   },
   gamma: {

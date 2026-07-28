@@ -13,6 +13,20 @@ RouteGuard Freight Exchange uses:
 - Settlement before reservation
 - Application-level idempotency and payment reconciliation
 
+## Challenge-stated fixed Hedera network transfer costs
+
+Official bounty wording (binding for submission surfaces):
+
+| Rail | Challenge-stated transfer cost |
+| --- | --- |
+| Native HBAR | $0.0001 |
+| Stablecoin / HTS | $0.001 |
+
+These values are exact decimal strings in application economics metadata
+(`src/domain/hedera-transfer-costs.ts`). They are not the reservation price,
+not a RouteGuard platform charge, not deducted from the carrier payment, and
+not mixed into x402 protocol challenge fields.
+
 ## Excluded from the trust-critical core
 
 - LLM transaction decisions

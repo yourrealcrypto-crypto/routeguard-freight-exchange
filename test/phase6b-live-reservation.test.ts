@@ -133,6 +133,12 @@ function mockPaymentPayload() {
     paymentPayload: paymentPayload as import("@x402/core/types").PaymentPayload,
     requirement: requirement as import("@x402/core/types").PaymentRequirements,
     paymentPayloadHash: canonicalSha256(paymentPayload),
+    // v1.5 §22.4 — client-frozen transaction identity (matches default mock settle).
+    clientTransaction: {
+      transactionId: "0.0.9197513@1784142000.100000000",
+      validStartTimestamp: "2026-07-15T19:00:00.100000000Z",
+      transactionValidDurationSeconds: 180,
+    },
   };
 }
 
@@ -629,7 +635,7 @@ describe("Phase 6B.1A — HCS publisher wiring", () => {
       createdAt: "2026-07-15T19:06:01.000Z",
       payload: buildRouteReservedPayload(rr, r.winningCarrierId),
     });
-    expect(measureRouteReservedEnvelope(env)).toBeLessThanOrEqual(1024);
+    expect(measureRouteReservedEnvelope(env)).toBeLessThan(1024);
     // decisionManifestHash must not be flat on HCS payload
     expect(env.payload).not.toHaveProperty("decisionManifestHash");
 

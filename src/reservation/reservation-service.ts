@@ -15,6 +15,10 @@
 import { randomUUID } from "node:crypto";
 
 import type { CarrierRegistry } from "../domain/carrier";
+import {
+  buildPaymentEconomicsSummary,
+  buildRailPresentation,
+} from "../domain/payment-economics";
 import type { FreightTender } from "../domain/tender";
 import { compareUtc, isUtcIsoTimestamp } from "../domain/time";
 import {
@@ -22,6 +26,13 @@ import {
   recoverInProgressState,
   type ReservationStore,
 } from "./attempt-store";
+import {
+  conclusiveFailureBoundaryMs,
+  parseClientTransactionRef,
+  transactionIdsEqual,
+  type ClientTransactionRef,
+  type SettlementReconciliationOutcome,
+} from "./client-transaction";
 import {
   assertExactChallenge,
   createPaymentChallengeRecord,
@@ -63,9 +74,11 @@ import type {
 import type { RouteReservedEnvelope } from "../hcs/types";
 import {
   DEMO_RESERVATION_FEE_NOTE,
+  HBAR_RESERVATION_OPTION,
   RESERVATION_NETWORK,
   ReservationError,
   ReservationVersionConflictError,
+  USDC_RESERVATION_OPTION,
   type CreateReservationInput,
   type HcsPublicationClaim,
   type MirrorPollRecord,
@@ -157,14 +170,20 @@ function isPastDeadline(
 function transition(
   record: ReservationRecord,
   to: ReservationState,
-  reason?: string,
-  at?: string,
+  reason: string | undefined,
+  at: string,
 ): ReservationRecord {
   assertLegalTransition(record.state, to);
   if (record.state === to) {
     return record;
   }
-  const ts = at ?? new Date().toISOString();
+  if (typeof at !== "string" || !isUtcIsoTimestamp(at)) {
+    throw new ReservationError(
+      "INVALID_TIMESTAMP",
+      "transition requires an explicit valid UTC timestamp",
+    );
+  }
+  const ts = at;
   return {
     ...record,
     state: to,
@@ -174,6 +193,61 @@ function transition(
       { from: record.state, to, at: ts, ...(reason ? { reason } : {}) },
     ],
   };
+}
+
+/**
+ * Pure F-001 recovery guard. A timed-out confirmation may resume ONLY when the
+ * settled transaction and every binding fact are unchanged. Exported for
+ * direct branch-level testing; the service routes failures to
+ * MANUAL_REVIEW_REQUIRED and never settles or signs during recovery.
+ */
+export function assessTimedOutConfirmationRecovery(
+  record: ReservationRecord,
+): { ok: true } | { ok: false; reason: string } {
+  if (!record.transactionId) {
+    return { ok: false, reason: "no settled transaction ID" };
+  }
+  if (!record.selected) {
+    return { ok: false, reason: "no selected option" };
+  }
+  if (!record.settleClaim) {
+    return { ok: false, reason: "no durable settle claim" };
+  }
+  if (record.facilitatorSettle?.success !== true) {
+    return { ok: false, reason: "no successful facilitator settlement" };
+  }
+  if (
+    record.facilitatorSettle.transactionId &&
+    !transactionIdsEqual(
+      record.facilitatorSettle.transactionId,
+      record.transactionId,
+    )
+  ) {
+    return { ok: false, reason: "settlement transaction ID mismatch" };
+  }
+  const claim = record.settleClaim;
+  if (
+    !record.paymentPayloadHash ||
+    claim.paymentPayloadHash !== record.paymentPayloadHash
+  ) {
+    return { ok: false, reason: "payment payload fingerprint changed" };
+  }
+  if (
+    claim.selectedOptionId !== record.selected.optionId ||
+    claim.asset !== record.selected.asset ||
+    claim.amountAtomic !== record.selected.amountAtomic ||
+    claim.payerAccount !== record.selected.payerAccount ||
+    claim.payTo !== record.selected.payTo
+  ) {
+    return { ok: false, reason: "settle claim no longer matches selected option" };
+  }
+  if (
+    record.mirrorPoll &&
+    !transactionIdsEqual(record.mirrorPoll.transactionId, record.transactionId)
+  ) {
+    return { ok: false, reason: "mirror poll transaction ID mismatch" };
+  }
+  return { ok: true };
 }
 
 export class ReservationService {
@@ -297,6 +371,7 @@ export class ReservationService {
       paymentChallenge: null,
       paymentChallengeHash: null,
       paymentPayloadHash: null,
+      clientTransaction: null,
       facilitatorVerify: null,
       settleClaim: null,
       facilitatorSettle: null,
@@ -496,6 +571,12 @@ export class ReservationService {
     optionId: ReservationOptionId;
     /** Hash of signed payment payload — never store the full payload. */
     paymentPayloadHash: string;
+    /**
+     * v1.5 §22.4 — MANDATORY client-frozen transaction identity decoded from
+     * the signed payment transaction. Persisted in the durable settle claim
+     * BEFORE the external facilitator settle call.
+     */
+    clientTransaction: ClientTransactionRef;
     /** Optional HTTP status observed by client — never sufficient alone. */
     httpStatus?: number;
   }): Promise<ReservationRecord> {
@@ -537,6 +618,11 @@ export class ReservationService {
       );
     }
 
+    // v1.5 §22.4 — validate the mandatory client-frozen transaction reference
+    // before anything else. Format, ID-embedded valid start, and duration are
+    // checked; nothing is derived or invented on failure.
+    const clientTx = parseClientTransactionRef(input.clientTransaction);
+
     // A durable settle claim binds one exact payment payload. Any conflicting
     // payload against an existing claim fails closed.
     if (
@@ -546,6 +632,17 @@ export class ReservationService {
       throw new ReservationError(
         "CONFLICT",
         "Conflicting payment payload against existing settle claim",
+      );
+    }
+    // Same rule for the client transaction identity: an existing claim binds
+    // exactly one frozen transaction; a different one fails closed.
+    if (
+      record.settleClaim &&
+      !transactionIdsEqual(record.settleClaim.transactionId, clientTx.transactionId)
+    ) {
+      throw new ReservationError(
+        "CONFLICT",
+        "Conflicting client transaction ID against existing settle claim",
       );
     }
 
@@ -571,6 +668,9 @@ export class ReservationService {
       let next: ReservationRecord = {
         ...record,
         paymentPayloadHash: input.paymentPayloadHash,
+        // v1.5 §22.4 — persist the exact client-frozen transaction identity
+        // BEFORE any facilitator transmission (verify or settle).
+        clientTransaction: clientTx,
         attemptNumber: 1,
         updatedAt: now,
       };
@@ -584,6 +684,18 @@ export class ReservationService {
         record.paymentPayloadHash !== input.paymentPayloadHash
       ) {
         throw new ReservationError("CONFLICT", "Conflicting payment payload hash");
+      }
+      if (
+        record.clientTransaction &&
+        !transactionIdsEqual(
+          record.clientTransaction.transactionId,
+          clientTx.transactionId,
+        )
+      ) {
+        throw new ReservationError(
+          "CONFLICT",
+          "Conflicting client transaction ID against persisted submission",
+        );
       }
     }
 
@@ -608,8 +720,7 @@ export class ReservationService {
         next = transition(
           next,
           "PAYMENT_REJECTED",
-          verifyResult.invalidReason ?? "verify failed",
-        );
+          verifyResult.invalidReason ?? "verify failed", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "VERIFY_REJECTED",
@@ -622,7 +733,7 @@ export class ReservationService {
         facilitatorVerify: verifyResult,
         updatedAt: nowIso(this.deps),
       };
-      next = transition(next, "FACILITATOR_VERIFIED", "verify ok");
+      next = transition(next, "FACILITATOR_VERIFIED", "verify ok", nowIso(this.deps));
       const r = await this.commitOrConflict(record, next);
       if (r.conflicted) return r.record;
       record = r.record;
@@ -648,6 +759,11 @@ export class ReservationService {
           network: RESERVATION_NETWORK,
           challengeHash,
           paymentPayloadHash: input.paymentPayloadHash,
+          // v1.5 §23.1 — exact transaction identity persisted BEFORE settle.
+          transactionId: clientTx.transactionId,
+          validStartTimestamp: clientTx.validStartTimestamp,
+          transactionValidDurationSeconds:
+            clientTx.transactionValidDurationSeconds,
           claimedAt,
           recordVersion: record.recordVersion + 1,
         };
@@ -700,8 +816,7 @@ export class ReservationService {
         next = transition(
           next,
           "SETTLEMENT_FAILED",
-          settleResult.errorReason ?? "settle failed",
-        );
+          settleResult.errorReason ?? "settle failed", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "SETTLE_FAILED",
@@ -710,29 +825,42 @@ export class ReservationService {
         return this.commit(record, next);
       }
 
-      let txId: string;
-      try {
-        txId = requireTransactionIdForSettlement(settleResult.transactionId);
-      } catch (e) {
+      // v1.5 §23 — the client-frozen transaction ID persisted in the settle
+      // claim is authoritative. A facilitator response reporting a DIFFERENT
+      // transaction is ambiguous (something may have settled that we did not
+      // sign for this claim) → manual review, never a second settle. A missing
+      // response ID is tolerated: the exact claim ID drives confirmation.
+      const claimTxId = requireTransactionIdForSettlement(
+        record.settleClaim!.transactionId,
+      );
+      const responseTxId = settleResult.transactionId?.trim() || null;
+      if (responseTxId && !transactionIdsEqual(responseTxId, claimTxId)) {
         let next: ReservationRecord = {
           ...record,
           facilitatorSettle: settleResult,
           updatedAt: nowIso(this.deps),
         };
-        next = transition(next, "SETTLEMENT_FAILED", "missing transaction ID");
+        next = transition(
+          next,
+          "MANUAL_REVIEW_REQUIRED",
+          "settle response transaction ID differs from client-frozen transaction ID",
+          nowIso(this.deps),
+        );
         next = {
           ...next,
-          failureCode: "MISSING_TRANSACTION_ID",
-          failureReason: e instanceof Error ? e.message : "missing transaction ID",
+          failureCode: "SETTLE_RESPONSE_TX_MISMATCH",
+          failureReason: `Facilitator reported a different transaction than the signed one — manual review (no auto-settle, no auto-accept)`,
         };
         return this.commit(record, next);
       }
+      const txId = claimTxId;
 
       if (settleResult.network !== selected.network) {
         let next = transition(
           { ...record, facilitatorSettle: settleResult },
           "SETTLEMENT_FAILED",
           "network mismatch",
+          nowIso(this.deps),
         );
         next = {
           ...next,
@@ -746,6 +874,7 @@ export class ReservationService {
           { ...record, facilitatorSettle: settleResult },
           "SETTLEMENT_FAILED",
           "payer mismatch",
+          nowIso(this.deps),
         );
         next = {
           ...next,
@@ -761,7 +890,7 @@ export class ReservationService {
         transactionId: txId,
         updatedAt: nowIso(this.deps),
       };
-      next = transition(next, "FACILITATOR_SETTLED", "settle ok");
+      next = transition(next, "FACILITATOR_SETTLED", "settle ok", nowIso(this.deps));
       record = await this.commit(record, next);
     }
 
@@ -770,8 +899,68 @@ export class ReservationService {
   }
 
   /**
+   * Guarded F-001 recovery: a payment that settled successfully but whose
+   * bounded Mirror confirmation timed out may re-enter confirmation for the
+   * SAME transaction only. Every binding fact must be unchanged; otherwise the
+   * record is routed to MANUAL_REVIEW_REQUIRED. Never settles or signs again.
+   */
+  private async recoverTimedOutConfirmation(
+    record: ReservationRecord,
+  ): Promise<ReservationRecord> {
+    const assessment = assessTimedOutConfirmationRecovery(record);
+    if (!assessment.ok) {
+      let next = transition(
+        record,
+        "MANUAL_REVIEW_REQUIRED",
+        `confirmation recovery blocked: ${assessment.reason}`,
+        nowIso(this.deps),
+      );
+      next = {
+        ...next,
+        failureCode: "CONFIRMATION_RECOVERY_BLOCKED",
+        failureReason: `Guarded confirmation recovery refused: ${assessment.reason}`,
+      };
+      return this.commit(record, next);
+    }
+
+    // All guards passed: re-enter confirmation with a fresh durable deadline
+    // for the exact same transaction. No settle, no new payload, no new asset.
+    const settledTxId = requireTransactionIdForSettlement(record.transactionId);
+    const at = nowIso(this.deps);
+    const timeoutMs = this.deps.confirmationTimeoutMs ?? 30_000;
+    const newDeadline = new Date(Date.parse(at) + timeoutMs).toISOString();
+    let next = transition(
+      record,
+      "MIRROR_CONFIRMATION_PENDING",
+      "guarded recovery of settled payment — same transaction, new confirmation window",
+      at,
+    );
+    next = {
+      ...next,
+      confirmationDeadline: newDeadline,
+      mirrorPoll: {
+        transactionId: settledTxId,
+        confirmationStartedAt:
+          record.mirrorPoll?.confirmationStartedAt ?? at,
+        confirmationDeadline: newDeadline,
+        pollAttemptCount: record.mirrorPoll?.pollAttemptCount ?? 0,
+        lastPollAt: record.mirrorPoll?.lastPollAt ?? null,
+        lastMirrorStatus: record.mirrorPoll?.lastMirrorStatus ?? null,
+        lastMirrorErrorCode: null,
+        lastMirrorError: null,
+        consensusTimestamp: record.mirrorPoll?.consensusTimestamp ?? null,
+        verifiedTransfer: record.mirrorPoll?.verifiedTransfer ?? null,
+      },
+      failureCode: null,
+      failureReason: null,
+    };
+    return this.commit(record, next);
+  }
+
+  /**
    * Resume ledger confirmation after restart. Never verifies/settles again,
-   * never regenerates the challenge, never changes selected asset.
+   * never regenerates the challenge, never changes selected asset. Includes
+   * the guarded CONFIRMATION_TIMED_OUT recovery (F-001).
    */
   async resumePaymentConfirmation(
     reservationId: string,
@@ -791,21 +980,22 @@ export class ReservationService {
       return record;
     }
 
-    // Settle claim without authoritative tx id → never settle; manual review.
+    // Settle claim, settle outcome unknown (crash mid-settle). The claim
+    // carries the exact client-frozen transaction ID (v1.5 §22.4), so the
+    // deterministic reconciliation rule resolves it — never a blind manual
+    // review, never a second settle.
     if (record.settleClaim && !record.transactionId) {
       if (record.state === "MANUAL_REVIEW_REQUIRED") return record;
-      let next = transition(
-        record,
-        "MANUAL_REVIEW_REQUIRED",
-        "settle claim without transaction id",
-      );
-      next = {
-        ...next,
-        failureCode: "AMBIGUOUS_SETTLE_CLAIM",
-        failureReason:
-          "Settle claim exists without authoritative transaction ID — do not auto-settle",
-      };
-      return this.commit(record, next);
+      const reconciled = await this.reconcilePayment(record.reservationId);
+      return reconciled.record;
+    }
+
+    // F-001: guarded recovery of a settled payment after a timed-out window.
+    if (record.state === "CONFIRMATION_TIMED_OUT") {
+      record = await this.recoverTimedOutConfirmation(record);
+      if (record.state !== "MIRROR_CONFIRMATION_PENDING") {
+        return record;
+      }
     }
 
     if (
@@ -835,6 +1025,286 @@ export class ReservationService {
     }
 
     return this.runMirrorConfirmation(record, record.selected);
+  }
+
+  /**
+   * v1.5 §23.2 — deterministic settlement reconciliation for the EXACT
+   * client-frozen transaction persisted in the durable settle claim.
+   *
+   * Outcomes:
+   * - FOUND_SUCCESS  → adopt the transaction and complete confirmation →
+   *                    reservation (idempotent; settle never re-invoked).
+   * - FOUND_FAILED   → SETTLEMENT_FAILED immediately (conclusive ledger result).
+   * - RECONCILIATION_PENDING → exact lookup empty/pending and the validity
+   *                    boundary (validStart + validDuration + 60 s) has NOT
+   *                    elapsed: remain locked; no replacement payment.
+   * - CONCLUSIVELY_FAILED → exact lookup empty AND boundary elapsed:
+   *                    SETTLEMENT_FAILED with failureCode CONCLUSIVELY_FAILED;
+   *                    a replacement attempt may then be explicitly authorized.
+   */
+  async reconcilePayment(reservationId: string): Promise<{
+    outcome: SettlementReconciliationOutcome;
+    record: ReservationRecord;
+  }> {
+    let record = await this.require(reservationId);
+
+    // Already reserved or confirming — reuse the normal resume paths.
+    if (
+      record.routeReserved ||
+      record.state === "FACILITATOR_SETTLED" ||
+      record.state === "MIRROR_CONFIRMATION_PENDING" ||
+      record.state === "CONFIRMATION_TIMED_OUT"
+    ) {
+      const resumed = record.routeReserved
+        ? record
+        : await this.resumePaymentConfirmation(reservationId);
+      return {
+        outcome: resumed.transactionId
+          ? { outcome: "FOUND_SUCCESS", transactionId: resumed.transactionId }
+          : {
+              outcome: "RECONCILIATION_PENDING",
+              boundaryIso: new Date(
+                conclusiveFailureBoundaryMs(record.settleClaim ?? {
+                  validStartTimestamp: nowIso(this.deps),
+                  transactionValidDurationSeconds: 180,
+                }),
+              ).toISOString(),
+            },
+        record: resumed,
+      };
+    }
+
+    // Pre-claim states: the signed payload may have been transmitted (verify
+    // sends it), but settle was never authorized. The record-level client
+    // transaction binding (v1.5 §22.4) permits exact deterministic
+    // classification without ever settling or adopting.
+    if (
+      (record.state === "PAYMENT_SUBMISSION_STARTED" ||
+        record.state === "FACILITATOR_VERIFIED") &&
+      record.clientTransaction
+    ) {
+      const ref = record.clientTransaction;
+      const exact = requireTransactionIdForSettlement(ref.transactionId);
+      const boundaryMs2 = conclusiveFailureBoundaryMs(ref);
+      const boundaryIso2 = new Date(boundaryMs2).toISOString();
+      const found = await this.deps.mirror.getTransaction(exact);
+      // Schema-safe failure target per state (SETTLEMENT_FAILED requires a
+      // successful verify; PAYMENT_SUBMISSION_STARTED has none yet).
+      const failureState =
+        record.state === "FACILITATOR_VERIFIED"
+          ? ("SETTLEMENT_FAILED" as const)
+          : ("PAYMENT_REJECTED" as const);
+      if (found.status === "SUCCESS") {
+        // No durable settle claim ever authorized settlement — a ledger
+        // SUCCESS here is an unauthorized submission. Manual review only.
+        let next = transition(
+          record,
+          "MANUAL_REVIEW_REQUIRED",
+          "ledger shows settlement without a durable settle claim",
+          nowIso(this.deps),
+        );
+        next = {
+          ...next,
+          failureCode: "UNAUTHORIZED_SETTLEMENT_DETECTED",
+          failureReason: `Exact transaction ${exact} present on ledger without an authorized settle claim — manual review`,
+        };
+        const committed = await this.commit(record, next);
+        return {
+          outcome: { outcome: "FOUND_SUCCESS", transactionId: exact },
+          record: committed,
+        };
+      }
+      if (found.status === "FAILED") {
+        let next = transition(
+          record,
+          failureState,
+          "exact transaction found FAILED on ledger",
+          nowIso(this.deps),
+        );
+        next = {
+          ...next,
+          failureCode: "SETTLE_RESULT_FAILED_ON_LEDGER",
+          failureReason: `Exact transaction ${exact} has non-SUCCESS result ${found.result ?? "unknown"}`,
+        };
+        const committed = await this.commit(record, next);
+        return {
+          outcome: { outcome: "FOUND_FAILED", result: found.result },
+          record: committed,
+        };
+      }
+      if (found.status === "PENDING" || clockMs(this.deps) <= boundaryMs2) {
+        return {
+          outcome: { outcome: "RECONCILIATION_PENDING", boundaryIso: boundaryIso2 },
+          record,
+        };
+      }
+      let next = transition(
+        record,
+        failureState,
+        `conclusively failed: no ledger record for ${exact} after ${boundaryIso2}`,
+        nowIso(this.deps),
+      );
+      next = {
+        ...next,
+        failureCode: "CONCLUSIVELY_FAILED",
+        failureReason: `Exact-transaction lookup found no record and validStart + validDuration + safety buffer elapsed at ${boundaryIso2}`,
+      };
+      const committed = await this.commit(record, next);
+      return {
+        outcome: { outcome: "CONCLUSIVELY_FAILED", boundaryIso: boundaryIso2 },
+        record: committed,
+      };
+    }
+
+    if (record.state !== "FACILITATOR_SETTLE_CLAIMED" || !record.settleClaim) {
+      throw new ReservationError(
+        "NOT_RECONCILABLE",
+        `Cannot reconcile settlement from state ${record.state}`,
+      );
+    }
+
+    const claim = record.settleClaim;
+    const exactTxId = requireTransactionIdForSettlement(claim.transactionId);
+    const boundaryMs = conclusiveFailureBoundaryMs(claim);
+    const boundaryIso = new Date(boundaryMs).toISOString();
+
+    // Exact-transaction lookup — never a range query, never a substitute ID.
+    const mirror = await this.deps.mirror.getTransaction(exactTxId);
+    if (mirror.transactionId && !transactionIdsEqual(mirror.transactionId, exactTxId)) {
+      throw new ReservationError(
+        "TRANSACTION_ID_MISMATCH",
+        "Mirror returned a different transaction than the exact lookup",
+      );
+    }
+
+    if (mirror.status === "SUCCESS") {
+      // Adopt the exact transaction, then run normal Mirror-verified
+      // confirmation (exact transfer-shape check) → reservation.
+      const recovered = recoverInProgressState(record, {
+        transactionId: exactTxId,
+      });
+      record = await this.commit(record, {
+        ...recovered,
+        updatedAt: nowIso(this.deps),
+      });
+      const confirmed = await this.resumePaymentConfirmation(reservationId);
+      return {
+        outcome: { outcome: "FOUND_SUCCESS", transactionId: exactTxId },
+        record: confirmed,
+      };
+    }
+
+    if (mirror.status === "FAILED") {
+      let next: ReservationRecord = {
+        ...record,
+        mirrorConfirmation: mirror,
+        updatedAt: nowIso(this.deps),
+      };
+      next = transition(
+        next,
+        "SETTLEMENT_FAILED",
+        "exact transaction found FAILED on ledger",
+        nowIso(this.deps),
+      );
+      next = {
+        ...next,
+        failureCode: "SETTLE_RESULT_FAILED_ON_LEDGER",
+        failureReason: `Exact transaction ${exactTxId} has non-SUCCESS result ${mirror.result ?? "unknown"}`,
+      };
+      const committed = await this.commit(record, next);
+      return {
+        outcome: { outcome: "FOUND_FAILED", result: mirror.result },
+        record: committed,
+      };
+    }
+
+    // NOT_FOUND (or PENDING without conclusive result): apply the rule.
+    if (mirror.status === "PENDING") {
+      return {
+        outcome: { outcome: "RECONCILIATION_PENDING", boundaryIso },
+        record,
+      };
+    }
+    if (clockMs(this.deps) <= boundaryMs) {
+      // Pre-expiry: the transaction could still be accepted — remain locked.
+      return {
+        outcome: { outcome: "RECONCILIATION_PENDING", boundaryIso },
+        record,
+      };
+    }
+
+    // Conclusively failed: exact lookup empty AND boundary elapsed.
+    let next = transition(
+      record,
+      "SETTLEMENT_FAILED",
+      `conclusively failed: no ledger record for ${exactTxId} after ${boundaryIso}`,
+      nowIso(this.deps),
+    );
+    next = {
+      ...next,
+      failureCode: "CONCLUSIVELY_FAILED",
+      failureReason: `Exact-transaction lookup found no record and validStart + validDuration + safety buffer elapsed at ${boundaryIso}`,
+    };
+    const committed = await this.commit(record, next);
+    return {
+      outcome: { outcome: "CONCLUSIVELY_FAILED", boundaryIso },
+      record: committed,
+    };
+  }
+
+  /**
+   * v1.5 §23.2 — explicit policy decision to start a replacement attempt.
+   * Permitted ONLY after the deterministic rule marked this reservation
+   * CONCLUSIVELY_FAILED. Resets payment state to OFFER_CREATED so a fresh
+   * option (including a different seller-supported asset) may be selected.
+   */
+  async authorizeReplacementAttempt(
+    reservationId: string,
+  ): Promise<ReservationRecord> {
+    const record = await this.require(reservationId);
+    if (
+      (record.state !== "SETTLEMENT_FAILED" &&
+        record.state !== "PAYMENT_REJECTED") ||
+      record.failureCode !== "CONCLUSIVELY_FAILED"
+    ) {
+      throw new ReservationError(
+        "REPLACEMENT_NOT_AUTHORIZED",
+        "Replacement attempts require a CONCLUSIVELY_FAILED settlement (v1.5 §23.2)",
+      );
+    }
+    if (isPastDeadline(this.deps, record.expiresAt)) {
+      throw new ReservationError(
+        "OFFER_EXPIRED",
+        "Reservation offer expired — no replacement attempt",
+      );
+    }
+    const at = nowIso(this.deps);
+    let next = transition(
+      record,
+      "OFFER_CREATED",
+      "replacement attempt authorized after conclusive failure",
+      at,
+    );
+    next = {
+      ...next,
+      selected: null,
+      attemptNumber: 0,
+      paymentChallenge: null,
+      paymentChallengeHash: null,
+      paymentPayloadHash: null,
+      clientTransaction: null,
+      facilitatorVerify: null,
+      settleClaim: null,
+      facilitatorSettle: null,
+      transactionId: null,
+      mirrorConfirmation: null,
+      mirrorPoll: null,
+      confirmationDeadline: null,
+      failureCode: null,
+      failureReason: null,
+      updatedAt: at,
+    };
+    return this.commit(record, next);
   }
 
   /**
@@ -1026,7 +1496,7 @@ export class ReservationService {
 
       // Conclusive ledger FAILED — stop immediately, no more polls, no settle.
       if (mirrorStatus === "FAILED" && mirror) {
-        let next = transition(record, "CONFIRMATION_FAILED", "mirror FAILED");
+        let next = transition(record, "CONFIRMATION_FAILED", "mirror FAILED", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "MIRROR_FAILED",
@@ -1068,7 +1538,7 @@ export class ReservationService {
             mirrorPoll: successPoll,
             updatedAt: nowIso(this.deps),
           };
-          next = transition(next, "PAYMENT_CONFIRMED", "mirror SUCCESS verified");
+          next = transition(next, "PAYMENT_CONFIRMED", "mirror SUCCESS verified", nowIso(this.deps));
           record = await this.commit(record, next);
 
           assertCanEnterRouteReserved({
@@ -1101,7 +1571,7 @@ export class ReservationService {
           });
 
           record = await this.commit(record, {
-            ...transition(record, "ROUTE_RESERVED", "payment confirmed"),
+            ...transition(record, "ROUTE_RESERVED", "payment confirmed", nowIso(this.deps)),
             routeReserved,
           });
 
@@ -1115,16 +1585,21 @@ export class ReservationService {
           ) {
             record = await this.commit(
               record,
-              transition(record, "COMPLETED", "post-reservation done"),
+              transition(record, "COMPLETED", "post-reservation done", nowIso(this.deps)),
             );
           }
           return record;
         } catch (e) {
+          // Payment is already immutable once ROUTE_RESERVED exists. A webhook
+          // or HCS recovery error must escape for restart handling and must not
+          // be rewritten as a payment confirmation failure.
+          if (record.routeReserved) {
+            throw e;
+          }
           let next = transition(
             record,
             "CONFIRMATION_FAILED",
-            e instanceof Error ? e.message : "verify failed",
-          );
+            e instanceof Error ? e.message : "verify failed", nowIso(this.deps));
           next = {
             ...next,
             failureCode:
@@ -1148,8 +1623,7 @@ export class ReservationService {
         let next = transition(
           record,
           "CONFIRMATION_TIMED_OUT",
-          "mirror not conclusive within bound",
-        );
+          "mirror not conclusive within bound", nowIso(this.deps));
         next = {
           ...next,
           failureCode: "CONFIRMATION_TIMED_OUT",
@@ -1169,8 +1643,7 @@ export class ReservationService {
     let next = transition(
       record,
       "CONFIRMATION_TIMED_OUT",
-      "mirror poll iteration bound exhausted",
-    );
+      "mirror poll iteration bound exhausted", nowIso(this.deps));
     next = {
       ...next,
       failureCode: "CONFIRMATION_TIMED_OUT",
@@ -1312,14 +1785,13 @@ export class ReservationService {
         next.state === "ROUTE_RESERVED" ||
         next.state === "WEBHOOK_DELIVERY_FAILED"
       ) {
-        next = transition(next, "WEBHOOKS_DISPATCHED", "webhooks ok");
+        next = transition(next, "WEBHOOKS_DISPATCHED", "webhooks ok", nowIso(this.deps));
       }
     } else if (next.state === "ROUTE_RESERVED") {
       next = transition(
         next,
         "WEBHOOK_DELIVERY_FAILED",
-        "one or more webhooks failed",
-      );
+        "one or more webhooks failed", nowIso(this.deps));
     }
     // Already WEBHOOKS_DISPATCHED with a later failed retry: keep state; only
     // operational delivery metadata changes (never reverse ROUTE_RESERVED).
@@ -1761,7 +2233,7 @@ export class ReservationService {
       next.state === "ROUTE_RESERVED" ||
       next.state === "HCS_EVIDENCE_FAILED"
     ) {
-      next = transition(next, "HCS_EVIDENCE_RECORDED", "hcs published");
+      next = transition(next, "HCS_EVIDENCE_RECORDED", "hcs published", nowIso(this.deps));
     }
     const r = await this.commitOrConflict(record, next);
     return r.record;
@@ -1797,7 +2269,7 @@ export class ReservationService {
       next.state === "WEBHOOK_DELIVERY_FAILED" ||
       next.state === "ROUTE_RESERVED"
     ) {
-      next = transition(next, "HCS_EVIDENCE_FAILED", "hcs publish failed");
+      next = transition(next, "HCS_EVIDENCE_FAILED", "hcs publish failed", nowIso(this.deps));
     }
     const r = await this.commitOrConflict(record, next);
     return r.record;
@@ -1815,7 +2287,7 @@ export class ReservationService {
       record.state === "ROUTE_RESERVED" ||
       record.state === "HCS_EVIDENCE_FAILED"
     ) {
-      const next = transition(record, "HCS_EVIDENCE_RECORDED", "hcs already published");
+      const next = transition(record, "HCS_EVIDENCE_RECORDED", "hcs already published", nowIso(this.deps));
       const r = await this.commitOrConflict(record, next);
       return r.record;
     }
@@ -1866,6 +2338,38 @@ export class ReservationService {
 }
 
 /**
+ * Public rail presentation for asset selector surfaces.
+ * Application metadata only — not part of the x402 challenge body.
+ */
+export function publicPaymentRailsFromOffer(offer: ReservationRecord["offer"]) {
+  return offer.options.map((option) =>
+    buildRailPresentation({
+      optionId: option.optionId,
+      asset: option.asset,
+      amountAtomic: option.amountAtomic,
+      displayAmount: option.displayAmount,
+      currencyLabel: option.currencyLabel,
+    }),
+  );
+}
+
+export function paymentEconomicsForSelection(
+  selected: SelectedPaymentOption,
+) {
+  const fixed =
+    selected.optionId === "USDC"
+      ? USDC_RESERVATION_OPTION
+      : HBAR_RESERVATION_OPTION;
+  return buildPaymentEconomicsSummary({
+    optionId: selected.optionId,
+    asset: selected.asset,
+    amountAtomic: selected.amountAtomic,
+    displayAmount: fixed.displayAmount,
+    currencyLabel: fixed.currencyLabel,
+  });
+}
+
+/**
  * Public reservation view — never exposes settle claims, payment payloads,
  * webhook signatures, HCS publishAttemptId, proof handles, or internal paths.
  */
@@ -1887,6 +2391,10 @@ export function publicReservationView(record: ReservationRecord): unknown {
           }
         : null;
 
+  const paymentEconomics = record.selected
+    ? paymentEconomicsForSelection(record.selected)
+    : null;
+
   return {
     reservationId: record.reservationId,
     state: record.state,
@@ -1898,6 +2406,7 @@ export function publicReservationView(record: ReservationRecord): unknown {
     winningCarrierId: record.winningCarrierId,
     winningCarrierAccount: record.winningCarrierAccount,
     offer: record.offer,
+    paymentRails: publicPaymentRailsFromOffer(record.offer),
     selectedOptionId: record.selected?.optionId ?? null,
     selectedSummary: record.selected
       ? {
@@ -1908,6 +2417,7 @@ export function publicReservationView(record: ReservationRecord): unknown {
           network: record.selected.network,
         }
       : null,
+    paymentEconomics,
     feeLabel: DEMO_RESERVATION_FEE_NOTE,
     transactionId: record.transactionId,
     routeReserved: record.routeReserved
@@ -1919,6 +2429,12 @@ export function publicReservationView(record: ReservationRecord): unknown {
           selectedOptionId: record.routeReserved.selectedOptionId,
           paymentAsset: record.routeReserved.paymentAsset,
           paymentAmountAtomic: record.routeReserved.paymentAmountAtomic,
+          /** Carrier receives the full reservation payment; network cost not deducted. */
+          carrierReceivedAmountAtomic:
+            record.routeReserved.paymentAmountAtomic,
+          challengeStatedHederaNetworkTransferCostUsd: paymentEconomics
+            ? paymentEconomics.hederaNetworkTransferCost.networkFeeUsd
+            : null,
           transactionId: record.routeReserved.transactionId,
           consensusTimestamp: record.routeReserved.consensusTimestamp,
           reservedAt: record.routeReserved.reservedAt,
