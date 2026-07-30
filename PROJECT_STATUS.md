@@ -1,12 +1,85 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.4.4
-**Date:** 2026-07-27
+**Version:** 0.5.0
+**Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `fix/live-readiness-winning-demo` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `fc5bde370202470ced4180df8bbf18a2aa18dd9e` (v0.4.3 live evidence + report footer)
+**Branch:** `feat/routeguard-brand-assets` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `e72e2065dcac3ebdbd3501f912226ca7ff084dfb` (brand-assets branch base)
 **Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard vector brand assets (v0.5.0)
+
+The approved raster reference has been reconstructed as a controlled,
+production-grade SVG family. The reference remains the visual authority.
+Geometry was measured programmatically, constructed with intentional SVG
+primitives, and compared through rendered overlay and side-by-side previews.
+Typography uses the closest locally available open-source face, Poppins;
+production typography is outlined and fitted to the measured glyph boxes, with
+no runtime font dependency and no bitmap tracing.
+
+### Changed / added files (v0.5.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | Version 0.5.0 brand-asset checkpoint |
+| `assets/brand/routeguard/reference/routeguard-logo-reference.png` | Approved visual reference supplied for reconstruction |
+| `assets/brand/routeguard/build-brand-assets.ps1` | Deterministic local SVG builder using intentional primitives and Poppins glyph outlines |
+| `assets/brand/routeguard/routeguard-logo-measurements.md` | Pixel measurements and visible-bounds-normalized percentages |
+| `assets/brand/routeguard/ROUTEGUARD_LOGO_SPEC.md` | Naming hierarchy, construction, palette, usage, accessibility, and prohibitions |
+| `assets/brand/routeguard/routeguard-freight-exchange-master.svg` | Production outlined full lockup; transparent and font-independent |
+| `assets/brand/routeguard/routeguard-freight-exchange-editable.svg` | Editable semantic Poppins text master with recorded font parameters |
+| `assets/brand/routeguard/routeguard-symbol.svg` | Deliberately optimized 256 × 256 small-size symbol |
+| `assets/brand/routeguard/routeguard-horizontal-compact.svg` | Symbol + RouteGuard compact lockup; no descriptor |
+| `assets/brand/routeguard/routeguard-monochrome.svg` | One-color charcoal formal lockup |
+| `assets/brand/routeguard/routeguard-reverse.svg` | White + verified-green lockup for charcoal surfaces |
+| `assets/brand/routeguard/previews/master-light.png` | 1305 × 329 light-background master preview |
+| `assets/brand/routeguard/previews/master-dark.png` | 1305 × 329 dark-background reverse preview |
+| `assets/brand/routeguard/previews/compact-header.png` | 1024 × 258 compact-lockup preview |
+| `assets/brand/routeguard/previews/symbol-16.png` | 16 × 16 symbol legibility preview |
+| `assets/brand/routeguard/previews/symbol-24.png` | 24 × 24 symbol legibility preview |
+| `assets/brand/routeguard/previews/symbol-32.png` | 32 × 32 symbol legibility preview |
+| `assets/brand/routeguard/previews/symbol-48.png` | 48 × 48 symbol legibility preview |
+| `assets/brand/routeguard/previews/symbol-192.png` | 192 × 192 application-icon preview |
+| `assets/brand/routeguard/previews/reference-overlay.png` | Measured reference/master alignment overlay |
+| `assets/brand/routeguard/previews/reference-side-by-side.png` | Reference and SVG render at matched visible bounds |
+
+### Validation (v0.5.0)
+
+- deterministic asset generation: **PASS**
+- static SVG policy validation: **PASS** — 6 SVGs; expected 18 requested deliverables present
+- SVG XML parse: **PASS** — all 6 files
+- viewBoxes, semantic groups, title/description, and descriptor spelling: **PASS**
+- embedded raster / external resources / filters / masks / gradients: **NONE**
+- production master font dependency: **NONE**
+- transparent SVG backgrounds: **PASS**
+- small-size symbol previews: **PASS** — 16, 24, 32, 48, and 192 px
+- `npm run typecheck`: **PASS**
+- `npm test`: **PASS** — 44 files / 557 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 183 files scanned
+- `git diff --check`: **PASS**
+- `npm run verify`: deliberately **NOT RUN** because it invokes the prohibited auction demo
+
+### Current state
+
+The formal outlined master, editable text master, compact lockup, optimized
+symbol, monochrome variant, reverse variant, previews, objective comparison,
+measurements, and usage specification are complete. Application code and
+live-demo evidence are unchanged.
+
+### Next steps
+
+1. Use `routeguard-freight-exchange-master.svg` as the formal production source
+   of truth.
+2. Select the compact or symbol asset for future application integration in a
+   separately authorized application-code change.
+3. Re-run the local asset builder only when Poppins is available at the recorded
+   local font paths; committed production SVGs do not require those fonts.
+
+**Network writes in this checkpoint: 0.** No Hedera transaction, HCS submission,
+payment, push, deployment, or other network write occurred.
 
 ---
 
