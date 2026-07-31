@@ -1,0 +1,84 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "phase": "D2",
+  "branch": "feat/routeguard-v2-phase-d",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "guards": {
+    "ROUTEGUARD_LIVE_V2_POD_CONFIRM": "PRESENT_AND_EXACT",
+    "ROUTEGUARD_LIVE_V2_POD_MAX_WRITES": "4",
+    "ENABLE_LIVE_HEDERA": "true"
+  },
+  "secrets": {
+    "podMasterKey": "PRESENT",
+    "podMasterKeyBytes": 32,
+    "shipperSigningKey": "PRESENT",
+    "carrierSigningKey": "PRESENT",
+    "operatorSigningKey": "PRESENT"
+  },
+  "identities": {
+    "operatorAccountId": "0.0.9197513",
+    "shipperAccountId": "0.0.9197513",
+    "carrierAccountId": "0.0.9215954",
+    "shipperPublicKey": "02c07aaa7bc004c9c44186395f496639cf46741b6bc8092c024156e5ac68d5fde5",
+    "carrierPublicKey": "03f16b82ae015a942fe7611111cb3d3d48626ed05c0a11d51b9f6f8e6c3555ef14",
+    "shipperKeyFingerprint": "703dc4a2681750541ec4405f9f28903c4c30023a9da38177764b23027bf64c5b",
+    "carrierKeyFingerprint": "5c9d890d0c459b44b1fa244691408e26322806fa860b0eecb6ce50461221e81f",
+    "trustSnapshotShipperKeyMatches": true,
+    "carrierRegistryKeyMatches": true
+  },
+  "escrow": {
+    "escrowRunId": "v2escrow-20260731-88bbd727",
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "derivedTenderKeyMatches": true,
+    "decisionManifestHash": "0xe2f44963cbfa19b412882b874bf323d61433845bf40729737687e7242c19f5b8",
+    "budgetAtomic": "1000000",
+    "winningAtomic": "750000",
+    "excessAtomic": "250000",
+    "lockedAtomic": "750000",
+    "liveState": "ALLOCATED",
+    "liveTenderBalanceAtomic": "750000",
+    "liveContractUsdcAtomic": "750000",
+    "liveCarrierUsdcAtomic": "22000",
+    "liveStateReadAt": "2026-07-31T21:46:37.764Z"
+  },
+  "operator": {
+    "accountId": "0.0.9197513",
+    "hbarTinybars": "77627653143",
+    "minimumRequiredTinybars": "500000000",
+    "sufficient": true
+  },
+  "d1FocusedTests": "PASS",
+  "writePlan": [
+    {
+      "index": 1,
+      "step": "topic_create",
+      "kind": "TopicCreateTransaction",
+      "memo": "RouteGuard v2 POD evidence"
+    },
+    {
+      "index": 2,
+      "step": "pod_submitted",
+      "kind": "TopicMessageSubmitTransaction"
+    },
+    {
+      "index": 3,
+      "step": "pod_advisory",
+      "kind": "TopicMessageSubmitTransaction"
+    },
+    {
+      "index": 4,
+      "step": "pod_review_action",
+      "kind": "TopicMessageSubmitTransaction"
+    }
+  ],
+  "projectedNetworkWrites": 4,
+  "contractWrites": 0,
+  "x402Writes": 0,
+  "v1TopicExcluded": "0.0.9794225",
+  "generatedAt": "2026-07-31T21:58:54.510Z"
+}

@@ -1,13 +1,162 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.10.0
+**Version:** 0.10.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-d` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `0719166a3ab2a5ba48e2e3d81e20d9b643f50474` (v0.9.1 Phase C2 live escrow)
+**Prior checkpoint HEAD:** `3c00aec61d4cc79583455f5e9638a55a4be02cc9` (v0.10.0 Phase D1 offline POD)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase D2 — live POD acceptance on Hedera testnet (v0.10.1)
+
+Guarded live execution of the Phase D1 encrypted-POD and signed shipper-review
+workflow against real Hedera testnet HCS. **NETWORK_WRITES=4** (one dedicated
+topic creation + three HCS messages). **CONTRACT_WRITES=0**. **X402_WRITES=0**.
+**OTHER_HEDERA_WRITES=0**. The live escrow is untouched: **750,000 atomic USDC
+remains locked** in `ALLOCATED` for Phase E. v1 `evidence/final-demo-*`,
+`evidence/v2/access/`, and `evidence/v2/escrow/` are **unchanged**.
+
+### Truthful claim boundary
+
+| Label | Value |
+|---|---|
+| `SYNTHETIC_BUSINESS_DATA` | **YES** |
+| `LIVE_POD_CRYPTO` | **YES** |
+| `LIVE_APPLICATION_SIGNATURES` | **YES** |
+| `LIVE_HCS_ANCHORS` | **YES** |
+| `LIVE_AI_MODEL` | **NO** |
+| `ADVISER_IMPLEMENTATION` | `DETERMINISTIC_STUB` |
+| `LIVE_PHYSICAL_DELIVERY` | **NO** |
+| `LIVE_FREIGHT_RELEASE` | **NO** |
+| `ESCROW_STATE_AFTER_RUN` | `ALLOCATED` |
+| `LOCKED_AMOUNT_AFTER_RUN` | **750000** |
+
+### Live run
+
+| Field | Value |
+|---|---|
+| Run ID | `v2pod-20260731-4b203b9c` |
+| Execution date | 2026-07-31 (UTC) |
+| Network | `hedera:testnet` |
+| Escrow contract | `0.0.9861047` / `0x00000000000000000000000000000000009677b7` |
+| Tender | `V2-ESCROW-DEMO-v2escrow-20260731-88bbd727` v1 |
+| Escrow tender key | `0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89` |
+| Operator / shipper | `0.0.9197513` |
+| Carrier (winner) | `0.0.9215954` |
+| POD | `POD-v2pod-20260731-4b203b9c` v1 |
+| **Dedicated HCS topic** | **`0.0.9862010`** (memo `RouteGuard v2 POD evidence`) |
+| Topic create tx | `0.0.9197513@1785534392.284127053` |
+| Successful writes | **4** (ceiling 4) |
+
+| Seq | Message | Transaction ID | Consensus |
+|---|---|---|---|
+| 1 | `POD_SUBMITTED` | `0.0.9197513@1785534396.504175067` | `1785534402.627198807` |
+| 2 | `POD_ADVISORY_ANCHORED` | `0.0.9197513@1785534400.313437789` | `1785534407.116885660` |
+| 3 | `POD_REVIEW_ACTION` (ACCEPT) | `0.0.9197513@1785534407.535669507` | `1785534411.170948313` |
+
+Mirror: all four transactions **SUCCESS**, transaction ids unique, sequence
+order 1 → 2 → 3, and every message body byte-identical (SHA-256) to the local
+canonical envelope. The v1 topic `0.0.9794225` was **not** used.
+
+### POD proof
+
+- **Carrier POD signature verified** — real ECDSA secp256k1 over the production
+  `ROUTEGUARD_V2_POD_SUBMISSION` canonical payload, checked against the
+  registered carrier key before the package was accepted.
+- **Encrypted POD storage proof** — AES-256-GCM with a unique per-POD data key
+  and IV, key wrapped under `ROUTEGUARD_POD_MASTER_KEY_BASE64`, AAD bound to
+  tender/POD identity + manifest hash. The stored envelope was reloaded,
+  validated, decrypted, and compared file-by-file against the signed input.
+- 3 synthetic documents / 3,469 plaintext bytes / 5,981 ciphertext bytes.
+- Manifest hash `sha256:169bf54c…2ef582`, package content hash
+  `sha256:696f18c5…231697`, ciphertext hash `sha256:8cf571af…da7f68`.
+- **POD plaintext was generated in an isolated runtime directory outside the
+  repository and removed after the encrypted commit.** No plaintext, ciphertext
+  blob, key, IV, tag, or signature appears in Git or evidence.
+
+### Advisory and acceptance
+
+- **Deterministic non-binding advisory** — engine
+  `routeguard-deterministic-pod-assurance-v1`, `binding=NON_BINDING_ADVISORY`,
+  recommendation `ACCEPT`, single `COMPLETE`/`INFO` finding, report
+  `adv-967a3992d9cd6d40`. **No live AI model was invoked**; the adviser performs
+  no lifecycle acceptance and constructs no escrow authorization.
+- **Signed shipper acceptance** — real signature over the canonical
+  `ROUTEGUARD_V2_SHIPPER_POD_REVIEW` ACCEPT payload, cryptographically verified
+  before the lifecycle event; `POD_UNDER_REVIEW → POD_ACCEPTED`. Review deadline
+  `2026-08-02T21:46:35.884Z`.
+- **`releaseFull` plan prepared, not submitted** — bound to contract
+  `0.0.9861047`, EVM `0x…9677b7`, the exact live tender key, locked amount
+  `750000`, authorization hash
+  `0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb`; plan
+  hash `sha256:0a722dd3…dacf95`.
+
+### Escrow untouched
+
+| Field | Before | After |
+|---|---|---|
+| Contract state | `ALLOCATED` | `ALLOCATED` |
+| Locked tender balance | 750,000 | **750,000** |
+| Total escrowed | 750,000 | 750,000 |
+| Carrier USDC | 22,000 | 22,000 |
+| Release authorization consumed | — | **false** |
+
+Re-confirmed independently through the free Mirror Node `contracts/call`
+endpoint. **Carrier freight principal received remains 0.**
+
+### Ledger footprint disclosure
+
+The four authorized writes are the only RouteGuard state changes. Read-only
+escrow verification through the SDK `ContractCallQuery` path additionally billed
+**7 Hedera query-payment `CRYPTOTRANSFER`s** — HBAR node fees that move no USDC
+and mutate no contract state. The runner now performs escrow state reads through
+the free Mirror Node `contracts/call` endpoint, so a repeat run adds none.
+
+### Changed / added files (v0.10.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.10.1 Phase D2 live proof |
+| `docs/v2-pod-review.md` | D1/D2 scope header + §10 rewritten as the executed live run |
+| `package.json` | `demo:v2-pod-live` script |
+| `scripts/run-v2-pod-live.ts` | **New** — guarded restart-aware live runner (max 4 writes) |
+| `evidence/v2/pod/*` | **New** — sanitized live evidence package (14 files) |
+| `data/v2-live-pod/*`, `data/v2-pods/*` | Runtime progress + encrypted POD storage (gitignored) |
+
+### Validation (v0.10.1)
+
+- Live runner: **PASS** — 4 writes, ordering 1→2→3, escrow `ALLOCATED`/750000
+- `npm run typecheck`: **PASS**
+- Phase A/B/C/D focused tests: **PASS** — 29 files / **377** tests; 0 failed
+- Solidity compile: **PASS** — solc 0.8.28
+- Solidity offline tests: **PASS** — 3 files / **60** tests
+- full `npm test`: **PASS** — 73 files / **934** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 334 files scanned
+- `git diff --check`: **PASS**
+- `npm run verify`: **PASS**
+- v1 `evidence/final-demo-*`: **unchanged**
+- `evidence/v2/access/`: **unchanged**
+- `evidence/v2/escrow/`: **unchanged**
+
+### Current state
+
+Phase D2 complete: an encrypted, carrier-signed synthetic POD is anchored on a
+dedicated testnet HCS topic, a deterministic non-binding advisory is anchored by
+hash, and a cryptographically verified shipper ACCEPT has moved the lifecycle to
+`POD_ACCEPTED` with a `releaseFull` plan prepared. **No freight principal moved:
+750,000 atomic USDC remains locked in `ALLOCATED`.**
+
+### Next step
+
+**Phase E1: execute the real freight release and anchor `ESCROW_RELEASED` plus
+`TENDER_COMPLETED` to HCS.** Do not re-run Phase B access payments, the Phase C2
+escrow setup, or this Phase D2 run.
+
+**NETWORK_WRITES=4** (this checkpoint).
 
 ---
 

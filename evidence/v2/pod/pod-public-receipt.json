@@ -1,0 +1,29 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "tenderVersion": 1,
+  "escrowTenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "podId": "POD-v2pod-20260731-4b203b9c",
+  "podVersion": 1,
+  "winningBidId": "BID-WIN-v2escrow-20260731-88bbd727",
+  "carrierAccountId": "0.0.9215954",
+  "shipperAccountId": "0.0.9197513",
+  "manifestHash": "sha256:169bf54cb487a7ae7248d5f726885e363aacfd29e9a6f140cadd6074102ef582",
+  "packageContentHash": "sha256:696f18c52dfd6ee78c966474b8b6bb6cf96016fd620c22517aa727cb66231697",
+  "ciphertextHash": "sha256:8cf571af5e3475f9e3672d552ddd6b9976a51b532df0b6678b5a43614eda7f68",
+  "documentCount": 3,
+  "documentTypes": [
+    "ELECTRONIC_DELIVERY_RECEIPT",
+    "RECIPIENT_CONFIRMATION",
+    "STRUCTURED_DELIVERY_METADATA"
+  ],
+  "deliveryTimestamp": "2026-07-31T19:46:35.884Z",
+  "deliveryFacilityCode": "DE-MUC-XDOCK-07",
+  "recipientConfirmationPresent": true,
+  "cargoCondition": "ACCEPTED",
+  "cargoConditionStructuredCode": "GOOD",
+  "exceptionCodes": [],
+  "submittedAt": "2026-07-31T21:46:35.884Z",
+  "syntheticData": true,
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}
