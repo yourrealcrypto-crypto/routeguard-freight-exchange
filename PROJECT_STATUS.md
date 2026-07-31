@@ -1,13 +1,144 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.3
+**Version:** 0.7.4
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `322247e` (v0.7.2 Phase A3a authorization bindings)
+**Prior checkpoint HEAD:** `6012921da54a4f2c70d91efcb3768986f961c1de` (v0.7.3 Phase A3b persistence)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A remediation re-review (v0.7.4)
+
+**Review type:** independent adversarial re-review of A3a (`322247e`) + A3b
+(`6012921`) only. **Documentation-only** (this file).  
+**Scope:** RG-V2-A-001 … A-007 plus residual defects introduced by remediations.  
+**Network writes:** **0**. **v1 evidence:** unchanged.
+
+### Validation (re-review)
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | **PASS** |
+| Phase A focused tests (18 files) | **PASS** — 145 / 145 |
+| full `npm test` | **PASS** — 62 files / 702 tests |
+| `npm run check:secrets` | **PASS** — 244 files |
+| `git diff --check` | **PASS** |
+| Live Hedera / x402 / HCS | **NOT RUN** |
+
+### Verdict
+
+**REMEDIATION_REVIEW = PASS**
+
+| Finding | Status |
+|---|---|
+| RG-V2-A-001 referee self-allowlist | **FIXED** |
+| RG-V2-A-002 crypto signature verification | **FIXED** |
+| RG-V2-A-003 exact settlement binding | **FIXED** |
+| RG-V2-A-004 file CAS concurrency | **FIXED** |
+| RG-V2-A-005 persisted-state validation | **FIXED** |
+| RG-V2-A-006 versioned access resource | **FIXED** |
+| RG-V2-A-007 access treasury binding | **FIXED** |
+
+**New CRITICAL:** 0 · **New HIGH:** 0 · **New MEDIUM:** 1 · **New LOW:** 2  
+**Blocking findings:** **NONE**
+
+### Verification summary (A-001 … A-007)
+
+#### A-001 FIXED — Referee trust boundary
+- Event type `REFEREE_RESOLUTION_RECORDED` has **no** allowlist field.
+- Keys resolve only via `TrustPolicy` snapshotted at create (`record.trust`).
+- Optional `event.refereePublicKey` must equal registry key or fail (`REFEREE_KEY_MISMATCH`).
+- Unknown `refereeId` fails; AI-shaped IDs rejected at resolve.
+- Reducer requires **sealed** referee auth; self-constructed objects fail WeakSet check.
+
+#### A-002 FIXED — Cryptographic signatures
+- Shipper + referee use `verifyCanonicalPayload` (Hiero ECDSA secp256k1).
+- Domain separation: `ROUTEGUARD_V2_SHIPPER_POD_REVIEW` / `ROUTEGUARD_V2_REFEREE_RESOLUTION`.
+- Bind tenderId/version, pod/dispute, action, amounts, reasons, actionId, signedAt.
+- Transplant and forge cases covered in `test/v2-authorization-signatures.test.ts`.
+- Sealed `VerifiedAuth` resists structural forgery / casting (test present).
+
+#### A-003 FIXED — Settlement exact match
+- PARTIAL: event amounts must equal stored referee decision (not only conserve).
+- RELEASE_FULL / REFUND_FULL: decision type + amounts bound to locked amount.
+- Covered in `test/v2-referee-resolution-binding.test.ts`.
+
+#### A-004 FIXED — File CAS concurrency
+- Full CAS sequence under per-tender `wx` lock (`file-lock.ts` + `FileLifecycleStore.compareAndSet`).
+- Independent store instances (separate in-process mutexes) still serialize via lock file; concurrency test exercises filesystem exclusion, not a shared process mutex.
+- Stale reclamation via atomic rename + token re-check; foreign lock release refused; malformed lock fails closed (not auto-deleted).
+- Lifecycle + processedActions commit in one envelope rename.
+
+#### A-005 FIXED — Persisted envelope validation
+- Schema `routeguard-v2-lifecycle-store-1.0`; no `JSON.parse as Type` trust.
+- Full nested + cross-field validation; integrity hashes recompute; unsupported version fails distinctly.
+- Corruption does not reset to DRAFT or promote `.tmp`.
+- Extensive negative cases in `test/v2-lifecycle-persisted-validation.test.ts`.
+
+#### A-006 FIXED — Versioned resources
+- Canonical paths include `/v/{tenderVersion}/` for activate and bid submit.
+- Cross-version and unversioned path rejected at reduce and in access-receipt load validation.
+
+#### A-007 FIXED — Treasury binding
+- Expected payTo = `record.trust.accessTreasuryAccountId` only.
+- Access receipt revalidated on load (token 0.0.429274, 1000 atomic, treasury, versioned resource).
+- Access receipt does not authorize freight settlement (settlement uses locked/decision amounts).
+
+### Residual findings (non-blocking)
+
+#### RG-V2-A-R01 — MEDIUM — CAS does not pin trust-policy immutability
+- **Category:** Persistence / trust boundary (defense in depth)  
+- **Location:** `src/v2/store/lifecycle-store.ts` `assertCasPreconditions` (~98–133)  
+- **Current:** CAS enforces tenderId, tenderVersion, expected version, and processed-action durability; it does **not** require `trust` / `tenderHash` / `maximumFreightBudgetAtomic` byte-identity with the prior record.  
+- **Scenario:** A privileged direct `compareAndSet` caller (bypassing `LifecycleService`/`reduceLifecycle`) could swap the snapshotted shipper/referee/treasury keys while advancing version. Events and the normal service path cannot do this.  
+- **Expected:** CAS rejects mutation of create-time identity bindings (trust snapshot, tenderHash, budget).  
+- **Minimal fix:** Compare canonical hashes of immutable fields in `assertCasPreconditions`.  
+- **Regression test:** CAS with altered `trust.shipperPublicKey` fails; prior version retained.  
+- **Block Phase B:** No (service path remains correct; fix in A3c).
+
+#### RG-V2-A-R02 — LOW — Stale-lock reclamation is wall-clock based
+- **Category:** File lock  
+- **Location:** `src/v2/store/file-lock.ts` ~273–276  
+- **Current:** Staleness uses `Date.now() - acquiredAt`. Severe multi-host clock skew could reclaim a live lock.  
+- **Expected:** Acceptable for single-host demo (documented in `docs/v2-lifecycle-file-store.md`); multi-instance needs DB/strong consistency.  
+- **Minimal fix:** Document only, or add optional lease heartbeat for multi-host later.  
+- **Block Phase B:** No.
+
+#### RG-V2-A-R03 — LOW — AI referee IDs not rejected at trust-policy create
+- **Category:** Trust policy  
+- **Location:** `src/v2/trust/policy.ts` `createTrustPolicy` vs `resolveTrustedReferee`  
+- **Current:** AI-shaped IDs rejected at resolve time, not at policy construction.  
+- **Expected:** Fail closed at create for consistency.  
+- **Minimal fix:** Share AI-id check in `createTrustPolicy`.  
+- **Block Phase B:** No.
+
+### Test quality notes (no new defects)
+
+- Concurrency tests use **two `FileLifecycleStore` instances** (independent KeyedMutex); exclusion is filesystem lock + CAS re-read under lock — claim is established without child processes for same-OS exclusive `wx`.  
+- Integrity tests corrupt then **omit reseal** so stale hashes fail; receipt mutations reseal to exercise field validators.  
+- Signature tests use domain-separated payloads with transplant matrices.
+
+### Changed files (v0.7.4)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | **Only** — this re-review record |
+
+### Current state
+
+A-001…A-007 verified fixed. No new CRITICAL/HIGH. Residual MEDIUM/LOW for A3c cleanup. Phase B still deferred until product readiness after A3c.
+
+### Next steps
+
+1. Phase A3c: medium/low cleanup (R01 trust pin on CAS; R02/R03 polish).  
+2. Then plan Phase B x402 tender/bid gates under existing live-write guards.  
+3. Do **not** re-run v1 live final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 
