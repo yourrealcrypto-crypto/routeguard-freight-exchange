@@ -1,12 +1,81 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.5.1
+**Version:** 0.6.0
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-brand-assets` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `fe0a4f255d775fe2adbda987dec8d774bf3d7425` (v0.5.0 vector brand assets)
-**Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
+**Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** brand-assets baseline on `feat/routeguard-brand-assets` (v0.5.1)
+**Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
+**Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A1 — architecture, money model, schemas (v0.6.0)
+
+Owner-approved ADR-002 and Phase A1 offline foundation: architecture plan
+import, access-fee derivation, lifecycle vocabulary, typed Zod schemas, and
+focused tests. **No network writes. No HTTP/x402 routes. No HCS/escrow/POD
+runtime. v1 live evidence unchanged.**
+
+### ADR-002
+
+**Accepted** (2026-07-31): `docs/ADR-002-v2-escrow-pod-architecture.md`
+
+- HTS smart-contract freight escrow authorized; Scheduled Transaction escrow still excluded
+- Two x402 access gates at product price 0.001 USDC (1000 atomic @ 6 decimals)
+- Freight principal never presented as x402 access payment
+- HCS 2.0 public-safe evidence; encrypted off-chain POD; advisory-only AI; human referee
+- Separate `evidence/v2/` namespace; v1 `evidence/final-demo-*` immutable
+
+### Changed / added files (v0.6.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | Version 0.6.0 Phase A1 checkpoint |
+| `docs/plans/routeguard-v2-architecture-migration-plan.md` | **New** — owner-locked architecture plan copy |
+| `docs/ADR-002-v2-escrow-pod-architecture.md` | **New** — Accepted ADR-002 |
+| `src/v2/access/fee.ts` | **New** — access fee derivation + atomic money helpers |
+| `src/v2/lifecycle/states.ts` | **New** — lifecycle vocabulary (no reducer) |
+| `src/v2/schemas/common.ts` | **New** — shared hash/atomic/PII helpers |
+| `src/v2/schemas/tender.ts` | **New** — v2 tender schema |
+| `src/v2/schemas/access-receipt.ts` | **New** — access payment receipt schema |
+| `src/v2/schemas/pod.ts` | **New** — POD metadata schema |
+| `src/v2/schemas/advisory.ts` | **New** — non-binding AI advisory schema |
+| `src/v2/schemas/shipper-review.ts` | **New** — shipper review actions |
+| `src/v2/schemas/referee.ts` | **New** — human referee resolution |
+| `src/v2/schemas/escrow-allocation.ts` | **New** — escrow allocation conservation |
+| `test/v2-access-fee.test.ts` | **New** — access fee derivation tests |
+| `test/v2-lifecycle-states.test.ts` | **New** — lifecycle vocabulary tests |
+| `test/v2-schemas.test.ts` | **New** — schema tests |
+| `test/v2-money-model.test.ts` | **New** — money model tests |
+| `test/v2-privacy-boundary.test.ts` | **New** — privacy / advisory boundary tests |
+
+### Validation (v0.6.0)
+
+- `npm run typecheck`: **PASS**
+- focused vitest (`test/v2-*.test.ts`): **PASS** — 5 files / 31 tests; 0 failed
+- full `npm test`: **PASS** — 49 files / 588 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 212 files scanned
+- `git diff --check`: **PASS**
+- v1 evidence `evidence/final-demo-*`: **unchanged** (not modified)
+- live final-auction / Hedera writes: **NOT RUN**
+
+### Current state
+
+Phase A1 complete: locked decisions are encoded as ADR-002, schemas, and offline
+tests. Product access fee derives to **1000** atomic USDC. Ready for Phase A2
+(deterministic lifecycle state machine, HCS v2 message definitions, CAS
+persistence) — still offline-first.
+
+### Next steps
+
+1. Phase A2: deterministic state machine, HCS v2 definitions, CAS persistence.
+2. Phase B+: x402 access gates, escrow contract, POD/review, dispute, website.
+3. Do **not** re-run v1 live final-auction; do not write `evidence/v2/` until authorized live work.
+
+**Network writes in this checkpoint: 0.** No Hedera transaction, HCS submission,
+payment, push, deployment, or other network write occurred.
 
 ---
 
