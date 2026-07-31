@@ -1,0 +1,43 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "branch": "feat/routeguard-v2-phase-c",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "tokenDecimals": 6,
+  "tokenEvmAddress": "0x0000000000000000000000000000000000068cda",
+  "bytecodeSha256": "584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5",
+  "bytecodeBytes": 7639,
+  "solcVersion": "0.8.28+commit.7893614a.Emscripten.clang",
+  "projectedWrites": {
+    "fileCreate": 1,
+    "fileAppends": 3,
+    "contractCreate": 1,
+    "totalDeploy": 5,
+    "totalProjected": 10,
+    "hexChars": 15278
+  },
+  "operator": {
+    "accountId": "0.0.9197513",
+    "evmAddress": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622",
+    "hbarTinybars": "81973055295"
+  },
+  "shipper": {
+    "accountId": "0.0.9197513",
+    "evmAddress": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622",
+    "hbarTinybars": "81973055295",
+    "usdcAtomic": "19978000"
+  },
+  "carrier": {
+    "accountId": "0.0.9215954",
+    "evmAddress": "0xebdcc03bb53d87795f6cb16a49067ab44db17b19",
+    "usdcAtomic": "22000"
+  },
+  "treasuryUsdcAtomicReference": null,
+  "budgetAtomic": "1000000",
+  "winningAtomic": "750000",
+  "excessAtomic": "250000",
+  "conservationOk": true,
+  "hcsWrites": 0,
+  "x402Writes": 0,
+  "generatedAt": "2026-07-31T20:07:27.366Z"
+}

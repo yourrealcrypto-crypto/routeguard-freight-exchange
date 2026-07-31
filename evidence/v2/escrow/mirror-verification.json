@@ -1,0 +1,89 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "network": "hedera:testnet",
+  "transactions": {
+    "deployment_file_create": {
+      "step": "deployment_file_create",
+      "transactionId": "0.0.9197513@1785528439.471076750",
+      "mirrorTransactionId": "0.0.9197513-1785528439-471076750",
+      "consensusTimestamp": "1785528447.465586920",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528439.471076750",
+      "mirrorStatus": "SUCCESS"
+    },
+    "deployment_file_append": {
+      "step": "deployment_file_append",
+      "transactionId": "0.0.9197513@1785528444.730665937",
+      "mirrorTransactionId": "0.0.9197513-1785528444-730665937",
+      "consensusTimestamp": "1785528452.145613346",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528444.730665937",
+      "mirrorStatus": "SUCCESS"
+    },
+    "deployment_contract_create": {
+      "step": "deployment_contract_create",
+      "transactionId": "0.0.9197513@1785528457.557374203",
+      "mirrorTransactionId": "0.0.9197513-1785528457-557374203",
+      "consensusTimestamp": "1785528463.361966096",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528457.557374203",
+      "mirrorStatus": "SUCCESS"
+    },
+    "deployment": {
+      "step": "deployment",
+      "transactionId": "0.0.9197513@1785528457.557374203",
+      "mirrorTransactionId": "0.0.9197513-1785528457-557374203",
+      "consensusTimestamp": "1785528463.361966096",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528457.557374203",
+      "mirrorStatus": "SUCCESS"
+    },
+    "association": {
+      "step": "association",
+      "transactionId": "0.0.9197513@1785528465.153884715",
+      "mirrorTransactionId": "0.0.9197513-1785528465-153884715",
+      "consensusTimestamp": "1785528469.722167655",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528465.153884715",
+      "mirrorStatus": "SUCCESS"
+    },
+    "registration": {
+      "step": "registration",
+      "transactionId": "0.0.9197513@1785528470.540863049",
+      "mirrorTransactionId": "0.0.9197513-1785528470-540863049",
+      "consensusTimestamp": "1785528473.965638894",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528470.540863049",
+      "mirrorStatus": "SUCCESS"
+    },
+    "allowance": {
+      "step": "allowance",
+      "transactionId": "0.0.9197513@1785528474.333213938",
+      "mirrorTransactionId": "0.0.9197513-1785528474-333213938",
+      "consensusTimestamp": "1785528478.482105751",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528474.333213938",
+      "mirrorStatus": "SUCCESS"
+    },
+    "funding": {
+      "step": "funding",
+      "transactionId": "0.0.9197513@1785528475.735005438",
+      "mirrorTransactionId": "0.0.9197513-1785528475-735005438",
+      "consensusTimestamp": "1785528482.862383729",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528475.735005438",
+      "mirrorStatus": "SUCCESS"
+    },
+    "allocation": {
+      "step": "allocation",
+      "transactionId": "0.0.9197513@1785528486.479519241",
+      "mirrorTransactionId": "0.0.9197513-1785528486-479519241",
+      "consensusTimestamp": "1785528489.705736458",
+      "result": "SUCCESS",
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528486.479519241",
+      "mirrorStatus": "SUCCESS"
+    }
+  },
+  "allSuccess": true,
+  "generatedAt": "2026-07-31T20:08:18.609Z"
+}

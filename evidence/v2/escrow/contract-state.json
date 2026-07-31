@@ -1,0 +1,12 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "contractId": "0.0.9861047",
+  "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "state": "ALLOCATED",
+  "tenderBalanceAtomic": "750000",
+  "releaseOccurred": false,
+  "podSubmitted": false,
+  "disputeOpened": false,
+  "generatedAt": "2026-07-31T20:08:18.610Z"
+}

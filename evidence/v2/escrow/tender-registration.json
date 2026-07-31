@@ -1,0 +1,22 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "tenderVersion": 1,
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "tenderIdHash": "0xe4431aee35980da47164ccd290ef645b6a3e137ad32275250d994e975b61ed20",
+  "shipperEvmAddress": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622",
+  "maxBudgetAtomic": "1000000",
+  "tokenId": "0.0.429274",
+  "creationAuthorizationHash": "0xa87bb22f68501a3f9e3825d625706ce9ad6fb37ec1475575efa5d85ea55eab4c",
+  "manifestHash": "0x1d296901539f3233ef5c40a782817392dcbafeeec7f5d1843f6e1edf860e8a15",
+  "transaction": {
+    "step": "registration",
+    "transactionId": "0.0.9197513@1785528470.540863049",
+    "mirrorTransactionId": "0.0.9197513-1785528470-540863049",
+    "consensusTimestamp": "1785528473.965638894",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528470.540863049",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.607Z"
+}

@@ -1,13 +1,102 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.9.0
+**Version:** 0.9.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-c` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `a2e4bb8bdabf0246a44b880b9f592021a687bf0e` (v0.8.2 Phase B2b live access payments)
+**Prior checkpoint HEAD:** `f415340bd5fa0cf22fa5b8461671d0611f493311` (v0.9.0 Phase C1 offline escrow)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase C2 — live testnet freight escrow (v0.9.1)
+
+Guarded Hedera **testnet** deployment and first live freight-principal demo.
+**NETWORK_WRITES=10** (contract deploy + associate + register + allowance + fund
++ allocate only). **HCS_NETWORK_WRITES=0**. **X402_NETWORK_WRITES=0**.
+**LIVE_FREIGHT_ESCROW=YES**. No POD, dispute, or carrier freight release.
+v1 `evidence/final-demo-*` and Phase B `evidence/v2/access/` are **unchanged**.
+
+### Live run
+
+| Field | Value |
+|---|---|
+| Run ID | `v2escrow-20260731-88bbd727` |
+| Network | `hedera:testnet` |
+| Token | `0.0.429274` (decimals 6) |
+| Contract ID | `0.0.9861047` |
+| EVM address | `0x00000000000000000000000000000000009677b7` |
+| Operator / shipper | `0.0.9197513` |
+| Carrier (winner) | `0.0.9215954` |
+| Tender | `V2-ESCROW-DEMO-v2escrow-20260731-88bbd727` v1 |
+| Max budget | **1.00 USDC** / 1,000,000 atomic |
+| Winning amount locked | **0.75 USDC** / 750,000 atomic |
+| Excess refunded to shipper | **0.25 USDC** / 250,000 atomic |
+| Contract balance after allocation | **750,000** atomic |
+| Carrier freight received | **0** |
+| Contract state | `ALLOCATED` |
+| Successful writes | **10** (ceiling 10) |
+
+| Step | Transaction ID |
+|---|---|
+| File create (hex bytecode) | `0.0.9197513@1785528439.471076750` |
+| File append (first chunk) | `0.0.9197513@1785528444.730665937` |
+| Contract create | `0.0.9197513@1785528457.557374203` |
+| Associate USDC | `0.0.9197513@1785528465.153884715` |
+| Register tender | `0.0.9197513@1785528470.540863049` |
+| Shipper allowance (exact) | `0.0.9197513@1785528474.333213938` |
+| Fund tender | `0.0.9197513@1785528475.735005438` |
+| Allocate winner + excess refund | `0.0.9197513@1785528486.479519241` |
+
+Mirror: every step **SUCCESS**; post-allocation tender balance 750,000; shipper
+net −750,000 atomic; carrier USDC unchanged at allocation.
+
+### Economic separation
+
+| Rail | Amount | Notes |
+|---|---|---|
+| x402 access (Phase B2b, immutable) | 0.001 USDC × 2 | Not repeated; `evidence/v2/access/` untouched |
+| Freight principal (this run) | 1.00 → 0.75 locked + 0.25 refund | HTS escrow — **not** x402 |
+
+### Changed / added files (v0.9.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.9.1 Phase C2 live proof |
+| `docs/v2-freight-escrow.md` | Live status, contract IDs, txs, claim boundary |
+| `package.json` | `demo:v2-escrow-live` script |
+| `scripts/run-v2-escrow-live.ts` | **New** — guarded live runner (max 10 writes) |
+| `evidence/v2/escrow/*` | **New** — sanitized live evidence package |
+| `data/v2-live-escrow/*` | Local restart progress (public-safe fields) |
+
+### Validation (v0.9.1)
+
+- Live runner: **PASS** — 10 writes, state `ALLOCATED`, conservation OK
+- Solidity compile: **PASS** — solc 0.8.28
+- Solidity offline tests: **PASS** — 3 files / **60** tests
+- `npm run typecheck`: **PASS**
+- Phase A/B/C focused tests: **PASS** — 14 files / **234** tests
+- full `npm test`: **PASS** — 72 files / **910** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 303 files scanned
+- `git diff --check`: **PASS**
+- v1 evidence: **unchanged**
+- v2 access evidence: **unchanged**
+
+### Current state
+
+Phase C2 complete: RouteGuard freight escrow holds real HTS testnet USDC with
+the winning amount locked and the carrier unpaid. POD and settlement remain
+future work.
+
+### Next step
+
+**Phase D1: encrypted POD upload, POD hashing, and advisory-only AI review.**
+Do not release freight principal until Phase E. Do not re-run Phase B access
+payments or the v1 final-auction.
+
+**NETWORK_WRITES=10** (this checkpoint).
 
 ---
 

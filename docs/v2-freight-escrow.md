@@ -1,13 +1,13 @@
-# RouteGuard v2 — freight-principal escrow (Phase C1)
+# RouteGuard v2 — freight-principal escrow (Phase C1 + C2)
 
 Reference for `contracts/RouteGuardFreightEscrow.sol` and the TypeScript
 boundary under `src/v2/escrow/`.
 
-> **Phase C1 status: offline only.** The contract is written, compiled, and
-> exercised against real bytecode in an in-process EVM. **No freight escrow is
-> deployed. No contract is funded. No Hedera transaction, HCS message, Mirror
-> query, facilitator call, or x402 payment was made.** Guarded testnet
-> deployment is Phase C2 and is still pending.
+> **Phase C2 status (2026-07-31): live on Hedera testnet.** The freight-principal
+> escrow contract is deployed, associated with HTS USDC, funded with a synthetic
+> 1.00 USDC budget, and allocated (0.75 USDC locked / 0.25 USDC excess refunded).
+> Evidence: `evidence/v2/escrow/`. No x402 access payment was repeated. No HCS
+> write. No POD, dispute, or freight release.
 
 ---
 
@@ -19,7 +19,7 @@ boundary under `src/v2/escrow/`.
 | Amount | Exactly `1000` atomic (0.001 USDC) | `maximumFreightBudgetAtomic` per tender |
 | Recipient | RouteGuard access treasury | Escrow contract, then carrier and/or shipper |
 | Mechanism | x402 `exact` scheme, facilitator settlement | HTS USDC held by this contract |
-| Proven | Live on testnet (Phase B2b) | **Not yet live** |
+| Proven | Live on testnet (Phase B2b) | **Live on testnet (Phase C2)** |
 
 Both use HTS USDC `0.0.429274` on testnet, and that is their only overlap. The
 freight principal is never presented as an x402 access payment, and the access
@@ -204,34 +204,76 @@ authority for legal transitions.
 Run with `npm run contracts:compile` and `npm run contracts:test` (or the full
 `npm test`, which includes them).
 
-## 9. Phase C2 deployment configuration (prepared, not executed)
+## 9. Phase C2 — live testnet demonstration (completed)
 
-Required **public** configuration:
+Guarded runner: `npm run demo:v2-escrow-live` → `scripts/run-v2-escrow-live.ts`.
 
-| Item | Value / source |
+### Guards
+
+| Env | Required value |
 |---|---|
-| HTS USDC token | `0.0.429274` (testnet, decimals 6) |
-| Token EVM address | long-zero form of the token id, confirmed on Mirror Node |
-| Operator account | RouteGuard operator (`ECDSA` account able to submit contract calls) |
-| Shipper account | Funds the tender; must be USDC-associated with sufficient balance |
-| Carrier account | Receives the released freight; must be USDC-associated |
-| Constructor args | `(token, operator)` |
-| Gas | deploy ≈ 3M; `fundTender`/settlement ≈ 900k; `allocateWinner` ≈ 1.2M; `partialRelease` ≈ 1.4M |
-| Association | `associateEscrowToken()` once after deployment, before funding |
-| Allowance | The shipper must approve the contract for the exact budget before `fundTender` (HTS `transferToken` from the shipper requires it) |
+| `ROUTEGUARD_LIVE_V2_ESCROW_CONFIRM` | `I_UNDERSTAND_TESTNET_ESCROW_WRITES` |
+| `ROUTEGUARD_LIVE_V2_ESCROW_MAX_WRITES` | `10` |
+| `ENABLE_LIVE_HEDERA` | `true` |
+| `HEDERA_NETWORK` | `hedera:testnet` |
+| `USDC_TOKEN_ID` | `0.0.429274` |
 
-Mirror verification required before any lifecycle advance:
+Hard successful-write ceiling: **10**. No x402 settlement, no HCS, no POD, no
+`releaseFull` / dispute / partial settlement in this phase.
 
-- contract creation → contract id and bytecode present;
-- `fundTender` → `TenderEscrowFunded`, escrow token balance equals the budget;
-- `allocateWinner` → `WinnerAllocated` + `ExcessRefunded`, shipper credited the
-  exact excess, escrow balance equals exactly the winning amount, carrier
-  balance unchanged;
-- settlement → the exact locked amount at the intended recipients and a zero
-  residual escrow balance for the tender.
+### Live run (2026-07-31)
 
-No private key belongs in the repository or in the contract. Live Phase C
-evidence belongs under `evidence/v2/` only after Phase C2 authorization.
+| Field | Value |
+|---|---|
+| Run ID | `v2escrow-20260731-88bbd727` |
+| Contract ID | `0.0.9861047` |
+| EVM address | `0x00000000000000000000000000000000009677b7` |
+| Token | `0.0.429274` (decimals 6) |
+| Tender | `V2-ESCROW-DEMO-v2escrow-20260731-88bbd727` v1 |
+| Max budget | **1.00 USDC** (1,000,000 atomic) |
+| Winning amount | **0.75 USDC** (750,000 atomic) locked |
+| Excess refund | **0.25 USDC** (250,000 atomic) to shipper |
+| Contract balance after allocation | 750,000 atomic |
+| Carrier freight received | **0** |
+| Contract state | `ALLOCATED` |
+| Successful network writes | **10** |
+| HCS writes | **0** |
+| x402 writes | **0** |
+
+| Step | Transaction ID |
+|---|---|
+| Contract create | `0.0.9197513@1785528457.557374203` |
+| Associate | `0.0.9197513@1785528465.153884715` |
+| Register | `0.0.9197513@1785528470.540863049` |
+| Allowance (exact 1,000,000) | `0.0.9197513@1785528474.333213938` |
+| Fund | `0.0.9197513@1785528475.735005438` |
+| Allocate | `0.0.9197513@1785528486.479519241` |
+
+Sanitized evidence: `evidence/v2/escrow/`. Phase B access evidence and v1
+`evidence/final-demo-*` are unchanged.
+
+### Deployment notes
+
+- Hedera bytecode files must store the **hex-encoded ASCII** of the solc object
+  (not raw EVM bytes). Raw binary produces `ERROR_DECODING_BYTESTRING`.
+- Constructor: `(token, operator)` with Mirror-confirmed EVM addresses.
+- Association: `associateEscrowToken()` once after create.
+- Allowance: exact budget only (never unlimited).
+- Mirror verification of every transaction and post-step USDC balance deltas.
+
+### Truthful claim boundary
+
+- RouteGuard freight escrow is live on Hedera **testnet**.
+- The contract holds real HTS testnet USDC.
+- The shipper funded the maximum **synthetic** freight budget.
+- RouteGuard allocated the winning amount; unused budget returned to the shipper.
+- The winning amount remains locked; the carrier has received **no** freight
+  principal yet.
+- No POD has been submitted or accepted; no dispute or settlement release.
+- Phase D implements encrypted POD upload, POD hashing, and advisory-only AI review.
+- Phase E proves final freight release / refund / dispute settlement.
+- Existing x402 access-payment evidence remains separate.
+- Business tender and bid data are synthetic demonstration data.
 
 ## 10. Non-goals
 

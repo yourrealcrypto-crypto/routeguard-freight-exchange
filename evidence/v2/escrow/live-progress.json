@@ -1,0 +1,20 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "tenderVersion": 1,
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "status": "SUCCESS",
+  "completedSteps": [
+    "deployment",
+    "association",
+    "registration",
+    "allowance",
+    "funding",
+    "allocation"
+  ],
+  "successfulWrites": 10,
+  "contractId": "0.0.9861047",
+  "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+  "terminalState": "ALLOCATED",
+  "updatedAt": "2026-07-31T20:08:18.604Z"
+}

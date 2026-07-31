@@ -1,0 +1,24 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "fundedAmountAtomic": "1000000",
+  "displayAmountUsdc": "1.00",
+  "balances": {
+    "beforeShipperUsdcAtomic": "19978000",
+    "afterShipperUsdcAtomic": "18978000",
+    "beforeContractUsdcAtomic": "0",
+    "afterContractUsdcAtomic": "1000000",
+    "shipperDeltaAtomic": "-1000000",
+    "contractDeltaAtomic": "1000000"
+  },
+  "transaction": {
+    "step": "funding",
+    "transactionId": "0.0.9197513@1785528475.735005438",
+    "mirrorTransactionId": "0.0.9197513-1785528475-735005438",
+    "consensusTimestamp": "1785528482.862383729",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528475.735005438",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.608Z"
+}

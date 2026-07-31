@@ -1,0 +1,15 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "contractId": "0.0.9861047",
+  "tokenId": "0.0.429274",
+  "transaction": {
+    "step": "association",
+    "transactionId": "0.0.9197513@1785528465.153884715",
+    "mirrorTransactionId": "0.0.9197513-1785528465-153884715",
+    "consensusTimestamp": "1785528469.722167655",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528465.153884715",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.606Z"
+}
