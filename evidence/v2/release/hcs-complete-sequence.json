@@ -1,0 +1,67 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "topicId": "0.0.9862010",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "messages": [
+    {
+      "sequenceNumber": 1,
+      "messageType": "POD_SUBMITTED",
+      "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+      "consensusTimestamp": "1785534402.627198807",
+      "payloadHash": "sha256:c733b89e704b6178c390088a26127e849314376a257e8be8471d7aedd2df5c3d",
+      "messageSha256": "4eb9d14cdb0f008d3f377c59f19d8f9fe635f1c2e0c1a2dd1ea7a14874958466"
+    },
+    {
+      "sequenceNumber": 2,
+      "messageType": "POD_ADVISORY_ANCHORED",
+      "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+      "consensusTimestamp": "1785534407.116885660",
+      "payloadHash": "sha256:37fe616033fcc1e053671cb72abc10b4e9399a079876c186039782f18d0013c4",
+      "messageSha256": "9a95db289f6d4a8227421eb7c1019e35d9a90664b7513dc2c9d47d7cc64fa334"
+    },
+    {
+      "sequenceNumber": 3,
+      "messageType": "POD_REVIEW_ACTION",
+      "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+      "consensusTimestamp": "1785534411.170948313",
+      "payloadHash": "sha256:7254f085c81eaf421233af20c1d23e5410d2222fc58a4e8ac58b6299f0ff8139",
+      "messageSha256": "09e6372b60a0337b0fe052905787e424d0bed998a839b348f9578e827d32a99a"
+    },
+    {
+      "sequenceNumber": 4,
+      "messageType": "ESCROW_RELEASED",
+      "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+      "consensusTimestamp": "1785536869.745154483",
+      "payloadHash": "sha256:eafe743ed1cd68fbbaa8ec16f4197dc7ab9aa542241eacf1e282d04800b75352",
+      "messageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51"
+    },
+    {
+      "sequenceNumber": 5,
+      "messageType": "TENDER_COMPLETED",
+      "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+      "consensusTimestamp": "1785536874.302742976",
+      "payloadHash": "sha256:302cd21ca9d7548f537530def985cafd589b8f797cf2258dffdcbfe0b6afac10",
+      "messageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63"
+    }
+  ],
+  "expectedOrder": [
+    "POD_SUBMITTED",
+    "POD_ADVISORY_ANCHORED",
+    "POD_REVIEW_ACTION",
+    "ESCROW_RELEASED",
+    "TENDER_COMPLETED"
+  ],
+  "orderingCorrect": true,
+  "allSameTopic": true,
+  "allSameTender": true,
+  "phaseD2Sequences": [
+    1,
+    2,
+    3
+  ],
+  "phaseE1Sequences": [
+    4,
+    5
+  ],
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}

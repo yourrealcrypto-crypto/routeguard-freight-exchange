@@ -1,0 +1,48 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "topicId": "0.0.9862010",
+  "expectedSequence": 5,
+  "envelope": {
+    "schemaVersion": "routeguard-hcs-2.0",
+    "messageType": "TENDER_COMPLETED",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderHash": "sha256:4101718151f98f051dc73724b73dd8a7606695895e81441863aaec607707ab52",
+    "createdAt": "2026-07-31T22:27:54.239Z",
+    "payloadHash": "sha256:302cd21ca9d7548f537530def985cafd589b8f797cf2258dffdcbfe0b6afac10",
+    "payload": {
+      "finalState": "PAYMENT_RELEASED",
+      "completionRef": "975b152ec9352c493091e22962bdc9ae1e4319a1713178cc5ec86420790f7042"
+    }
+  },
+  "transaction": {
+    "step": "tender_completed",
+    "kind": "HCS_MESSAGE",
+    "messageType": "TENDER_COMPLETED",
+    "transactionId": "0.0.9197513@1785536867.228168869",
+    "mirrorTransactionId": "0.0.9197513-1785536867-228168869",
+    "consensusTimestamp": "1785536874.302742976",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536867.228168869",
+    "mirrorStatus": "SUCCESS",
+    "sequenceNumber": 5,
+    "messageBytes": 485,
+    "localMessageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63",
+    "mirrorMessageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63",
+    "bytesMatch": true,
+    "payloadHash": "sha256:302cd21ca9d7548f537530def985cafd589b8f797cf2258dffdcbfe0b6afac10"
+  },
+  "boundContext": {
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "hcsFinalState": "PAYMENT_RELEASED",
+    "escrowContractFinalState": "RELEASED",
+    "completedFreightAmountAtomic": "750000",
+    "releaseTransactionId": "0.0.9197513@1785536472.599444485",
+    "precedingEscrowReleasedSequence": 4,
+    "evidenceChainHash": "sha256:975b152ec9352c493091e22962bdc9ae1e4319a1713178cc5ec86420790f7042",
+    "completionRef": "975b152ec9352c493091e22962bdc9ae1e4319a1713178cc5ec86420790f7042",
+    "syntheticBusinessData": true
+  },
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}

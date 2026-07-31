@@ -206,5 +206,17 @@ billed 7 Hedera query-payment `CRYPTOTRANSFER`s (HBAR node fees that move no
 USDC and change no RouteGuard state) — recorded in
 `evidence/v2/pod/contract-state-after.json`.
 
-**Phase E1** is responsible for the real freight release and the
-`ESCROW_RELEASED` / `TENDER_COMPLETED` anchors.
+## 11. Phase E1 — the acceptance was settled
+
+The signed acceptance above was re-verified and executed in Phase E1
+(`docs/v2-freight-escrow.md` §10, evidence `evidence/v2/release/`):
+
+- `releaseFull` tx `0.0.9197513@1785536472.599444485`
+- **750,000 atomic USDC** moved escrow `0.0.9861047` → carrier `0.0.9215954`
+- contract final state `RELEASED`, tender locked balance **0**
+- `ESCROW_RELEASED` (seq 4) and `TENDER_COMPLETED` (seq 5) anchored to the same
+  topic `0.0.9862010`, completing the ordered chain 1 → 5
+
+The shipper's POD acceptance is therefore what caused the real escrowed freight
+amount to be released. The deterministic adviser remained non-binding
+throughout.

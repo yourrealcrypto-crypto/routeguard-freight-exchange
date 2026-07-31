@@ -1,0 +1,29 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "tokenId": "0.0.429274",
+  "before": {
+    "carrierUsdcAtomic": "22000",
+    "shipperUsdcAtomic": "19228000",
+    "contractUsdcAtomic": "750000",
+    "readAt": "2026-07-31T22:21:18.589Z"
+  },
+  "after": {
+    "carrierUsdcAtomic": "772000",
+    "shipperUsdcAtomic": "19228000",
+    "contractUsdcAtomic": "0",
+    "readAt": "2026-07-31T22:27:49.534Z"
+  },
+  "deltas": {
+    "carrierUsdcAtomic": "750000",
+    "shipperUsdcAtomic": "0",
+    "escrowContractUsdcAtomic": "-750000"
+  },
+  "expected": {
+    "carrierUsdcAtomic": "750000",
+    "shipperUsdcAtomic": "0",
+    "escrowContractUsdcAtomic": "-750000"
+  },
+  "conservationOk": true,
+  "remainingLockedBalanceAtomic": "0",
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}

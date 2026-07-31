@@ -1,13 +1,163 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.10.1
-**Date:** 2026-07-31
+**Version:** 0.11.0
+**Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-phase-d` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `3c00aec61d4cc79583455f5e9638a55a4be02cc9` (v0.10.0 Phase D1 offline POD)
+**Branch:** `feat/routeguard-v2-phase-e` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `ca6700be31080ea620a99e87af81580ded05ef17` (v0.10.1 Phase D2 live POD acceptance)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase E1 — live freight settlement (v0.11.0)
+
+The RouteGuard v2 freight lifecycle is **complete on Hedera testnet**. The
+signed Phase D2 shipper acceptance was re-verified and executed: the locked
+freight principal moved to the winning carrier and the release and completion
+were anchored to the existing POD topic.
+
+**STATE_CHANGING_NETWORK_WRITES=3** — `CONTRACT_WRITES=1`,
+`HCS_MESSAGE_WRITES=2`, `X402_WRITES=0`, `OTHER_STATE_CHANGING_WRITES=0`.
+**QUERY_PAYMENT_TRANSACTIONS=0** — every escrow state read used the free Mirror
+Node `contracts/call` endpoint. v1 `evidence/final-demo-*`, `evidence/v2/access/`,
+`evidence/v2/escrow/`, and `evidence/v2/pod/` are **unchanged**.
+
+### Live run
+
+| Field | Value |
+|---|---|
+| Run ID | `v2rel-20260731-b4c817df` |
+| Execution date | 2026-08-01 (UTC; consensus 2026-07-31T22:21Z–22:27Z) |
+| Network | `hedera:testnet` |
+| Escrow contract | `0.0.9861047` / `0x00000000000000000000000000000000009677b7` |
+| Tender | `V2-ESCROW-DEMO-v2escrow-20260731-88bbd727` v1 |
+| Tender key | `0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89` |
+| POD | `POD-v2pod-20260731-4b203b9c` v1 |
+| Topic | `0.0.9862010` (reused from Phase D2 — no new topic) |
+| Token | `0.0.429274` |
+| Successful state-changing writes | **3** (ceiling 3) |
+
+| Step | Transaction ID | Result |
+|---|---|---|
+| `releaseFull` | `0.0.9197513@1785536472.599444485` | SUCCESS |
+| `ESCROW_RELEASED` (seq **4**) | `0.0.9197513@1785536865.385875442` | SUCCESS |
+| `TENDER_COMPLETED` (seq **5**) | `0.0.9197513@1785536867.228168869` | SUCCESS |
+
+### Carrier payment — exactly 750,000 atomic USDC
+
+| Account | Before | After | Delta |
+|---|---|---|---|
+| Carrier `0.0.9215954` | 22,000 | 772,000 | **+750,000** |
+| Escrow `0.0.9861047` | 750,000 | 0 | **−750,000** |
+| Shipper `0.0.9197513` | 19,228,000 | 19,228,000 | 0 |
+
+The HTS transfer legs are recorded on the **child** `CRYPTOTRANSFER` spawned by
+the precompile, not on the parent `CONTRACTCALL`; verification aggregates both
+and rejects any foreign token or unexpected leg. The `FreightReleased` event
+matches tender key, winner EVM address (bound at Phase C2 allocation), amount
+750,000, and the authorization hash, with `fromDispute=false`.
+
+### Final contract state
+
+| Field | Value |
+|---|---|
+| Contract state | **`RELEASED`** (terminal) |
+| Tender locked balance | **0** |
+| Total escrowed | 0 |
+| `authorizationHashUsed` | **true** — globally single-use, replay impossible |
+| Dispute / refund / partial release | none |
+
+### Authorization chain re-verified before the call
+
+1. The canonical `ROUTEGUARD_V2_SHIPPER_POD_REVIEW` ACCEPT payload was rebuilt
+   from immutable evidence; its hash matches Phase D2 evidence **and** the
+   durable lifecycle `lastShipperAuthPayloadHash`.
+2. Hiero ECDSA is RFC6979-deterministic, so re-signing reproduced the
+   **original signature bytes**: the rebuilt `POD_ACCEPTED_BY_SHIPPER` event
+   hash equals the `eventPayloadHash` committed in Phase D2.
+3. The signature verifies against the durable trust-snapshot shipper key.
+4. The contract authorization hash was **re-derived** from the accepted POD
+   identity and content hash and matched the prepared plan.
+5. The `releaseFull` plan was rebuilt with the production builder under
+   `requirePhaseC2LiveBindings`; its plan hash matched
+   `sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95`.
+
+### Complete live evidence chain — topic `0.0.9862010`
+
+| Seq | Message | Phase |
+|---|---|---|
+| 1 | `POD_SUBMITTED` | D2 |
+| 2 | `POD_ADVISORY_ANCHORED` | D2 |
+| 3 | `POD_REVIEW_ACTION` (ACCEPT) | D2 |
+| 4 | `ESCROW_RELEASED` | E1 |
+| 5 | `TENDER_COMPLETED` | E1 |
+
+All five belong to the same topic and tender, in consensus order, with message
+bytes SHA-256-matched to the local canonical envelopes. `TENDER_COMPLETED`
+carries `finalState=PAYMENT_RELEASED` and `completionRef`
+`975b152ec9352c493091e22962bdc9ae1e4319a1713178cc5ec86420790f7042` — the
+evidence-chain digest binding the access, escrow, POD, and release run ids,
+tender key, POD hashes, advisory hash, acceptance hash, authorization hash,
+release plan hash, and release transaction id.
+
+### Truthful final claim
+
+- The x402 access payments were **real Hedera testnet transactions**.
+- The HTS USDC freight escrow was **real**.
+- The maximum **synthetic** freight budget was funded (1.00 USDC).
+- The winning amount was locked (0.75) and the excess refunded (0.25).
+- The POD was **synthetic**, encrypted, and cryptographically signed.
+- POD integrity and shipper acceptance were **anchored through HCS**.
+- The shipper acceptance **caused the real escrowed freight amount to be
+  released**.
+- The winning carrier received **exactly 750,000 atomic testnet USDC**.
+- The complete evidence sequence is **ordered on Hedera**.
+- The deterministic adviser was **non-binding** and is not a live AI model.
+- **No physical delivery and no real-world commercial freight is claimed.**
+
+### Changed / added files (v0.11.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.11.0 Phase E1 live settlement checkpoint |
+| `docs/v2-freight-escrow.md` | **New §10** — Phase E1 release, balances, final state, HCS chain, claim boundary; §9 boundary marked superseded; non-goals renumbered to §11 |
+| `docs/v2-pod-review.md` | **New §11** — the signed acceptance was settled in Phase E1 |
+| `package.json` | `demo:v2-release-live` script |
+| `scripts/run-v2-release-live.ts` | **New** — guarded restart-aware release runner (max 3 state-changing writes) |
+| `evidence/v2/release/*` | **New** — sanitized live settlement evidence (10 files) |
+| `data/v2-live-release/*` | Runtime progress (gitignored) |
+| `data/v2-live-pod/lifecycle/*` | Lifecycle advanced `POD_ACCEPTED → PAYMENT_RELEASED → TENDER_COMPLETED` (gitignored) |
+
+### Validation (v0.11.0)
+
+- Live runner: **PASS** — 3 state-changing writes, ordering 1→5, `RELEASED`, locked 0
+- `npm run typecheck`: **PASS**
+- Phase A/B/C/D/E focused tests: **PASS** — 29 files / **377** tests; 0 failed
+- Solidity compile: **PASS** — solc 0.8.28
+- Solidity offline tests: **PASS** — 3 files / **60** tests
+- full `npm test`: **PASS** — 73 files / **934** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 345 files scanned
+- `git diff --check`: **PASS**
+- `npm run verify`: **PASS**
+- v1 / v2 access / v2 escrow / v2 POD evidence: **unchanged**
+
+### Current state
+
+The RouteGuard v2 lifecycle is complete end to end on Hedera testnet: paid x402
+access → HTS USDC freight escrow → allocation with exact excess refund →
+encrypted signed POD → non-binding advisory → signed shipper acceptance →
+**real freight release to the carrier** → ordered on-chain evidence chain. The
+escrow holds nothing further for this tender.
+
+### Next step
+
+**Phase F: production website integration, Judge Mode, deployment, and the
+submission package.** Do not re-run any earlier live phase — every prior write
+is immutable evidence.
+
+**NETWORK_WRITES=3** (application state-changing writes, this checkpoint).
 
 ---
 

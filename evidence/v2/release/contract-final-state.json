@@ -1,0 +1,33 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "before": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "ALLOCATED",
+    "tenderBalanceAtomic": "750000",
+    "totalEscrowedAtomic": "750000",
+    "releaseAuthorizationHashUsed": false,
+    "readAt": "2026-07-31T22:21:18.483Z"
+  },
+  "after": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "RELEASED",
+    "tenderBalanceAtomic": "0",
+    "totalEscrowedAtomic": "0",
+    "releaseAuthorizationHashUsed": true,
+    "readAt": "2026-07-31T22:29:16.804Z"
+  },
+  "finalState": "RELEASED",
+  "tenderLockedBalanceAtomic": "0",
+  "totalEscrowedAtomic": "0",
+  "authorizationHashUsed": true,
+  "terminalState": true,
+  "disputeOpened": false,
+  "refundIssued": false,
+  "partialReleaseIssued": false,
+  "readMethod": "Mirror Node contracts/call (free, no query payment)",
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}
