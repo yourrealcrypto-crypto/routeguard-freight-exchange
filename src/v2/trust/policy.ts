@@ -46,6 +46,40 @@ export function publicKeyFingerprint(publicKeyHex: string): string {
   return createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
+const RESERVED_AUTOMATION_REFEREE_IDS = new Set([
+  "ai",
+  "model",
+  "llm",
+  "bot",
+  "ai-referee",
+  "model-referee",
+  "llm-referee",
+  "bot-referee",
+  "automated-referee",
+  "automation-agent",
+  "routeguard-ai",
+]);
+
+function normalizedRefereeIdentity(refereeId: string): string {
+  return refereeId
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+export function assertHumanRefereeIdentity(refereeId: string): void {
+  const normalized = normalizedRefereeIdentity(refereeId);
+  const explicitAutomationPattern =
+    /^(ai|model|llm|bot|gpt|assistant)-(referee|agent|model)(?:-[0-9]+)?$/;
+  if (
+    RESERVED_AUTOMATION_REFEREE_IDS.has(normalized) ||
+    explicitAutomationPattern.test(normalized)
+  ) {
+    throw new Error("AI/model/automation identities cannot be referees");
+  }
+}
+
 export function createTrustPolicy(input: {
   shipperPublicKey: string;
   referees: readonly TrustedRefereeEntry[];
@@ -68,6 +102,7 @@ export function createTrustPolicy(input: {
     if (!refereeId || !publicKey || publicKey.length < 32) {
       throw new Error("each referee requires refereeId and publicKey");
     }
+    assertHumanRefereeIdentity(refereeId);
     if (seenIds.has(refereeId)) {
       throw new Error(`duplicate refereeId: ${refereeId}`);
     }
@@ -103,10 +138,7 @@ export function resolveTrustedReferee(
   if (!id) {
     throw new Error("refereeId is required");
   }
-  // Reject AI/model-shaped identities
-  if (/^(ai|model|gpt|llm|assistant|bot)[-_]?/i.test(id) || id.toUpperCase() === "AI") {
-    throw new Error("AI/model identities cannot be referees");
-  }
+  assertHumanRefereeIdentity(id);
   const found = policy.referees.find((r) => r.refereeId === id);
   if (!found) {
     throw new Error(`refereeId not in trusted registry: ${id}`);

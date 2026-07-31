@@ -20,6 +20,8 @@ import {
 import { assertHcsV2PublicSafe } from "./privacy";
 import {
   HCS_V2_MAX_MESSAGE_BYTES,
+  HCS_V2_MAX_ID_CHARS,
+  HCS_V2_DISPUTE_REASON_CODES,
   HCS_V2_MESSAGE_TYPES,
   HCS_V2_SCHEMA_VERSION,
   type HcsV2Envelope,
@@ -45,8 +47,95 @@ function assertHash(label: string, value: string): void {
 }
 
 function assertId(label: string, value: string): void {
-  if (!value || value.length > 128) {
-    throw new Error(`${label} must be a non-empty id <= 128 chars`);
+  if (
+    !value ||
+    value.length > HCS_V2_MAX_ID_CHARS ||
+    !/^[A-Za-z0-9._:@/-]+$/.test(value)
+  ) {
+    throw new Error(
+      `${label} must be a structured public identifier <= ${HCS_V2_MAX_ID_CHARS} chars`,
+    );
+  }
+}
+
+const PAYLOAD_KEYS: Readonly<Record<HcsV2MessageType, readonly string[]>> = {
+  TENDER_OPENED: [
+    "accessPaymentTxId",
+    "maxBudgetAtomic",
+    "auctionEndsAt",
+    "selectionPolicy",
+  ],
+  BID_COMMITMENT: ["bidId", "carrierId", "bidHash", "accessPaymentTxId"],
+  AUCTION_CLOSE_BARRIER: [
+    "barrierId",
+    "auctionEndsAt",
+    "expectedCommitmentCount",
+    "bidSetHash",
+  ],
+  WINNER_SELECTED: [
+    "winningBidId",
+    "carrierId",
+    "winningAmountAtomic",
+    "decisionManifestHash",
+  ],
+  WINNER_ALLOCATED: [
+    "winningBidId",
+    "winnerAccount",
+    "winningAmountAtomic",
+    "excessRefundAtomic",
+    "allocateTxId",
+    "refundTxId",
+    "decisionManifestHash",
+  ],
+  ROUTE_RESERVED: [
+    "reservationId",
+    "winningBidId",
+    "carrierAccount",
+    "lockedAmountAtomic",
+    "allocateTxId",
+    "reservationRecordHash",
+  ],
+  POD_SUBMITTED: [
+    "podId",
+    "podVersion",
+    "contentHash",
+    "ciphertextHash",
+    "sizeBytes",
+  ],
+  POD_ADVISORY_ANCHORED: ["podId", "reportHash", "binding"],
+  POD_REVIEW_ACTION: ["podId", "action", "reviewDeadlineAt"],
+  POD_DEEMED_ACCEPTED: ["podId", "reviewDeadlineAt", "tickActionId"],
+  DISPUTE_OPENED: ["disputeId", "podId", "reasonCode"],
+  REFEREE_RESOLUTION: [
+    "disputeId",
+    "podId",
+    "resolution",
+    "releaseAmountAtomic",
+    "refundAmountAtomic",
+    "resolutionHash",
+  ],
+  ESCROW_RELEASED: ["releaseTxId", "amountAtomic", "winnerAccount"],
+  ESCROW_PARTIAL: [
+    "releaseTxId",
+    "refundTxId",
+    "releaseAmountAtomic",
+    "refundAmountAtomic",
+  ],
+  ESCROW_REFUNDED: ["refundTxId", "amountAtomic", "shipperAccount"],
+  TENDER_COMPLETED: ["finalState", "completionRef"],
+};
+
+function assertExactPayloadKeys(
+  messageType: HcsV2MessageType,
+  payload: Record<string, unknown>,
+): void {
+  const expected = [...PAYLOAD_KEYS[messageType]].sort();
+  const actual = Object.keys(payload).sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  ) {
+    throw new Error(`${messageType} payload contains missing or unsupported fields`);
   }
 }
 
@@ -55,6 +144,7 @@ function validatePayload(
   payload: HcsV2Payload,
 ): void {
   const p = payload as Record<string, unknown>;
+  assertExactPayloadKeys(messageType, p);
   switch (messageType) {
     case "TENDER_OPENED": {
       assertId("accessPaymentTxId", String(p.accessPaymentTxId));
@@ -126,6 +216,9 @@ function validatePayload(
     }
     case "POD_SUBMITTED": {
       assertId("podId", String(p.podId));
+      if (!isSafePositiveInteger(p.podVersion)) {
+        throw new Error("podVersion invalid");
+      }
       assertHash("contentHash", String(p.contentHash));
       assertHash("ciphertextHash", String(p.ciphertextHash));
       if (!isSafePositiveInteger(p.sizeBytes)) {
@@ -166,7 +259,14 @@ function validatePayload(
     case "DISPUTE_OPENED": {
       assertId("disputeId", String(p.disputeId));
       assertId("podId", String(p.podId));
-      assertId("reasonCode", String(p.reasonCode));
+      if (
+        typeof p.reasonCode !== "string" ||
+        !(HCS_V2_DISPUTE_REASON_CODES as readonly string[]).includes(
+          p.reasonCode,
+        )
+      ) {
+        throw new Error("reasonCode must be a structured dispute reason code");
+      }
       break;
     }
     case "REFEREE_RESOLUTION": {

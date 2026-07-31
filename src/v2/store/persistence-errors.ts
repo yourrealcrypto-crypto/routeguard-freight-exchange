@@ -16,6 +16,7 @@ export const LIFECYCLE_PERSISTENCE_ERROR_CODES = [
   "UNSUPPORTED_STORAGE_VERSION",
   "ATOMIC_WRITE_FAILED",
   "ACTION_ID_CONFLICT",
+  "IMMUTABLE_FIELD_VIOLATION",
 ] as const;
 
 export type LifecyclePersistenceErrorCode =
@@ -113,6 +114,18 @@ export class LifecycleAtomicWriteError extends LifecyclePersistenceError {
       options,
     );
     this.name = "LifecycleAtomicWriteError";
+  }
+}
+
+/** A direct CAS proposal attempted to rewrite create-time trust/identity data. */
+export class LifecycleImmutableFieldError extends LifecyclePersistenceError {
+  constructor(tenderId: string, field: string) {
+    super(
+      "IMMUTABLE_FIELD_VIOLATION",
+      `Lifecycle record "${tenderId}" cannot change immutable field "${field}"`,
+      { internalDetail: `immutable field mismatch: ${field}` },
+    );
+    this.name = "LifecycleImmutableFieldError";
   }
 }
 

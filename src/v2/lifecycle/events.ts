@@ -116,6 +116,7 @@ export type DeliveryReported = LifecycleEventBase & {
 export type PodPackageSubmitted = LifecycleEventBase & {
   readonly type: "POD_PACKAGE_SUBMITTED";
   readonly podId: string;
+  readonly podVersion: number;
   readonly contentHash: string;
   readonly ciphertextHash: string;
 };
@@ -135,6 +136,7 @@ export type PodCorrectionRequested = LifecycleEventBase & {
 export type PodPackageResubmitted = LifecycleEventBase & {
   readonly type: "POD_PACKAGE_RESUBMITTED";
   readonly podId: string;
+  readonly podVersion: number;
   readonly contentHash: string;
   readonly ciphertextHash: string;
 };

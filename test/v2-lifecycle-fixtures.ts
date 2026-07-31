@@ -315,6 +315,7 @@ export function happyToPodSubmitted(t = AUCTION_ENDS): LifecycleRecord {
     actionId: "act-pod",
     eventTime: t,
     podId: "pod-1",
+    podVersion: 1,
     contentHash: HASH,
     ciphertextHash: HASH_B,
   });

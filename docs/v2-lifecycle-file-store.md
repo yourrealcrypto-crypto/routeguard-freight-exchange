@@ -120,6 +120,11 @@ Defaults (`DEFAULT_FILE_LOCK_CONFIG`, overridable per store):
 | `retryIntervalMs` | `20` |
 | `staleAfterMs` | `60000` |
 
+Lock acquisition and stale-age evaluation receive UTC epoch milliseconds from
+the store's injected `now` provider. `FileLifecycleStore` defaults that outer
+boundary to the system clock; tests inject deterministic time. The lock logic
+does not read `Date.now()` directly.
+
 Waiting is always bounded: acquisition either succeeds, or fails with
 `LOCK_BUSY` (no wait budget), `LOCK_TIMEOUT` (budget exhausted), or
 `LOCK_CORRUPT`.
@@ -129,7 +134,7 @@ Waiting is always bounded: acquisition either succeeds, or fails with
 A lock may be reclaimed **only** when all of the following hold:
 
 1. its metadata parses and is complete;
-2. its age exceeds `staleAfterMs`;
+2. its age is at least `staleAfterMs` (the exact boundary is stale);
 3. the contender atomically renames the lock aside to
    `<lock>.stale.<contenderToken>` — only one contender can win that rename;
 4. re-reading the moved file confirms the **same ownership token** that was

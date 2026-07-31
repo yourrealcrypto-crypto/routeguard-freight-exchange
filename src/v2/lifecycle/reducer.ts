@@ -258,6 +258,12 @@ export function reduceLifecycle(
   context: LifecycleReduceContext = {},
 ): LifecycleRecord {
   requireUtc("eventTime", event.eventTime);
+  if (!isBeforeOrEqualUtc(record.updatedAt, event.eventTime)) {
+    throw new LifecycleGuardError(
+      "NON_MONOTONIC_TIME",
+      "eventTime cannot be earlier than authoritative updatedAt",
+    );
+  }
 
   // Advisory anchor never authorizes state change (except storing hash).
   if (event.type === "POD_ADVISORY_ANCHORED") {
@@ -337,13 +343,10 @@ export function reduceLifecycle(
         );
       }
       requirePositiveAtomic("fundedAmountAtomic", event.fundedAmountAtomic);
-      if (
-        BigInt(event.fundedAmountAtomic) <
-        BigInt(record.maximumFreightBudgetAtomic)
-      ) {
+      if (event.fundedAmountAtomic !== record.maximumFreightBudgetAtomic) {
         throw new LifecycleGuardError(
-          "INSUFFICIENT_FUNDING",
-          "funded amount must be >= maximumFreightBudgetAtomic",
+          "FUNDING_AMOUNT_MISMATCH",
+          "funded amount must exactly equal maximumFreightBudgetAtomic; overfunding is not accepted",
         );
       }
       return withTransition(record, "ESCROW_FUNDED", event, {
@@ -637,15 +640,22 @@ export function reduceLifecycle(
           "POD_SUBMITTED",
         );
       }
-      if (!event.podId || !event.contentHash || !event.ciphertextHash) {
+      if (
+        !event.podId ||
+        event.podVersion !== 1 ||
+        !event.contentHash ||
+        !event.ciphertextHash
+      ) {
         throw new LifecycleGuardError(
           "POD_FIELDS",
-          "podId, contentHash, ciphertextHash required",
+          "podId, podVersion 1, contentHash, ciphertextHash required",
         );
       }
       return withTransition(record, "POD_SUBMITTED", event, {
         podId: event.podId,
+        podVersion: event.podVersion,
         podContentHash: event.contentHash,
+        podCiphertextHash: event.ciphertextHash,
       });
     }
 
@@ -751,15 +761,30 @@ export function reduceLifecycle(
           "resubmission must be at or before correction deadline",
         );
       }
-      if (!event.podId || !event.contentHash) {
+      if (!event.podId || !event.contentHash || !event.ciphertextHash) {
         throw new LifecycleGuardError(
           "POD_FIELDS",
-          "podId and contentHash required",
+          "podId, contentHash, and ciphertextHash required",
+        );
+      }
+      if (event.podId !== record.podId) {
+        throw new LifecycleGuardError(
+          "POD_MISMATCH",
+          "resubmission podId must match the bound POD evidence",
+        );
+      }
+      const expectedPodVersion = (record.podVersion ?? 0) + 1;
+      if (event.podVersion !== expectedPodVersion) {
+        throw new LifecycleGuardError(
+          "POD_VERSION",
+          `podVersion must be ${expectedPodVersion}`,
         );
       }
       return withTransition(record, "POD_RESUBMITTED", event, {
         podId: event.podId,
+        podVersion: event.podVersion,
         podContentHash: event.contentHash,
+        podCiphertextHash: event.ciphertextHash,
       });
     }
 

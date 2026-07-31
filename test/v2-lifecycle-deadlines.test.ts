@@ -183,6 +183,7 @@ describe("v2 lifecycle deadlines", () => {
         actionId: "late-resub",
         eventTime: after,
         podId: "pod-1",
+        podVersion: 2,
         contentHash: HASH,
         ciphertextHash: HASH_B,
       }),
@@ -270,6 +271,7 @@ describe("v2 lifecycle deadlines", () => {
       actionId: "resub",
       eventTime: REVIEW_START,
       podId: "pod-1",
+      podVersion: 2,
       contentHash: HASH,
       ciphertextHash: HASH_B,
     });

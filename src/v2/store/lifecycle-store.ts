@@ -31,6 +31,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 import { KeyedMutex } from "../../reservation/keyed-mutex";
+import { canonicalSha256 } from "../../domain/canonical-hash";
 import {
   LifecycleActionConflictError,
   LifecycleNotFoundError,
@@ -47,9 +48,11 @@ import {
   resolveFileLockConfig,
   type FileLockConfig,
   type FileLockHandle,
+  type FileLockNow,
 } from "./file-lock";
 import {
   LifecycleAtomicWriteError,
+  LifecycleImmutableFieldError,
   LifecyclePersistenceError,
 } from "./persistence-errors";
 import {
@@ -108,11 +111,38 @@ function assertCasPreconditions(
       current.recordVersion,
     );
   }
-  if (nextRecord.tenderId !== tenderId) {
-    throw new Error("tenderId mismatch on CAS write");
-  }
-  if (nextRecord.tenderVersion !== current.tenderVersion) {
-    throw new Error("tenderVersion mismatch on CAS write");
+  const assertImmutable = (
+    field: string,
+    before: unknown,
+    after: unknown,
+  ): void => {
+    const equal =
+      typeof before === "object" && before !== null
+        ? canonicalSha256(before) === canonicalSha256(after)
+        : before === after;
+    if (!equal) {
+      throw new LifecycleImmutableFieldError(tenderId, field);
+    }
+  };
+  assertImmutable("tenderId", current.tenderId, nextRecord.tenderId);
+  assertImmutable(
+    "tenderVersion",
+    current.tenderVersion,
+    nextRecord.tenderVersion,
+  );
+  assertImmutable("tenderHash", current.tenderHash, nextRecord.tenderHash);
+  assertImmutable(
+    "maximumFreightBudgetAtomic",
+    current.maximumFreightBudgetAtomic,
+    nextRecord.maximumFreightBudgetAtomic,
+  );
+  assertImmutable("trust", current.trust, nextRecord.trust);
+  if (current.accessReceipt !== null) {
+    assertImmutable(
+      "accessReceipt",
+      current.accessReceipt,
+      nextRecord.accessReceipt,
+    );
   }
   for (const [actionId, committed] of Object.entries(current.processedActions)) {
     const next = nextRecord.processedActions[actionId];
@@ -194,6 +224,8 @@ const TEMP_SUFFIX = ".tmp";
 
 export type FileLifecycleStoreOptions = {
   readonly lock?: Partial<FileLockConfig>;
+  /** Injected UTC clock for lock acquisition and stale-lock evaluation. */
+  readonly now?: FileLockNow;
 };
 
 /**
@@ -204,12 +236,14 @@ export type FileLifecycleStoreOptions = {
 export class FileLifecycleStore implements LifecycleStore {
   private readonly mutex = new KeyedMutex();
   private readonly lockConfig: FileLockConfig;
+  private readonly now: FileLockNow;
 
   constructor(
     private readonly baseDir: string,
     options?: FileLifecycleStoreOptions,
   ) {
     this.lockConfig = resolveFileLockConfig(options?.lock);
+    this.now = options?.now ?? (() => Date.now());
     mkdirSync(this.baseDir, { recursive: true });
   }
 
@@ -228,6 +262,7 @@ export class FileLifecycleStore implements LifecycleStore {
         this.lockPath(tenderId),
         tenderId,
         this.lockConfig,
+        this.now,
       );
       try {
         if (existsSync(this.filePath(tenderId))) {
@@ -259,6 +294,7 @@ export class FileLifecycleStore implements LifecycleStore {
         this.lockPath(safeId),
         safeId,
         this.lockConfig,
+        this.now,
       );
       try {
         // 2-3. read and fully validate the current authoritative envelope

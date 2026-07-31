@@ -10,6 +10,7 @@ import {
 } from "../trust/policy";
 import type { LifecycleEventType } from "./events";
 import type { V2LifecycleState } from "./states";
+import { PositiveAtomicSchema } from "../schemas/common";
 
 export const LIFECYCLE_RECORD_SCHEMA = "routeguard-lifecycle-1.0" as const;
 
@@ -91,7 +92,9 @@ export type LifecycleRecord = {
 
   // POD / review
   readonly podId: string | null;
+  readonly podVersion: number | null;
   readonly podContentHash: string | null;
+  readonly podCiphertextHash: string | null;
   readonly reviewStartedAt: string | null;
   readonly reviewDeadlineAt: string | null;
   readonly correctionDeadlineAt: string | null;
@@ -127,12 +130,15 @@ export function createLifecycleRecord(
   input: CreateLifecycleInput,
 ): LifecycleRecord {
   const trust = snapshotTrustPolicy(input.trust);
+  const maximumFreightBudgetAtomic = PositiveAtomicSchema.parse(
+    input.maximumFreightBudgetAtomic,
+  );
   return {
     schemaVersion: LIFECYCLE_RECORD_SCHEMA,
     tenderId: input.tenderId,
     tenderVersion: input.tenderVersion,
     tenderHash: input.tenderHash,
-    maximumFreightBudgetAtomic: input.maximumFreightBudgetAtomic,
+    maximumFreightBudgetAtomic,
     auctionEndsAt: input.auctionEndsAt,
     state: "DRAFT",
     recordVersion: 1,
@@ -159,7 +165,9 @@ export function createLifecycleRecord(
     refundExcessTxId: null,
     reservationEvidenceRef: null,
     podId: null,
+    podVersion: null,
     podContentHash: null,
+    podCiphertextHash: null,
     reviewStartedAt: null,
     reviewDeadlineAt: null,
     correctionDeadlineAt: null,

@@ -8,6 +8,7 @@ import {
 } from "../src/hcs/v2/envelope";
 import {
   HCS_V2_MAX_MESSAGE_BYTES,
+  HCS_V2_MAX_ID_CHARS,
   HCS_V2_MESSAGE_TYPES,
   HCS_V2_SCHEMA_VERSION,
   type HcsV2MessageType,
@@ -73,6 +74,7 @@ const samples: Record<HcsV2MessageType, HcsV2Payload> = {
   },
   POD_SUBMITTED: {
     podId: "pod-1",
+    podVersion: 1,
     contentHash: HASH,
     ciphertextHash: HASH,
     sizeBytes: 4096,
@@ -150,5 +152,105 @@ describe("v2 HCS 2.0 messages", () => {
   it("binds payloadHash to canonical payload", () => {
     const env = shell("POD_SUBMITTED", samples.POD_SUBMITTED);
     expect(env.payloadHash.startsWith("sha256:")).toBe(true);
+  });
+
+  it("keeps realistic maximum valid UTF-8 envelopes below 1024 bytes", () => {
+    const id = "x".repeat(HCS_V2_MAX_ID_CHARS);
+    const maximumSamples: Record<HcsV2MessageType, HcsV2Payload> = {
+      ...samples,
+      TENDER_OPENED: {
+        ...samples.TENDER_OPENED,
+        accessPaymentTxId: id,
+        maxBudgetAtomic: "9".repeat(32),
+      },
+      BID_COMMITMENT: {
+        ...samples.BID_COMMITMENT,
+        bidId: id,
+        carrierId: id,
+        accessPaymentTxId: id,
+      },
+      AUCTION_CLOSE_BARRIER: {
+        ...samples.AUCTION_CLOSE_BARRIER,
+        barrierId: id,
+        expectedCommitmentCount: Number.MAX_SAFE_INTEGER,
+      },
+      WINNER_SELECTED: {
+        ...samples.WINNER_SELECTED,
+        winningBidId: id,
+        carrierId: id,
+        winningAmountAtomic: "9".repeat(32),
+      },
+      WINNER_ALLOCATED: {
+        ...samples.WINNER_ALLOCATED,
+        winningBidId: id,
+        winningAmountAtomic: "9".repeat(32),
+        excessRefundAtomic: "9".repeat(32),
+        allocateTxId: id,
+        refundTxId: id,
+      },
+      ROUTE_RESERVED: {
+        ...samples.ROUTE_RESERVED,
+        reservationId: id,
+        winningBidId: id,
+        lockedAmountAtomic: "9".repeat(32),
+        allocateTxId: id,
+      },
+      POD_SUBMITTED: {
+        ...samples.POD_SUBMITTED,
+        podId: id,
+        sizeBytes: Number.MAX_SAFE_INTEGER,
+      },
+      POD_ADVISORY_ANCHORED: { ...samples.POD_ADVISORY_ANCHORED, podId: id },
+      POD_REVIEW_ACTION: { ...samples.POD_REVIEW_ACTION, podId: id },
+      POD_DEEMED_ACCEPTED: {
+        ...samples.POD_DEEMED_ACCEPTED,
+        podId: id,
+        tickActionId: id,
+      },
+      DISPUTE_OPENED: {
+        ...samples.DISPUTE_OPENED,
+        disputeId: id,
+        podId: id,
+      },
+      REFEREE_RESOLUTION: {
+        ...samples.REFEREE_RESOLUTION,
+        disputeId: id,
+        podId: id,
+        releaseAmountAtomic: "9".repeat(32),
+        refundAmountAtomic: "9".repeat(32),
+      },
+      ESCROW_RELEASED: {
+        ...samples.ESCROW_RELEASED,
+        releaseTxId: id,
+        amountAtomic: "9".repeat(32),
+      },
+      ESCROW_PARTIAL: {
+        ...samples.ESCROW_PARTIAL,
+        releaseTxId: id,
+        refundTxId: id,
+        releaseAmountAtomic: "9".repeat(32),
+        refundAmountAtomic: "9".repeat(32),
+      },
+      ESCROW_REFUNDED: {
+        ...samples.ESCROW_REFUNDED,
+        refundTxId: id,
+        amountAtomic: "9".repeat(32),
+      },
+      TENDER_COMPLETED: { ...samples.TENDER_COMPLETED, completionRef: id },
+    };
+
+    for (const type of HCS_V2_MESSAGE_TYPES) {
+      const env = buildHcsV2Envelope({
+        messageType: type,
+        tenderId: id,
+        tenderVersion: Number.MAX_SAFE_INTEGER,
+        tenderHash: HASH,
+        createdAt: TS,
+        payload: maximumSamples[type],
+      });
+      expect(utf8ByteLength(serializeHcsV2Envelope(env))).toBeLessThan(
+        HCS_V2_MAX_MESSAGE_BYTES,
+      );
+    }
   });
 });

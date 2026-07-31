@@ -32,6 +32,7 @@ export const PodPublicManifestSchema = z
 export const PodPackageMetaSchema = z
   .object({
     podId: BoundedId,
+    podVersion: PositiveSafeIntSchema,
     tenderId: BoundedId,
     bidId: BoundedId,
     carrierId: BoundedId,

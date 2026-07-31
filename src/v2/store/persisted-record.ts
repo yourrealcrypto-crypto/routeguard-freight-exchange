@@ -193,7 +193,9 @@ const RECORD_KEYS = new Set([
   "refundExcessTxId",
   "reservationEvidenceRef",
   "podId",
+  "podVersion",
   "podContentHash",
+  "podCiphertextHash",
   "reviewStartedAt",
   "reviewDeadlineAt",
   "correctionDeadlineAt",
@@ -849,6 +851,15 @@ export function assertValidLifecycleRecord(
     ctx.fail("history exceeds the supported length");
   }
   const history = historyRaw.map((h, i) => validateTransition(ctx, h, i));
+  for (let i = 0; i < history.length; i += 1) {
+    const currentEntry = history[i]!;
+    if (compareUtc(createdAt, currentEntry.at) > 0) {
+      ctx.fail("history event time cannot precede record createdAt");
+    }
+    if (i > 0 && compareUtc(history[i - 1]!.at, currentEntry.at) > 0) {
+      ctx.fail("history event times must be monotonic non-decreasing");
+    }
+  }
 
   // Processed actions
   const processedRaw = plainObject(ctx, r.processedActions, "processedActions");
@@ -962,7 +973,14 @@ export function assertValidLifecycleRecord(
 
   // POD / review
   const podId = nullableStr(ctx, r.podId, "podId", 128);
+  const podVersion =
+    r.podVersion === null ? null : safeInt(ctx, r.podVersion, "podVersion", 1);
   const podContentHash = nullableHash(ctx, r.podContentHash, "podContentHash");
+  const podCiphertextHash = nullableHash(
+    ctx,
+    r.podCiphertextHash,
+    "podCiphertextHash",
+  );
   const reviewStartedAt = nullableUtc(ctx, r.reviewStartedAt, "reviewStartedAt");
   const reviewDeadlineAt = nullableUtc(ctx, r.reviewDeadlineAt, "reviewDeadlineAt");
   const correctionDeadlineAt = nullableUtc(
@@ -1010,8 +1028,8 @@ export function assertValidLifecycleRecord(
   if (POST_FUNDING.has(state)) {
     requirePresent(ctx, fundingTxId, "fundingTxId", state);
     requirePresent(ctx, fundedAmountAtomic, "fundedAmountAtomic", state);
-    if (BigInt(fundedAmountAtomic!) < BigInt(budget)) {
-      ctx.fail("fundedAmountAtomic must be >= maximumFreightBudgetAtomic");
+    if (fundedAmountAtomic !== budget) {
+      ctx.fail("fundedAmountAtomic must exactly equal maximumFreightBudgetAtomic");
     }
   } else {
     requireAbsent(ctx, fundingTxId, "fundingTxId", state);
@@ -1070,7 +1088,9 @@ export function assertValidLifecycleRecord(
 
   if (REQUIRES_POD.has(state)) {
     requirePresent(ctx, podId, "podId", state);
+    requirePresent(ctx, podVersion, "podVersion", state);
     requirePresent(ctx, podContentHash, "podContentHash", state);
+    requirePresent(ctx, podCiphertextHash, "podCiphertextHash", state);
   }
   if (REQUIRES_REVIEW_WINDOW.has(state)) {
     requirePresent(ctx, reviewStartedAt, "reviewStartedAt", state);

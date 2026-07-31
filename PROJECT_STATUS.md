@@ -1,13 +1,108 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.4
+**Version:** 0.7.5
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `6012921da54a4f2c70d91efcb3768986f961c1de` (v0.7.3 Phase A3b persistence)
+**Prior checkpoint HEAD:** `5cf8deae6819103307d584b5ebfb2d7806c87794` (v0.7.4 Phase A remediation re-review)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A accepted (v0.7.5)
+
+**Checkpoint:** focused closure of all remaining Phase A medium/low findings.
+**Date:** 2026-07-31.
+**Network writes:** **0**. **v1 evidence:** unchanged.
+
+### Acceptance verdict
+
+**PHASE_A_ACCEPTED = YES**
+**PHASE_B_READY = YES**
+
+| Finding | Status | Closure |
+|---|---|---|
+| RG-V2-A-R01 | **FIXED** | Both stores share a typed `IMMUTABLE_FIELD_VIOLATION` CAS boundary for tender identity/version/hash/budget, the complete trust snapshot, and an established access receipt. |
+| RG-V2-A-R02 | **FIXED** | Lock acquisition and stale-age evaluation use an injected UTC epoch-millisecond provider; production defaults at the `FileLifecycleStore` boundary and deterministic tests pin the fresh/stale boundary. |
+| RG-V2-A-R03 | **FIXED** | `createTrustPolicy` and resolution-time lookup share explicit, separator-normalized reserved automation identity validation without substring matching human names. |
+| RG-V2-A-008 | **FIXED** | Funding must exactly equal `maximumFreightBudgetAtomic`; underfunding and overfunding both fail, so no unmodeled residual can enter the lifecycle. |
+| RG-V2-A-009 | **FIXED** | HCS payloads reject unknown fields, public IDs use a structured character set, and dispute reasons are a closed enum; narratives/PII cannot be smuggled through free-text fields. |
+| RG-V2-A-010 | **FIXED** | HCS public IDs are capped at 64 characters and every message type is tested with realistic maximum valid values under the strict UTF-8 `< 1024` byte limit. |
+| RG-V2-A-011 | **FIXED** | Lifecycle creation validates `maximumFreightBudgetAtomic` through authoritative `PositiveAtomicSchema`; malformed, zero/negative, decimal, exponent, signed, leading-zero, and non-string unsafe inputs fail. |
+| RG-V2-A-012 | **FIXED** | Reducer events and persisted history are monotonic non-decreasing; explicit same-timestamp ordering remains valid. |
+| RG-V2-A-013 | **FIXED** | Initial POD evidence binds version 1 plus content/ciphertext hashes; resubmission must retain the POD id, supply both hashes, and increment the POD version exactly. Persisted records and HCS POD metadata retain the binding. |
+| RG-V2-A-014 | **FIXED** | Focused regressions cover every closure above, including memory/file parity and deterministic lock timing. |
+
+### Locked invariants
+
+- Direct memory and file CAS use the same immutable-field checks. An identical
+  snapshot remains valid; a changed tender id/version/hash/budget, shipper key
+  fingerprint/public key, referee registry, treasury, trust schema/algorithm,
+  configured USDC token, or configured access amount is rejected before write.
+- Exact funding is the Phase A invariant: `fundedAmountAtomic ===
+  maximumFreightBudgetAtomic`. The no-qualified-bid refund therefore returns
+  the complete funded amount without a separate residual ledger.
+- Lifecycle event time may equal `updatedAt` but may never precede it. Persisted
+  history also rejects timestamps before `createdAt` or earlier than a prior
+  committed action.
+- Public HCS payload shape is closed per message type. No dispute narrative,
+  POD plaintext, personal data, or unmodeled note field is public evidence.
+- The reducer remains pure: no wall clock, filesystem, network, env, or random
+  reads. No HTTP, x402 middleware, facilitator, Mirror, HCS submission, escrow
+  transfer, Solidity, POD upload, AI provider, frontend, or live artifacts were
+  introduced.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | **PASS** |
+| Phase A focused tests (`test/v2-*.test.ts`) | **PASS** - 19 files / 196 tests |
+| full `npm test` | **PASS** - 63 files / 753 tests |
+| `npm run check:secrets` | **PASS** - 233 files scanned |
+| `git diff --check` | **PASS** (CRLF conversion warnings only) |
+| v1 `evidence/` + `data/` diff | **UNCHANGED** - 0 paths |
+| Live Hedera / x402 / HCS | **NOT RUN** |
+
+### Exact changed files (v0.7.5)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.7.5 Phase A acceptance checkpoint |
+| `docs/v2-lifecycle-file-store.md` | Injected lock-clock and exact stale-boundary documentation |
+| `src/hcs/v2/envelope.ts` | Closed payload shapes, structured public ids, reason enum validation, size budgets, POD version validation |
+| `src/hcs/v2/types.ts` | HCS id budget, dispute reason codes, POD version contract |
+| `src/v2/lifecycle/events.ts` | POD submission/resubmission version input |
+| `src/v2/lifecycle/record.ts` | Authoritative creation money validation and durable POD version/ciphertext hash |
+| `src/v2/lifecycle/reducer.ts` | Exact funding, monotonic time, and POD evidence binding |
+| `src/v2/schemas/pod.ts` | POD metadata version schema |
+| `src/v2/store/file-lock.ts` | Injected lock time provider |
+| `src/v2/store/lifecycle-store.ts` | Shared immutable CAS boundary and outer clock default |
+| `src/v2/store/persisted-record.ts` | Exact funding, monotonic history, and complete POD evidence validation |
+| `src/v2/store/persistence-errors.ts` | Typed immutable-field violation |
+| `src/v2/trust/policy.ts` | Creation-time human referee identity validation |
+| `test/v2-hcs-v2-messages.test.ts` | Realistic maximum HCS UTF-8 envelopes |
+| `test/v2-hcs-v2-privacy.test.ts` | Free-text reason and unknown-field rejection |
+| `test/v2-lifecycle-deadlines.test.ts` | Versioned POD resubmission fixtures |
+| `test/v2-lifecycle-file-lock.test.ts` | Deterministic injected-clock stale boundary |
+| `test/v2-lifecycle-fixtures.ts` | Initial POD version fixture |
+| `test/v2-phase-a-closeout.test.ts` | R01-R03 and A-008-A-014 regression matrix |
+| `test/v2-privacy-boundary.test.ts` | Versioned public POD metadata fixture |
+
+### Current state
+
+RouteGuard v2 Phase A is accepted. All recorded Phase A critical, high,
+medium, and low findings are closed with focused regression proof. v1 evidence
+and live behavior remain untouched, and no network write occurred.
+
+### Next step
+
+Phase B: x402 tender-activation and carrier-bid access gates under the existing
+testnet/live-write guards. Do **not** re-run the v1 live final-auction.
+
+**NETWORK_WRITES=0.**
 
 ---
 

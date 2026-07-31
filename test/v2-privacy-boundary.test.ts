@@ -15,6 +15,7 @@ const TS = "2026-07-31T15:00:00.000Z";
 function validPod(overrides: Record<string, unknown> = {}) {
   return {
     podId: "pod-1",
+    podVersion: 1,
     tenderId: "tender-v2-1",
     bidId: "bid-1",
     carrierId: "carrier-alpha",

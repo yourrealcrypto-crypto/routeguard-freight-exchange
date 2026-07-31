@@ -45,6 +45,9 @@ export type FileLockConfig = {
   readonly staleAfterMs: number;
 };
 
+/** Explicit UTC epoch-millisecond provider used by trust-sensitive lock logic. */
+export type FileLockNow = () => number;
+
 export const DEFAULT_FILE_LOCK_CONFIG: FileLockConfig = Object.freeze({
   acquireTimeoutMs: 5_000,
   retryIntervalMs: 20,
@@ -95,8 +98,8 @@ export type FileLockHandle = {
   readonly acquiredAt: string;
 };
 
-function nowIso(): string {
-  return new Date().toISOString();
+function nowIso(nowMs: number): string {
+  return new Date(nowMs).toISOString();
 }
 
 function delay(ms: number): Promise<void> {
@@ -224,14 +227,16 @@ function reclaimStaleLock(
 export async function acquireFileLock(
   lockPath: string,
   tenderId: string,
-  config: FileLockConfig = DEFAULT_FILE_LOCK_CONFIG,
+  config: FileLockConfig,
+  now: FileLockNow,
 ): Promise<FileLockHandle> {
   const token = randomUUID();
-  const startedAt = Date.now();
+  const startedAt = now();
   const deadline = startedAt + config.acquireTimeoutMs;
 
   for (;;) {
-    const acquiredAt = nowIso();
+    const currentTimeMs = now();
+    const acquiredAt = nowIso(currentTimeMs);
     const meta: LockMetadata = {
       v: LOCK_METADATA_VERSION,
       pid: process.pid,
@@ -270,7 +275,7 @@ export async function acquireFileLock(
       );
     }
 
-    const ageMs = Date.now() - Date.parse(existing.acquiredAt);
+    const ageMs = currentTimeMs - Date.parse(existing.acquiredAt);
     if (ageMs >= config.staleAfterMs) {
       reclaimStaleLock(lockPath, tenderId, existing, token);
       continue; // attempt a fresh exclusive create
@@ -281,7 +286,7 @@ export async function acquireFileLock(
         internalDetail: `held by pid ${existing.pid}`,
       });
     }
-    if (Date.now() + config.retryIntervalMs > deadline) {
+    if (currentTimeMs + config.retryIntervalMs > deadline) {
       throw new LifecycleLockTimeoutError(tenderId, config.acquireTimeoutMs, {
         internalDetail: `held by pid ${existing.pid}`,
       });

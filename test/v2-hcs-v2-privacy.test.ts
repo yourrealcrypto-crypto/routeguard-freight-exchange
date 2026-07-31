@@ -43,7 +43,7 @@ describe("v2 HCS privacy boundary", () => {
         payload: {
           disputeId: "d1",
           podId: "p1",
-          reasonCode: "X",
+          reasonCode: "DAMAGED",
           // @ts-expect-error intentional privacy violation
           phoneNumber: "+1",
         },
@@ -61,11 +61,46 @@ describe("v2 HCS privacy boundary", () => {
         createdAt: TS,
         payload: {
           podId: "pod-1",
+          podVersion: 1,
           contentHash: HASH,
           ciphertextHash: HASH,
           sizeBytes: 100,
         },
       }),
     ).not.toThrow();
+  });
+
+  it("rejects free-text dispute narratives disguised as reason codes", () => {
+    expect(() =>
+      buildHcsV2Envelope({
+        messageType: "DISPUTE_OPENED",
+        tenderId: "t1",
+        tenderVersion: 1,
+        tenderHash: HASH,
+        createdAt: TS,
+        payload: {
+          disputeId: "d1",
+          podId: "p1",
+          reasonCode: "Call John Smith at +49 123 456",
+        } as never,
+      }),
+    ).toThrow(/reasonCode|structured|enum/i);
+  });
+
+  it("rejects unmodeled public free-text fields", () => {
+    expect(() =>
+      buildHcsV2Envelope({
+        messageType: "TENDER_COMPLETED",
+        tenderId: "t1",
+        tenderVersion: 1,
+        tenderHash: HASH,
+        createdAt: TS,
+        payload: {
+          finalState: "TENDER_COMPLETED",
+          completionRef: "done-1",
+          notes: "Driver John Smith called from +49 123 456",
+        } as never,
+      }),
+    ).toThrow(/unsupported fields/i);
   });
 });

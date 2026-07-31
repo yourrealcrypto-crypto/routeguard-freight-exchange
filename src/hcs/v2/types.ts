@@ -5,6 +5,19 @@
 
 export const HCS_V2_SCHEMA_VERSION = "routeguard-hcs-2.0" as const;
 export const HCS_V2_MAX_MESSAGE_BYTES = 1024 as const;
+/** HCS-specific public identifiers use a tighter budget than internal ids. */
+export const HCS_V2_MAX_ID_CHARS = 64 as const;
+
+export const HCS_V2_DISPUTE_REASON_CODES = [
+  "DAMAGED",
+  "MISSING_DOCUMENT",
+  "SEAL_MISMATCH",
+  "DELIVERY_EXCEPTION",
+  "OTHER_STRUCTURED",
+] as const;
+
+export type HcsV2DisputeReasonCode =
+  (typeof HCS_V2_DISPUTE_REASON_CODES)[number];
 
 export const HCS_V2_MESSAGE_TYPES = [
   "TENDER_OPENED",
@@ -86,6 +99,7 @@ export type RouteReservedPayloadV2 = {
 
 export type PodSubmittedPayload = {
   readonly podId: string;
+  readonly podVersion: number;
   readonly contentHash: string;
   readonly ciphertextHash: string;
   readonly sizeBytes: number;
@@ -112,7 +126,7 @@ export type PodDeemedAcceptedPayload = {
 export type DisputeOpenedPayload = {
   readonly disputeId: string;
   readonly podId: string;
-  readonly reasonCode: string;
+  readonly reasonCode: HcsV2DisputeReasonCode;
 };
 
 export type RefereeResolutionPayload = {

@@ -34,6 +34,7 @@ const NO_WAIT = resolveFileLockConfig({
   retryIntervalMs: 5,
   staleAfterMs: 1_000,
 });
+const SYSTEM_NOW = () => Date.now();
 
 async function expectCode(
   fn: () => Promise<unknown>,
@@ -87,7 +88,7 @@ describe("v2 lifecycle file lock", () => {
   it("acquires exclusively and releases its own lock", async () => {
     const dir = newDir();
     const lockPath = path.join(dir, "t-lock.lock");
-    const handle = await acquireFileLock(lockPath, "t-lock", FAST);
+    const handle = await acquireFileLock(lockPath, "t-lock", FAST, SYSTEM_NOW);
     expect(existsSync(lockPath)).toBe(true);
     const meta = parseLockMetadata(readFileSync(lockPath, "utf8"));
     expect(meta?.token).toBe(handle.token);
@@ -104,7 +105,7 @@ describe("v2 lifecycle file lock", () => {
     const token = writeForeignLock(lockPath, { ageMs: 0 });
 
     await expectCode(
-      () => acquireFileLock(lockPath, "t-lock", NO_WAIT),
+      () => acquireFileLock(lockPath, "t-lock", NO_WAIT, SYSTEM_NOW),
       "LOCK_BUSY",
     );
     // The other writer's lock is untouched.
@@ -118,7 +119,7 @@ describe("v2 lifecycle file lock", () => {
 
     const startedAt = Date.now();
     const err = await expectCode(
-      () => acquireFileLock(lockPath, "t-lock", FAST),
+      () => acquireFileLock(lockPath, "t-lock", FAST, SYSTEM_NOW),
       "LOCK_TIMEOUT",
     );
     const elapsed = Date.now() - startedAt;
@@ -132,7 +133,7 @@ describe("v2 lifecycle file lock", () => {
     const lockPath = path.join(dir, "t-lock.lock");
     const foreignToken = writeForeignLock(lockPath, { ageMs: 5_000 });
 
-    const handle = await acquireFileLock(lockPath, "t-lock", FAST);
+    const handle = await acquireFileLock(lockPath, "t-lock", FAST, SYSTEM_NOW);
     const meta = parseLockMetadata(readFileSync(lockPath, "utf8"));
     expect(meta?.token).toBe(handle.token);
     expect(meta?.token).not.toBe(foreignToken);
@@ -147,7 +148,7 @@ describe("v2 lifecycle file lock", () => {
     writeFileSync(lockPath, '{"v":1,"pid":', "utf8"); // truncated
 
     await expectCode(
-      () => acquireFileLock(lockPath, "t-lock", FAST),
+      () => acquireFileLock(lockPath, "t-lock", FAST, SYSTEM_NOW),
       "LOCK_CORRUPT",
     );
     expect(existsSync(lockPath)).toBe(true);
@@ -160,7 +161,7 @@ describe("v2 lifecycle file lock", () => {
     writeFileSync(lockPath, "", "utf8");
 
     await expectCode(
-      () => acquireFileLock(lockPath, "t-lock", FAST),
+      () => acquireFileLock(lockPath, "t-lock", FAST, SYSTEM_NOW),
       "LOCK_CORRUPT",
     );
     expect(existsSync(lockPath)).toBe(true);
@@ -187,9 +188,9 @@ describe("v2 lifecycle file lock", () => {
     const lockA = path.join(dir, "t-a.lock");
     const lockB = path.join(dir, "t-b.lock");
 
-    const a = await acquireFileLock(lockA, "t-a", FAST);
+    const a = await acquireFileLock(lockA, "t-a", FAST, SYSTEM_NOW);
     // A different tender acquires immediately even with a zero wait budget.
-    const b = await acquireFileLock(lockB, "t-b", NO_WAIT);
+    const b = await acquireFileLock(lockB, "t-b", NO_WAIT, SYSTEM_NOW);
     expect(a.token).not.toBe(b.token);
 
     releaseFileLock(a);
@@ -218,5 +219,44 @@ describe("v2 lifecycle file lock", () => {
         }),
       ),
     ).toBeNull();
+  });
+
+  it("uses injected time at the fresh/stale boundary deterministically", async () => {
+    const nowMs = Date.parse("2030-01-01T00:00:00.000Z");
+    const dir = newDir();
+    const freshPath = path.join(dir, "fresh.lock");
+    const stalePath = path.join(dir, "stale.lock");
+    const writeAt = (lockPath: string, acquiredAtMs: number, token: string) =>
+      writeFileSync(
+        lockPath,
+        JSON.stringify({
+          v: 1,
+          pid: 999_999,
+          host: "other-host",
+          token,
+          tenderId: "t-lock",
+          acquiredAt: new Date(acquiredAtMs).toISOString(),
+        }),
+        "utf8",
+      );
+
+    writeAt(freshPath, nowMs - 999, "fresh-token-00000000");
+    await expectCode(
+      () => acquireFileLock(freshPath, "t-lock", NO_WAIT, () => nowMs),
+      "LOCK_BUSY",
+    );
+    expect(parseLockMetadata(readFileSync(freshPath, "utf8"))?.token).toBe(
+      "fresh-token-00000000",
+    );
+
+    writeAt(stalePath, nowMs - 1_000, "stale-token-00000000");
+    const handle = await acquireFileLock(
+      stalePath,
+      "t-lock",
+      NO_WAIT,
+      () => nowMs,
+    );
+    expect(handle.acquiredAt).toBe("2030-01-01T00:00:00.000Z");
+    releaseFileLock(handle);
   });
 });
