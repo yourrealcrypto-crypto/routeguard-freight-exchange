@@ -87,6 +87,15 @@ export type SettledAccessPayment = {
   readonly settledAt: string;
 };
 
+/** Verified payment held only in memory between claim acquisition and settle. */
+export type VerifiedAccessPayment = {
+  readonly payload: PaymentPayload;
+  readonly requirements: PaymentRequirements;
+  readonly payerAccount: string;
+  readonly paymentPayloadHash: string;
+  readonly binding: AccessActionBinding;
+};
+
 export type X402AccessGateDeps = {
   readonly facilitator: FacilitatorClient;
   readonly config: V2AccessConfig;
@@ -252,14 +261,11 @@ export class X402AccessGate {
     }
   }
 
-  /**
-   * Verify then settle. Returns a normalized settlement bound to the action.
-   * Settlement precedes the durable lifecycle commit.
-   */
-  async verifyAndSettle(input: {
+  /** Verify terms and facilitator validity without starting settlement. */
+  async verify(input: {
     payload: PaymentPayload;
     binding: AccessActionBinding;
-  }): Promise<SettledAccessPayment> {
+  }): Promise<VerifiedAccessPayment> {
     const { payload, binding } = input;
     this.assertBinding(payload, binding);
 
@@ -282,6 +288,28 @@ export class X402AccessGate {
       );
     }
 
+    if (
+      typeof verified.payer !== "string" ||
+      !isValidHederaAccountId(verified.payer) ||
+      verified.payer === this.deps.config.accessTreasuryAccountId
+    ) {
+      throw new AccessPaymentError(
+        "PAYMENT_INVALID",
+        "payment verification did not identify a valid payer account",
+      );
+    }
+    return {
+      payload,
+      requirements: matched,
+      payerAccount: verified.payer,
+      paymentPayloadHash: canonicalSha256(paymentPayloadForCanonicalHash(payload)),
+      binding,
+    };
+  }
+
+  /** Settle a previously verified payment after its durable claim exists. */
+  async settleVerified(verifiedPayment: VerifiedAccessPayment): Promise<SettledAccessPayment> {
+    const { payload, requirements: matched, binding } = verifiedPayment;
     const settled = await this.server.settlePayment(payload, matched);
     if (!settled.success) {
       throw new AccessPaymentError(
@@ -306,7 +334,7 @@ export class X402AccessGate {
       );
     }
 
-    const payerAccount = settled.payer ?? verified.payer;
+    const payerAccount = settled.payer ?? verifiedPayment.payerAccount;
     if (
       typeof payerAccount !== "string" ||
       !isValidHederaAccountId(payerAccount)
@@ -338,11 +366,17 @@ export class X402AccessGate {
       asset: matched.asset,
       amountAtomic: matched.amount,
       resource: binding.resource,
-      paymentPayloadHash: canonicalSha256(
-        paymentPayloadForCanonicalHash(payload),
-      ),
+      paymentPayloadHash: verifiedPayment.paymentPayloadHash,
       consensusTimestamp,
       settledAt: observedAt,
     };
+  }
+
+  /** Backward-compatible convenience for callers outside the durable routes. */
+  async verifyAndSettle(input: {
+    payload: PaymentPayload;
+    binding: AccessActionBinding;
+  }): Promise<SettledAccessPayment> {
+    return this.settleVerified(await this.verify(input));
   }
 }

@@ -1,6 +1,6 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.8.0
+**Version:** 0.8.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-b` (local only; do not push during this checkpoint)
@@ -8,6 +8,82 @@
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase B2a — durable payment recovery (v0.8.1)
+
+The documented Phase B1 settlement-to-resource-commit crash gap is closed for
+both tender activation and durable carrier-bid submission. **NETWORK_WRITES=0**:
+all settlement and reconciliation behavior in this checkpoint is injected and
+mocked; no facilitator, Hedera, Mirror Node, or HCS network operation ran. v1
+evidence is unchanged.
+
+### Delivered recovery model
+
+- A separate durable payment-claim journal preserves Phase A lifecycle version
+  semantics while binding action type, `actionId`, tender/version, optional bid,
+  payer, treasury, asset, amount, protected resource, canonical payment payload
+  hash, and validated-request hash.
+- The successful path is `CLAIMED -> SETTLING -> SETTLED_PENDING_COMMIT ->
+  COMMITTED`; conclusive failures enter `FAILED` with safe retry
+  classification. Raw payment headers, private bid bodies, salts, private keys,
+  and sensitive signatures are never stored in claims or public errors.
+- Payment verification now precedes atomic claim acquisition; settlement starts
+  only after `SETTLING` is durable. Transaction identity and timestamps are
+  persisted immediately before the lifecycle/resource commit.
+- `SETTLED_PENDING_COMMIT` resumes the missing activation or bid commit without
+  settlement. `COMMITTED` rebuilds the original protected result without a
+  lifecycle version bump or duplicate bid/private-body/offline-outbox work.
+- An uncertain `SETTLING` claim invokes the injected reconciliation boundary.
+  The production-safe default returns unknown without a network read and never
+  blindly resettles.
+- The file adapter uses atomic replacement under a cross-process lock; the
+  in-memory adapter has matching atomic acquire/transition semantics.
+- Deterministic internal fault injection covers after claim creation, after
+  durable settlement, before resource commit, after resource commit, and before
+  claim finalization. No production request parameter was added.
+
+### Exact changed files (v0.8.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.8.1 Phase B2a checkpoint and validation evidence |
+| `docs/v2-x402-access-gates.md` | Claim lifecycle, ordering, recovery, and Phase B2b boundary |
+| `src/v2/access/payment-claim.ts` | Durable claim/reconciliation/fault-boundary types |
+| `src/v2/access/x402-gate.ts` | Split verify from settlement for claim-before-settle ordering |
+| `src/v2/http/app.ts` | Durable file claim store and network-free default reconciler |
+| `src/v2/http/errors.ts` | Stable claim, unknown-settlement, recovery, and commit errors |
+| `src/v2/http/routes.ts` | Claim acquisition, recovery orchestration, and idempotent commit |
+| `src/v2/store/payment-claim-store.ts` | Atomic memory/file claim journals with replay uniqueness |
+| `test/v2-access-route-fixtures.ts` | Injected claim store, reconciler, and internal fault hook |
+| `test/v2-payment-claim-recovery.test.ts` | Claim ordering, crash, reconciliation, replay, and restart tests |
+
+### Validation (v0.8.1)
+
+- `npm run typecheck`: **PASS**
+- Phase A + B1 + B2a focused tests (`test/v2-*.test.ts`): **PASS** — 24 files /
+  265 tests; 0 failed
+- full `npm test`: **PASS** — 68 files / 822 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 250 files scanned
+- `git diff --check`: **PASS**
+- v1 evidence `evidence/` + `data/`: **unchanged** — 0 modified paths
+- live facilitator / Hedera / Mirror / HCS: **NOT RUN**
+
+### Current state
+
+Phase B2a is complete locally. Paid activation and bid requests now converge
+after every modeled internal crash boundary without a second settlement,
+duplicate lifecycle transition, duplicate bid registry entry, duplicate private
+bid body, or duplicate offline HCS commitment envelope.
+
+### Next step
+
+**Phase B2b: guarded live Hedera testnet tender and bid payments**, using the
+durable claim flow plus an injected live reconciliation implementation. Do not
+re-run or modify the v1 live final-auction evidence.
+
+**NETWORK_WRITES=0.**
 
 ---
 

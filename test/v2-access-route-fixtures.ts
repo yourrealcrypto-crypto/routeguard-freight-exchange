@@ -24,6 +24,11 @@ import {
 } from "../src/domain/carrier";
 import { bidSubmitResource, tenderActivateResource } from "../src/v2/access/resource";
 import {
+  UnknownPaymentSettlementReconciler,
+  type PaymentRecoveryFaultInjector,
+  type PaymentSettlementReconciler,
+} from "../src/v2/access/payment-claim";
+import {
   X402AccessGate,
   type AccessActionBinding,
 } from "../src/v2/access/x402-gate";
@@ -45,6 +50,7 @@ import { parseV2FreightTender, type V2FreightTender } from "../src/v2/schemas/te
 import { InMemoryBidBodyStore } from "../src/v2/store/bid-body-store";
 import { LifecycleService } from "../src/v2/store/lifecycle-service";
 import { InMemoryLifecycleStore } from "../src/v2/store/lifecycle-store";
+import { InMemoryPaymentClaimStore } from "../src/v2/store/payment-claim-store";
 import {
   AUCTION_ENDS,
   BUDGET,
@@ -271,6 +277,7 @@ export type Harness = {
   readonly config: V2AccessConfig;
   readonly lifecycle: LifecycleService;
   readonly bidBodies: InMemoryBidBodyStore;
+  readonly paymentClaims: InMemoryPaymentClaimStore;
   readonly carriers: InMemoryCarrierRegistry;
   readonly tenders: InMemoryTenderCatalog;
   setNow(value: string): void;
@@ -294,6 +301,9 @@ export type HarnessOptions = {
   /** Seed the lifecycle up to ESCROW_FUNDED (default) or leave in DRAFT. */
   readonly seedState?: "DRAFT" | "ESCROW_FUNDED";
   readonly now?: string;
+  readonly paymentClaims?: InMemoryPaymentClaimStore;
+  readonly paymentReconciler?: PaymentSettlementReconciler;
+  readonly paymentFault?: PaymentRecoveryFaultInjector;
 };
 
 export async function createHarness(
@@ -319,6 +329,7 @@ export async function createHarness(
   const store = new InMemoryLifecycleStore();
   const lifecycle = new LifecycleService(store, { carriers });
   const bidBodies = new InMemoryBidBodyStore();
+  const paymentClaims = options.paymentClaims ?? new InMemoryPaymentClaimStore();
   const tenders = new InMemoryTenderCatalog();
   tenders.set(options.tender ?? testTender());
 
@@ -351,8 +362,12 @@ export async function createHarness(
     tenders,
     carriers,
     gate,
+    paymentClaims,
+    paymentReconciler:
+      options.paymentReconciler ?? new UnknownPaymentSettlementReconciler(),
     config,
     now: () => now,
+    ...(options.paymentFault ? { paymentFault: options.paymentFault } : {}),
   };
   const app = createV2AccessApp(deps);
 
@@ -389,6 +404,7 @@ export async function createHarness(
     config,
     lifecycle,
     bidBodies,
+    paymentClaims,
     carriers,
     tenders,
     setNow(value: string) {

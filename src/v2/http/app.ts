@@ -19,11 +19,13 @@ import {
   type CarrierRegistry,
 } from "../../domain/carrier";
 import { X402AccessGate } from "../access/x402-gate";
+import { UnknownPaymentSettlementReconciler } from "../access/payment-claim";
 import type { V2AccessConfig } from "../config";
 import { parseV2FreightTender, type V2FreightTender } from "../schemas/tender";
 import { FileBidBodyStore } from "../store/bid-body-store";
 import { LifecycleService } from "../store/lifecycle-service";
 import { FileLifecycleStore } from "../store/lifecycle-store";
+import { FilePaymentClaimStore } from "../store/payment-claim-store";
 import { createV2AccessApp, type V2TenderCatalog } from "./routes";
 
 export const V2_DATA_DIR_ENV_KEY = "ROUTEGUARD_V2_DATA_DIR" as const;
@@ -79,6 +81,7 @@ export function createConfiguredV2AccessApp(
     { carriers },
   );
   const bidBodies = new FileBidBodyStore(path.join(dataDir, "bids"));
+  const paymentClaims = new FilePaymentClaimStore(path.join(dataDir, "payment-claims"));
   const tenders = new FileV2TenderCatalog(path.join(dataDir, "tenders"));
 
   const gate = new X402AccessGate({
@@ -93,6 +96,8 @@ export function createConfiguredV2AccessApp(
     tenders,
     carriers,
     gate,
+    paymentClaims,
+    paymentReconciler: new UnknownPaymentSettlementReconciler(),
     config: accessConfig,
     now: () => new Date().toISOString(),
   });

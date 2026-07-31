@@ -1,13 +1,13 @@
-# RouteGuard v2 — x402 access gates (Phase B1)
+# RouteGuard v2 — x402 access gates (Phase B2a)
 
 Protocol reference for the two paid RouteGuard v2 actions: tender activation and
 durable carrier-bid submission.
 
-> **Phase B1 status: mocked settlement, offline.** Every test injects a
+> **Phase B2a status: durable recovery with mocked settlement, offline.** Every test injects a
 > facilitator double through the standard `FacilitatorClient` interface. **No
 > live x402 payment, Hedera transfer, facilitator settlement, Mirror Node
 > confirmation, or HCS submission has occurred.** Guarded Hedera testnet
-> execution is Phase B2 and is still pending.
+> execution is Phase B2b and is still pending.
 
 ---
 
@@ -81,24 +81,53 @@ exceeding `maximumFreightBudgetAtomic`; carrier signature verifies against the
 Malformed, ineligible, late, over-budget, and unsigned bids therefore never
 reach the facilitator.
 
-## 4. Paid path ordering
+## 4. Paid path ordering and durable claim
 
 1. decode the `X-PAYMENT` / `PAYMENT-SIGNATURE` header (real x402 codec);
 2. assert the declared terms match this exact action (scheme, network, token,
    amount, `payTo`, and the exact protected resource);
 3. `verifyPayment` through the injected facilitator;
-4. `settlePayment` through the injected facilitator;
-5. for bids: store the private bid body (content-addressed, idempotent);
-6. commit the lifecycle transition, the access-settlement index entry, and the
+4. create or atomically acquire a durable payment claim;
+5. mark the claim `SETTLING`, then call `settlePayment`;
+6. persist the transaction id and settlement timestamp immediately as
+   `SETTLED_PENDING_COMMIT`;
+7. for bids: retain the private bid body in its separate content-addressed store;
+8. commit the lifecycle transition, the access-settlement index entry, and the
    bid registry entry **atomically** in one durable record write;
-7. return the protected resource plus a payment-receipt summary.
+9. mark the claim `COMMITTED` with a stable resource reference;
+10. return the protected resource plus a payment-receipt summary.
 
-Settlement precedes the durable commit so the receipt always binds the
-settlement identity. The Hono `paymentMiddleware` settles only *after* the route
+Settlement is orchestrated before resource delivery so the receipt always binds
+the authoritative settlement identity. The claim journal closes the crash gap
+between settlement and that resource commit. The Hono `paymentMiddleware` settles only *after* the route
 handler has produced its response, which cannot bind a settlement id into
 durable state — so the v2 gates orchestrate the real `x402ResourceServer`
 (`buildPaymentRequirements` / `createPaymentRequiredResponse` / `verifyPayment` /
 `settlePayment`) with `ExactHederaScheme` directly instead.
+
+### Claim lifecycle and crash recovery
+
+`CLAIMED -> SETTLING -> SETTLED_PENDING_COMMIT -> COMMITTED` is the successful
+path; conclusive failure enters `FAILED`. Claims bind the action type,
+`actionId`, tender and version, optional bid id, payer, treasury, asset, exact
+amount, exact resource, canonical payment-payload hash, and a hash of the
+validated protected request. They never contain a raw payment header, private
+key, full bid body, salt, or signature-bearing error detail.
+
+| Restart state | Recovery behavior |
+|---|---|
+| `CLAIMED` | Verify the identical submitted payment and safely begin settlement |
+| `SETTLING` | Invoke the injected reconciliation boundary; never blindly resettle |
+| `SETTLED_PENDING_COMMIT` | Commit the missing activation or bid without settlement |
+| `COMMITTED` | Rebuild the original result from lifecycle state; no settlement or version bump |
+| `FAILED` | Preserve safe failure classification and fail closed |
+
+The file adapter uses an atomic journal replacement under a cross-process lock;
+the memory adapter has the same acquire/transition semantics. The lifecycle
+record remains the authoritative protected-resource store, so payment-journal
+transitions do not consume Phase A lifecycle versions. If a crash occurs after
+the resource write but before claim finalization, lifecycle action idempotency
+proves the resource is already committed and the retry only finalizes the claim.
 
 ## 5. Payment binding
 
@@ -125,10 +154,9 @@ transaction reference; a payer equal to the treasury.
 A committed `actionId` short-circuits the request before the facilitator is
 contacted, so a retry can never settle twice.
 
-**Known Phase B2 work:** a crash between settlement and the durable commit
-leaves a settled payment without a committed action, exactly like the v1
-pre-submission payment claim. Phase B2 adds the claim/reconciliation record for
-this window.
+The former Phase B1 settlement-to-commit crash gap is closed by the durable
+claim and reconciliation flow. Guarded live settlement and live Mirror
+reconciliation remain Phase B2b work.
 
 ## 7. Bidding state
 
@@ -147,9 +175,9 @@ id, and the access-payment transaction id.
 ## 9. Evidence (built, not submitted)
 
 `src/v2/hcs/outbox.ts` builds validated `TENDER_OPENED` and `BID_COMMITMENT`
-HCS 2.0 envelopes from durable state alone (size- and privacy-checked). Phase B1
+HCS 2.0 envelopes from durable state alone (size- and privacy-checked). Phase B2a
 **does not submit them**; the committed `commitmentPayloadHash` binds each bid to
-the exact evidence Phase B2 will publish.
+the exact evidence a later guarded phase may publish.
 
 ## 10. Error codes
 
@@ -159,6 +187,8 @@ the exact evidence Phase B2 will publish.
 `PAYMENT_AMOUNT_MISMATCH` · `PAYMENT_ASSET_MISMATCH` ·
 `PAYMENT_RECIPIENT_MISMATCH` · `PAYMENT_SCHEME_MISMATCH` ·
 `PAYMENT_NETWORK_MISMATCH` · `PAYMENT_SETTLEMENT_FAILED` · `PAYMENT_REPLAY` ·
+`PAYMENT_CLAIM_CONFLICT` · `PAYMENT_SETTLEMENT_UNKNOWN` ·
+`PAYMENT_ALREADY_USED` · `PAYMENT_RECOVERY_FAILED` · `RESOURCE_COMMIT_FAILED` ·
 `ACTION_ID_CONFLICT` · `PERSISTENCE_CONFLICT` · `ACCESS_NOT_CONFIGURED` ·
 `INTERNAL_ERROR`
 

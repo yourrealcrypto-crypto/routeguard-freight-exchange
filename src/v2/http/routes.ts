@@ -21,6 +21,7 @@ import { encodePaymentRequiredHeader } from "@x402/core/http";
 import { ZodError, z } from "zod";
 
 import type { CarrierRegistry } from "../../domain/carrier";
+import { canonicalSha256 } from "../../domain/canonical-hash";
 import { isBeforeOrEqualUtc, isUtcIsoTimestamp } from "../../domain/time";
 import { bidSubmitResource, tenderActivateResource } from "../access/resource";
 import {
@@ -28,8 +29,16 @@ import {
   readAccessPaymentHeader,
   type AccessActionBinding,
   type SettledAccessPayment,
+  type VerifiedAccessPayment,
   type X402AccessGate,
 } from "../access/x402-gate";
+import type {
+  PaymentClaim,
+  PaymentClaimBinding,
+  PaymentClaimResultRef,
+  PaymentRecoveryFaultInjector,
+  PaymentSettlementReconciler,
+} from "../access/payment-claim";
 import { verifyCarrierBid, AuthorizationError } from "../auth/verify";
 import { assertUsableV2AccessConfig, type V2AccessConfig } from "../config";
 import { bidCommitmentPayloadHash } from "../hcs/outbox";
@@ -47,9 +56,13 @@ import {
   type SignedV2CarrierBid,
 } from "../schemas/bid";
 import type { V2FreightTender } from "../schemas/tender";
-import type { BidBodyStore } from "../store/bid-body-store";
+import type { BidBodyStore, StoredBidBody } from "../store/bid-body-store";
 import { BidBodyConflictError } from "../store/bid-body-store";
 import type { LifecycleService } from "../store/lifecycle-service";
+import {
+  PaymentClaimStoreError,
+  type PaymentClaimStore,
+} from "../store/payment-claim-store";
 import { LifecyclePersistenceError } from "../store/persistence-errors";
 import { V2AccessError, v2AccessErrorStatus } from "./errors";
 
@@ -69,9 +82,13 @@ export type V2AccessRouteDeps = {
   readonly tenders: V2TenderCatalog;
   readonly carriers: CarrierRegistry;
   readonly gate: X402AccessGate;
+  readonly paymentClaims: PaymentClaimStore;
+  readonly paymentReconciler: PaymentSettlementReconciler;
   readonly config: V2AccessConfig;
   /** Injected UTC server clock — the sole time source for these routes. */
   readonly now: () => string;
+  /** Internal dependency used only by deterministic crash tests. */
+  readonly paymentFault?: PaymentRecoveryFaultInjector;
   readonly onInternalError?: (info: { code: string; message: string }) => void;
 };
 
@@ -135,6 +152,22 @@ async function handleActivate(
   const record = await loadRecord(deps, tenderId, tenderVersion);
   assertTreasuryConsistent(record, deps.config);
 
+  const binding: AccessActionBinding = {
+    actionType: "TENDER_ACTIVATE",
+    tenderId: record.tenderId,
+    tenderVersion: record.tenderVersion,
+    bidId: null,
+    resource: tenderActivateResource(record.tenderId, record.tenderVersion),
+    description: "RouteGuard v2 tender activation access fee",
+  };
+  const requestHash = canonicalSha256({
+    actionType: binding.actionType,
+    actionId: body.actionId,
+    tenderId: record.tenderId,
+    tenderVersion: record.tenderVersion,
+  });
+  const existingClaim = await deps.paymentClaims.getByActionId(body.actionId);
+
   // Replay of an already-committed activation returns the original resource
   // without touching the facilitator.
   const prior = record.processedActions[body.actionId];
@@ -144,6 +177,18 @@ async function handleActivate(
         "ACTION_ID_CONFLICT",
         "actionId was already used for a different action",
       );
+    }
+    if (existingClaim) {
+      const recovered = await executePaymentClaim({
+        deps,
+        actionId: body.actionId,
+        binding,
+        requestHash,
+        rawPayment: readAccessPaymentHeader((name) => c.req.header(name)),
+        commit: (settled) => commitActivation(deps, record.tenderId, body.actionId, settled),
+        resultRef: activationResultRef(record, body.actionId),
+      });
+      return c.json(activationView(recovered, "REPLAYED"), 200);
     }
     return c.json(activationView(record, "REPLAYED"), 200);
   }
@@ -161,39 +206,22 @@ async function handleActivate(
     );
   }
 
-  const binding: AccessActionBinding = {
-    actionType: "TENDER_ACTIVATE",
-    tenderId: record.tenderId,
-    tenderVersion: record.tenderVersion,
-    bidId: null,
-    resource: tenderActivateResource(record.tenderId, record.tenderVersion),
-    description: "RouteGuard v2 tender activation access fee",
-  };
-
   const rawPayment = readAccessPaymentHeader((name) => c.req.header(name));
-  if (!rawPayment) {
+  if (!rawPayment && !existingClaim) {
     return await paymentRequiredResponse(c, deps, binding);
   }
-
-  const settled = await settleAccessPayment(deps, record, rawPayment, binding);
-
-  const event: TenderActivationPaid = {
-    type: "TENDER_ACTIVATION_PAID",
+  const appliedRecord = await executePaymentClaim({
+    deps,
     actionId: body.actionId,
-    eventTime: settled.settledAt,
-    accessActionType: "TENDER_ACTIVATE",
-    asset: settled.asset,
-    amountAtomic: settled.amountAtomic,
-    resource: settled.resource,
-    paymentTransactionId: settled.transactionId,
-    paymentPayloadHash: settled.paymentPayloadHash,
-    payerAccount: settled.payerAccount,
-    payTo: settled.payTo,
-  };
-  const applied = await deps.lifecycle.apply(record.tenderId, event);
+    binding,
+    requestHash,
+    rawPayment,
+    commit: (settled) => commitActivation(deps, record.tenderId, body.actionId, settled),
+    resultRef: activationResultRef(record, body.actionId),
+  });
 
   return c.json(
-    activationView(applied.record, applied.outcome === "REPLAYED" ? "REPLAYED" : "PAID"),
+    activationView(appliedRecord, existingClaim ? "REPLAYED" : "PAID"),
     200,
   );
 }
@@ -214,8 +242,9 @@ async function handleBid(
   const record = await loadRecord(deps, tenderId, tenderVersion);
   assertTreasuryConsistent(record, deps.config);
 
+  const existingClaim = await deps.paymentClaims.getByActionId(body.actionId);
   const prior = record.processedActions[body.actionId];
-  if (prior) {
+  if (prior && !existingClaim) {
     if (prior.eventType !== "BID_SUBMISSION_PAID") {
       throw new V2AccessError(
         "ACTION_ID_CONFLICT",
@@ -274,7 +303,10 @@ async function handleBid(
   if (!isBeforeOrEqualUtc(now, record.auctionEndsAt)) {
     throw new V2AccessError("AUCTION_CLOSED", "the auction has already ended");
   }
-  if (record.bidRegistry.some((entry) => entry.bidId === bid.bidId)) {
+  if (
+    record.bidRegistry.some((entry) => entry.bidId === bid.bidId) &&
+    !existingClaim
+  ) {
     throw new V2AccessError(
       "PERSISTENCE_CONFLICT",
       "this bid has already been durably accepted",
@@ -324,8 +356,22 @@ async function handleBid(
     description: "RouteGuard v2 durable bid submission access fee",
   };
 
+  const requestHash = canonicalSha256({
+    actionType: binding.actionType,
+    actionId: body.actionId,
+    tenderId: record.tenderId,
+    tenderVersion: record.tenderVersion,
+    bidId: bid.bidId,
+    bidHash,
+    signedBidEnvelopeHash: signedV2BidEnvelopeHash(signed),
+    signedAt: body.signedAt,
+  });
+  if (existingClaim) {
+    assertClaimMatches({ actionId: body.actionId, binding, requestHash }, existingClaim);
+  }
+
   const rawPayment = readAccessPaymentHeader((name) => c.req.header(name));
-  if (!rawPayment) {
+  if (!rawPayment && !existingClaim) {
     return await paymentRequiredResponse(c, deps, binding);
   }
 
@@ -338,46 +384,30 @@ async function handleBid(
     storedAt: now,
   });
 
-  const settled = await settleAccessPayment(deps, record, rawPayment, binding);
-
-  const event: BidSubmissionPaid = {
-    type: "BID_SUBMISSION_PAID",
+  const appliedRecord = await executePaymentClaim({
+    deps,
     actionId: body.actionId,
-    eventTime: settled.settledAt,
-    accessActionType: "BID_SUBMIT",
-    bidId: bid.bidId,
-    carrierId: bid.carrierId,
-    carrierAccountId: bid.carrierAccountId,
-    bidHash,
-    signedBidEnvelopeHash: signedV2BidEnvelopeHash(signed),
-    commitmentPayloadHash: bidCommitmentPayloadHash({
+    binding,
+    requestHash,
+    rawPayment,
+    commit: (settled) => commitBid(deps, record.tenderId, body.actionId, body.signedAt, stored, settled),
+    resultRef: {
+      kind: "CARRIER_BID",
+      tenderId: record.tenderId,
+      tenderVersion: record.tenderVersion,
       bidId: bid.bidId,
-      carrierId: bid.carrierId,
-      bidHash,
-      accessPaymentTxId: settled.transactionId,
-    }),
-    carrierSignature: body.signature,
-    signedAt: body.signedAt,
-    asset: settled.asset,
-    amountAtomic: settled.amountAtomic,
-    resource: settled.resource,
-    paymentTransactionId: settled.transactionId,
-    paymentPayloadHash: settled.paymentPayloadHash,
-    payerAccount: settled.payerAccount,
-    payTo: settled.payTo,
-  };
+      actionId: body.actionId,
+    },
+  });
 
-  // The service re-verifies the carrier signature against the trusted registry
-  // before the reducer accepts the sealed authorization.
+  // The service re-verifies the carrier signature against the trusted registry.
   void auth;
-  void stored;
-  const applied = await deps.lifecycle.apply(record.tenderId, event);
 
   return c.json(
     bidView(
-      applied.record,
+      appliedRecord,
       bid.bidId,
-      applied.outcome === "REPLAYED" ? "REPLAYED" : "ACCEPTED",
+      existingClaim ? "REPLAYED" : "ACCEPTED",
     ),
     200,
   );
@@ -547,31 +577,295 @@ async function paymentRequiredResponse(
   );
 }
 
-/**
- * Settle exactly once. A payload that already authorized an action for this
- * tender is refused before the facilitator is contacted.
- */
-async function settleAccessPayment(
-  deps: V2AccessRouteDeps,
-  record: LifecycleRecord,
-  rawPayment: string,
-  binding: AccessActionBinding,
-): Promise<SettledAccessPayment> {
-  const payload = deps.gate.decodePayment(rawPayment);
-  const settled = await deps.gate.verifyAndSettle({ payload, binding });
+type ExecuteClaimInput = {
+  deps: V2AccessRouteDeps;
+  actionId: string;
+  binding: AccessActionBinding;
+  requestHash: string;
+  rawPayment: string | null;
+  commit: (settlement: SettledAccessPayment) => Promise<LifecycleRecord>;
+  resultRef: PaymentClaimResultRef;
+};
+
+function fullClaimBinding(
+  input: ExecuteClaimInput,
+  verified: VerifiedAccessPayment,
+): PaymentClaimBinding {
+  return {
+    actionType: input.binding.actionType,
+    actionId: input.actionId,
+    tenderId: input.binding.tenderId,
+    tenderVersion: input.binding.tenderVersion,
+    bidId: input.binding.bidId,
+    payerAccount: verified.payerAccount,
+    payTo: input.deps.config.accessTreasuryAccountId,
+    asset: input.deps.config.asset,
+    amountAtomic: input.deps.config.amountAtomic,
+    resource: input.binding.resource,
+    paymentPayloadHash: verified.paymentPayloadHash,
+    requestHash: input.requestHash,
+  };
+}
+
+function assertClaimMatches(
+  input: Pick<ExecuteClaimInput, "actionId" | "binding" | "requestHash">,
+  claim: PaymentClaim,
+): void {
+  const b = claim.binding;
   if (
-    record.accessPayments.some(
-      (payment) =>
-        payment.paymentTransactionId === settled.transactionId ||
-        payment.paymentPayloadHash === settled.paymentPayloadHash,
-    )
+    b.actionType !== input.binding.actionType ||
+    b.actionId !== input.actionId ||
+    b.tenderId !== input.binding.tenderId ||
+    b.tenderVersion !== input.binding.tenderVersion ||
+    b.bidId !== input.binding.bidId ||
+    b.resource !== input.binding.resource ||
+    b.requestHash !== input.requestHash
   ) {
     throw new V2AccessError(
-      "PAYMENT_REPLAY",
-      "this settlement has already authorized an access action",
+      "ACTION_ID_CONFLICT",
+      "actionId is bound to a different protected action",
     );
   }
-  return settled;
+}
+
+function assertSettlementMatchesClaim(
+  claim: PaymentClaim,
+  settlement: SettledAccessPayment,
+): void {
+  const b = claim.binding;
+  if (
+    settlement.payerAccount !== b.payerAccount ||
+    settlement.payTo !== b.payTo ||
+    settlement.asset !== b.asset ||
+    settlement.amountAtomic !== b.amountAtomic ||
+    settlement.resource !== b.resource ||
+    settlement.paymentPayloadHash !== b.paymentPayloadHash
+  ) {
+    throw new V2AccessError(
+      "PAYMENT_RECOVERY_FAILED",
+      "reconciled settlement does not match the durable claim",
+    );
+  }
+}
+
+async function executePaymentClaim(input: ExecuteClaimInput): Promise<LifecycleRecord> {
+  const { deps } = input;
+  let claim = await deps.paymentClaims.getByActionId(input.actionId);
+  let verified: VerifiedAccessPayment | null = null;
+
+  if (!claim) {
+    if (!input.rawPayment) {
+      throw new V2AccessError("PAYMENT_REQUIRED", "payment is required");
+    }
+    verified = await deps.gate.verify({
+      payload: deps.gate.decodePayment(input.rawPayment),
+      binding: input.binding,
+    });
+    const acquired = await deps.paymentClaims.acquire(
+      fullClaimBinding(input, verified),
+      deps.now(),
+    );
+    claim = acquired.claim;
+    if (acquired.outcome === "CREATED") {
+      await deps.paymentFault?.("AFTER_CLAIM_CREATED", claim);
+    }
+  }
+  assertClaimMatches(input, claim);
+
+  if (claim.state === "COMMITTED") {
+    const record = await deps.lifecycle.get(claim.binding.tenderId);
+    if (!record || !record.processedActions[claim.binding.actionId]) {
+      throw new V2AccessError(
+        "PAYMENT_RECOVERY_FAILED",
+        "committed payment claim has no protected resource",
+      );
+    }
+    return record;
+  }
+  if (claim.state === "FAILED") {
+    throw new V2AccessError(
+      claim.retryable ? "PAYMENT_RECOVERY_FAILED" : "PAYMENT_SETTLEMENT_FAILED",
+      "payment claim is in a failed state",
+    );
+  }
+
+  if (claim.state === "SETTLING") {
+    const reconciled = await deps.paymentReconciler.reconcile(claim);
+    if (reconciled.status === "UNKNOWN") {
+      throw new V2AccessError(
+        "PAYMENT_SETTLEMENT_UNKNOWN",
+        "settlement outcome is unknown; reconciliation is required",
+      );
+    }
+    if (reconciled.status === "FAILED") {
+      await deps.paymentClaims.transition({
+        actionId: input.actionId,
+        from: ["SETTLING"],
+        to: "FAILED",
+        now: deps.now(),
+        failureCode: reconciled.failureCode,
+        retryable: false,
+      });
+      throw new V2AccessError(
+        "PAYMENT_SETTLEMENT_FAILED",
+        "reconciliation confirmed settlement failure",
+      );
+    }
+    assertSettlementMatchesClaim(claim, reconciled.settlement);
+    claim = await deps.paymentClaims.transition({
+      actionId: input.actionId,
+      from: ["SETTLING"],
+      to: "SETTLED_PENDING_COMMIT",
+      now: deps.now(),
+      settlement: reconciled.settlement,
+    });
+  }
+
+  if (claim.state === "CLAIMED") {
+    if (!verified) {
+      if (!input.rawPayment) {
+        throw new V2AccessError(
+          "PAYMENT_RECOVERY_FAILED",
+          "claimed payment requires the original payment for safe resume",
+        );
+      }
+      verified = await deps.gate.verify({
+        payload: deps.gate.decodePayment(input.rawPayment),
+        binding: input.binding,
+      });
+      const expected = fullClaimBinding(input, verified);
+      if (canonicalSha256(expected) !== canonicalSha256(claim.binding)) {
+        throw new V2AccessError("PAYMENT_CLAIM_CONFLICT", "payment claim binding conflicts");
+      }
+    }
+    claim = await deps.paymentClaims.transition({
+      actionId: input.actionId,
+      from: ["CLAIMED"],
+      to: "SETTLING",
+      now: deps.now(),
+    });
+    let settled: SettledAccessPayment;
+    try {
+      settled = await deps.gate.settleVerified(verified);
+    } catch (error) {
+      if (error instanceof AccessPaymentError) {
+        await deps.paymentClaims.transition({
+          actionId: input.actionId,
+          from: ["SETTLING"],
+          to: "FAILED",
+          now: deps.now(),
+          failureCode: error.code,
+          retryable: false,
+        });
+        throw error;
+      }
+      throw new V2AccessError(
+        "PAYMENT_SETTLEMENT_UNKNOWN",
+        "settlement outcome is unknown; reconciliation is required",
+      );
+    }
+    assertSettlementMatchesClaim(claim, settled);
+    claim = await deps.paymentClaims.transition({
+      actionId: input.actionId,
+      from: ["SETTLING"],
+      to: "SETTLED_PENDING_COMMIT",
+      now: deps.now(),
+      settlement: settled,
+    });
+    await deps.paymentFault?.("AFTER_SETTLEMENT", claim);
+  }
+
+  if (claim.state !== "SETTLED_PENDING_COMMIT" || !claim.settlement) {
+    throw new V2AccessError("PAYMENT_RECOVERY_FAILED", "payment claim cannot be committed");
+  }
+  await deps.paymentFault?.("BEFORE_RESOURCE_COMMIT", claim);
+  let record: LifecycleRecord;
+  try {
+    record = await input.commit(claim.settlement);
+  } catch (error) {
+    if (error instanceof V2AccessError) throw error;
+    throw new V2AccessError("RESOURCE_COMMIT_FAILED", "protected resource commit failed");
+  }
+  await deps.paymentFault?.("AFTER_RESOURCE_COMMIT", claim);
+  await deps.paymentFault?.("BEFORE_CLAIM_FINALIZATION", claim);
+  await deps.paymentClaims.transition({
+    actionId: input.actionId,
+    from: ["SETTLED_PENDING_COMMIT"],
+    to: "COMMITTED",
+    now: deps.now(),
+    resultRef: input.resultRef,
+  });
+  return record;
+}
+
+function activationResultRef(record: LifecycleRecord, actionId: string): PaymentClaimResultRef {
+  return {
+    kind: "TENDER_ACTIVATION",
+    tenderId: record.tenderId,
+    tenderVersion: record.tenderVersion,
+    bidId: null,
+    actionId,
+  };
+}
+
+async function commitActivation(
+  deps: V2AccessRouteDeps,
+  tenderId: string,
+  actionId: string,
+  settled: SettledAccessPayment,
+): Promise<LifecycleRecord> {
+  const event: TenderActivationPaid = {
+    type: "TENDER_ACTIVATION_PAID",
+    actionId,
+    eventTime: settled.settledAt,
+    accessActionType: "TENDER_ACTIVATE",
+    asset: settled.asset,
+    amountAtomic: settled.amountAtomic,
+    resource: settled.resource,
+    paymentTransactionId: settled.transactionId,
+    paymentPayloadHash: settled.paymentPayloadHash,
+    payerAccount: settled.payerAccount,
+    payTo: settled.payTo,
+  };
+  return (await deps.lifecycle.apply(tenderId, event)).record;
+}
+
+async function commitBid(
+  deps: V2AccessRouteDeps,
+  tenderId: string,
+  actionId: string,
+  signedAt: string,
+  stored: StoredBidBody,
+  settled: SettledAccessPayment,
+): Promise<LifecycleRecord> {
+  const bid = stored.signed.bid;
+  const event: BidSubmissionPaid = {
+    type: "BID_SUBMISSION_PAID",
+    actionId,
+    eventTime: settled.settledAt,
+    accessActionType: "BID_SUBMIT",
+    bidId: bid.bidId,
+    carrierId: bid.carrierId,
+    carrierAccountId: bid.carrierAccountId,
+    bidHash: stored.bidHash,
+    signedBidEnvelopeHash: stored.signedBidEnvelopeHash,
+    commitmentPayloadHash: bidCommitmentPayloadHash({
+      bidId: bid.bidId,
+      carrierId: bid.carrierId,
+      bidHash: stored.bidHash,
+      accessPaymentTxId: settled.transactionId,
+    }),
+    carrierSignature: stored.signed.signature,
+    signedAt,
+    asset: settled.asset,
+    amountAtomic: settled.amountAtomic,
+    resource: settled.resource,
+    paymentTransactionId: settled.transactionId,
+    paymentPayloadHash: settled.paymentPayloadHash,
+    payerAccount: settled.payerAccount,
+    payTo: settled.payTo,
+  };
+  return (await deps.lifecycle.apply(tenderId, event)).record;
 }
 
 function receiptView(record: LifecycleRecord, actionId: string | null) {
@@ -660,6 +954,14 @@ function handleError(
     return c.json(
       { error: error.code, message: error.message },
       v2AccessErrorStatus(error.code as never) as 400,
+    );
+  }
+  if (error instanceof PaymentClaimStoreError) {
+    const code =
+      error.code === "PAYMENT_ALREADY_USED" ? "PAYMENT_REPLAY" : error.code;
+    return c.json(
+      { error: code, message: error.message },
+      v2AccessErrorStatus(code) as 400,
     );
   }
   if (error instanceof ZodError) {
