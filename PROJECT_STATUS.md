@@ -1,13 +1,77 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.8.1
+**Version:** 0.8.2
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-b` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `e7f110a551ddfcb4e6d3aba581a09c3418bc1e3e` (v0.7.5 Phase A accepted)
+**Prior checkpoint HEAD:** `d01232062986f4427c14611609ee41e60f024511` (v0.8.1 Phase B2a recovery)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase B2b — live testnet x402 access payments (v0.8.2)
+
+Guarded live execution of **exactly two** successful Hedera testnet x402
+`exact` USDC access payments (tender activation + durable bid). **NETWORK_WRITES=2**
+(x402 settlements only). **HCS_NETWORK_WRITES=0**. **LIVE_FREIGHT_ESCROW=NO**
+(`ESCROW_PHASE=C_PENDING`). v1 `evidence/final-demo-*` unchanged.
+
+### Live run
+
+| Field | Value |
+|---|---|
+| Run ID | `v2access-20260731-918f5748` |
+| Scheme / network | `exact` / `hedera:testnet` |
+| Token | `0.0.429274` |
+| Amount each | **1000** atomic (0.001 USDC) |
+| Access treasury (`payTo`) | `0.0.9215954` |
+| Activation payer | `0.0.9197513` (shipper) |
+| Bid access payer | `0.0.9197513` (shipper; treasury is the only other USDC-associated account that is not the shipper — carrier cannot pay itself) |
+| Bid signature | carrier-alpha registered key |
+| Activation tx | `0.0.7162784@1785519911.424021609` |
+| Bid tx | `0.0.7162784@1785520014.520040785` |
+| Mirror | both **SUCCESS**, amount/payer/treasury legs verified |
+| Replays | both returned **REPLAYED** without a second settlement |
+| Escrow precondition | synthetic offline fixture labeled non-live |
+| Facilitator | `https://api.testnet.blocky402.com` (fee payer `0.0.7162784`) |
+
+### Changed / added files (v0.8.2)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.8.2 Phase B2b live proof |
+| `docs/v2-x402-access-gates.md` | Live status, runner, claim boundary, evidence table |
+| `package.json` | `demo:v2-access-live` script |
+| `scripts/run-v2-access-live.ts` | **New** — guarded live runner (max 2 settlements) |
+| `src/v2/access/mirror-reconcile.ts` | **New** — Mirror USDC verification + claim reconciler |
+| `evidence/v2/access/*` | **New** — sanitized live evidence package |
+| `data/v2-live-access/*` | Local durable state for the live run (not v1 paths) |
+
+### Validation (v0.8.2)
+
+- Live runner: **PASS** — 2 settlements, 0 HCS writes
+- `npm run typecheck`: **PASS**
+- Phase A+B focused tests: **265 passed / 0 failed** (24 files)
+- full `npm test`: **822 passed / 0 failed** (68 files)
+- `npm run check:secrets`: **PASS** (273 files; no private-key fields in public paths)
+- `git diff --check`: **PASS**
+- v1 evidence (`evidence/final-demo-*`): **unchanged**
+
+### Current state
+
+Phase B2b complete: tender-activation and bid-submission x402 access fees are
+proven on Hedera testnet with durable claim recovery and Mirror confirmation.
+Freight escrow, POD, and HCS submission remain future work.
+
+### Next step
+
+**Phase C1: HTS freight-escrow contract and offline tests.** Do not re-run the
+v1 live final-auction. Do not re-run Phase B2b live payments unless explicitly
+authorized with a new run id and evidence namespace.
+
+**NETWORK_WRITES=2** (this checkpoint).
 
 ---
 

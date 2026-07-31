@@ -1,0 +1,23 @@
+{
+  "runId": "v2access-20260731-918f5748",
+  "actionType": "TENDER_ACTIVATE",
+  "actionId": "act-activate-v2access-20260731-918f5748",
+  "tenderId": "tender-v2access-20260731-918f5748",
+  "tenderVersion": 1,
+  "payerAccount": "0.0.9197513",
+  "treasuryAccount": "0.0.9215954",
+  "network": "hedera:testnet",
+  "scheme": "exact",
+  "tokenId": "0.0.429274",
+  "displayAmount": "0.001",
+  "amountAtomic": "1000",
+  "resource": "/api/v2/tenders/tender-v2access-20260731-918f5748/v/1/activate",
+  "paymentTransactionId": "0.0.7162784@1785519911.424021609",
+  "consensusTimestamp": "2026-07-31T17:45:20.866821104Z",
+  "mirrorStatus": "SUCCESS",
+  "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.7162784@1785519911.424021609",
+  "outcome": "REPLAYED",
+  "LIVE_X402_PAYMENT": true,
+  "LIVE_FREIGHT_ESCROW": false,
+  "resumed": true
+}

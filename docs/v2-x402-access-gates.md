@@ -1,13 +1,15 @@
-# RouteGuard v2 — x402 access gates (Phase B2a)
+# RouteGuard v2 — x402 access gates (Phase B2b)
 
 Protocol reference for the two paid RouteGuard v2 actions: tender activation and
 durable carrier-bid submission.
 
-> **Phase B2a status: durable recovery with mocked settlement, offline.** Every test injects a
-> facilitator double through the standard `FacilitatorClient` interface. **No
-> live x402 payment, Hedera transfer, facilitator settlement, Mirror Node
-> confirmation, or HCS submission has occurred.** Guarded Hedera testnet
-> execution is Phase B2b and is still pending.
+> **Phase B2b status: two real Hedera testnet x402 access payments completed.**
+> Tender activation and durable bid submission each settled **0.001 USDC
+> (1000 atomic)** of token `0.0.429274` on `hedera:testnet` via Blocky402.
+> Evidence: `evidence/v2/access/`. **Freight escrow is not live** (`ESCROW_PHASE=C_PENDING`).
+> HCS messages remain offline outbox records only (`HCS_NETWORK_WRITES=0`).
+> Automated tests continue to use facilitator doubles; do not re-run the live
+> demo during CI.
 
 ---
 
@@ -155,8 +157,35 @@ A committed `actionId` short-circuits the request before the facilitator is
 contacted, so a retry can never settle twice.
 
 The former Phase B1 settlement-to-commit crash gap is closed by the durable
-claim and reconciliation flow. Guarded live settlement and live Mirror
-reconciliation remain Phase B2b work.
+claim and reconciliation flow. Phase B2b exercised the claim path with real
+facilitator settlement and Mirror confirmation (see `evidence/v2/access/`).
+
+### Live demo runner
+
+```bash
+# Requires explicit guards + configured treasury (public account id).
+ROUTEGUARD_LIVE_V2_ACCESS_CONFIRM=I_UNDERSTAND_TESTNET_WRITES \
+ROUTEGUARD_LIVE_V2_ACCESS_MAX_SETTLEMENTS=2 \
+ENABLE_V2_ACCESS_ROUTES=true \
+ROUTEGUARD_ACCESS_TREASURY_ACCOUNT_ID=<distinct-usdc-associated-account> \
+ENABLE_LIVE_HEDERA=true \
+ENABLE_LIVE_USDC_PAYMENTS=true \
+npm run demo:v2-access-live
+```
+
+Maximum **two** successful settlements per completed run. Replay must not create
+a third. The runner refuses when evidence already shows a completed SUCCESS run.
+
+### Live run claim boundary (truthful)
+
+| Claim | Status |
+|---|---|
+| Real testnet x402 access payments (activation + bid) | **YES** |
+| Synthetic business tender/bid data | YES |
+| HCS submitted | **NO** |
+| Live freight-principal escrow | **NO** (`C_PENDING`) |
+| POD / freight release | **NO** |
+| v1 final-demo evidence | Unchanged |
 
 ## 7. Bidding state
 
@@ -205,5 +234,23 @@ payment payloads, signatures, secrets, private bid fields, or filesystem paths.
 | `FACILITATOR_URL` | — | Existing Blocky402 facilitator setting (reused) |
 | `ROUTEGUARD_V2_DATA_DIR` | — | Durable v2 state root (default `data/v2`) |
 | `ROUTEGUARD_V2_CARRIER_REGISTRY_PATH` | — | Trusted carrier registry JSON |
+| `ROUTEGUARD_LIVE_V2_ACCESS_CONFIRM` | live only | Must equal `I_UNDERSTAND_TESTNET_WRITES` |
+| `ROUTEGUARD_LIVE_V2_ACCESS_MAX_SETTLEMENTS` | live only | Must equal `2` |
 
-No private key is ever read, stored, or committed by these routes.
+No private key is ever stored or committed by these routes. Live payer keys are
+read only by the guarded demo runner from the local untracked `.env`.
+
+## 12. Phase B2b live evidence
+
+| Field | Value |
+|---|---|
+| Run ID | `v2access-20260731-918f5748` |
+| Activation tx | `0.0.7162784@1785519911.424021609` |
+| Bid tx | `0.0.7162784@1785520014.520040785` |
+| Amount each | 1000 atomic USDC (0.001) |
+| Token | `0.0.429274` |
+| Successful settlements | **2** |
+| HCS writes | **0** |
+| Freight escrow | **not live** |
+
+Artifacts: `evidence/v2/access/*`.

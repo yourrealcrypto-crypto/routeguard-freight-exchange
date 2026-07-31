@@ -1,0 +1,8 @@
+{
+  "runId": "v2access-20260731-918f5748",
+  "resource": "/api/v2/tenders/tender-v2access-20260731-918f5748/v/1/bids/bid-v2access-20260731-918f5748",
+  "httpStatus": 200,
+  "outcome": "ACCEPTED",
+  "bidId": "bid-v2access-20260731-918f5748",
+  "state": null
+}
