@@ -32,6 +32,23 @@ export type ProcessedActionRecord = {
   readonly at: string;
 };
 
+/**
+ * Durable x402 access-payment receipt for tender activation.
+ * Persisted so the paid gate can be re-validated after restart without
+ * replaying the event stream.
+ */
+export type LifecycleAccessReceipt = {
+  readonly accessActionType: "TENDER_ACTIVATE";
+  readonly asset: string;
+  readonly amountAtomic: string;
+  readonly resource: string;
+  readonly payTo: string;
+  readonly payerAccount: string;
+  readonly paymentTransactionId: string;
+  readonly paymentPayloadHash: string;
+  readonly paidAt: string;
+};
+
 export type LifecycleRecord = {
   readonly schemaVersion: typeof LIFECYCLE_RECORD_SCHEMA;
   readonly tenderId: string;
@@ -55,6 +72,8 @@ export type LifecycleRecord = {
   readonly fundingTxId: string | null;
   readonly fundedAmountAtomic: string | null;
   readonly activationPaymentTxId: string | null;
+  /** Durable access-fee receipt recorded at TENDER_ACTIVATION_PAID. */
+  readonly accessReceipt: LifecycleAccessReceipt | null;
 
   // Auction
   readonly closureProofRef: string | null;
@@ -126,6 +145,7 @@ export function createLifecycleRecord(
     fundingTxId: null,
     fundedAmountAtomic: null,
     activationPaymentTxId: null,
+    accessReceipt: null,
     closureProofRef: null,
     authoritativeBidSetHash: null,
     decisionManifestHash: null,

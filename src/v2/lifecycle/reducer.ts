@@ -5,6 +5,7 @@
  */
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
+import { isValidHederaAccountId } from "../../domain/payment-option";
 import {
   isBeforeOrEqualUtc,
   isUtcIsoTimestamp,
@@ -399,8 +400,25 @@ export function reduceLifecycle(
           "payment transaction and payload hash required",
         );
       }
+      if (!isValidHederaAccountId(event.payerAccount)) {
+        throw new LifecycleGuardError(
+          "ACCESS_PAYER",
+          "payerAccount must be a valid Hedera account id",
+        );
+      }
       return withTransition(record, "TENDER_OPENED", event, {
         activationPaymentTxId: event.paymentTransactionId,
+        accessReceipt: {
+          accessActionType: "TENDER_ACTIVATE",
+          asset: event.asset,
+          amountAtomic: event.amountAtomic,
+          resource: event.resource,
+          payTo: event.payTo,
+          payerAccount: event.payerAccount,
+          paymentTransactionId: event.paymentTransactionId,
+          paymentPayloadHash: event.paymentPayloadHash,
+          paidAt: event.eventTime,
+        },
       });
     }
 

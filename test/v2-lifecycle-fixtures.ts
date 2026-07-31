@@ -366,6 +366,97 @@ export function acceptPod(rec: LifecycleRecord, at: string): LifecycleRecord {
   );
 }
 
+/** POD_UNDER_REVIEW → POD_DISPUTED with a real shipper signature. */
+export function rejectToDispute(
+  rec: LifecycleRecord,
+  disputeId = "disp-1",
+  actionId = "act-reject",
+): LifecycleRecord {
+  const deadline = rec.reviewDeadlineAt!;
+  const signature = signShipperAction({
+    tenderId: rec.tenderId,
+    tenderVersion: rec.tenderVersion,
+    podId: rec.podId!,
+    reviewAction: "REJECT_DISPUTE",
+    reasonCodes: ["DAMAGED"],
+    signedAt: deadline,
+    reviewDeadlineAt: deadline,
+    actionId,
+  });
+  const auth = shipperAuth(rec, {
+    reviewAction: "REJECT_DISPUTE",
+    actionId,
+    signedAt: deadline,
+    reviewDeadlineAt: deadline,
+    reasonCodes: ["DAMAGED"],
+    signature,
+  });
+  return reduceLifecycle(
+    rec,
+    {
+      type: "POD_REJECTED_TO_DISPUTE",
+      actionId,
+      eventTime: deadline,
+      reasons: [{ code: "DAMAGED", message: "broken" }],
+      shipperSignature: signature,
+      signedAt: deadline,
+      reviewDeadlineAt: deadline,
+      disputeId,
+    },
+    { verifiedAuth: auth },
+  );
+}
+
+/** POD_DISPUTED → REFEREE_DECISION with a real referee signature. */
+export function recordRefereeDecision(
+  rec: LifecycleRecord,
+  input: {
+    resolution: "RELEASE_FULL" | "REFUND_FULL" | "PARTIAL";
+    releaseAmountAtomic: string;
+    refundAmountAtomic: string;
+    disputeId?: string;
+    actionId?: string;
+  },
+): LifecycleRecord {
+  const actionId = input.actionId ?? "act-referee";
+  const disputeId = input.disputeId ?? rec.disputeId ?? "disp-1";
+  const signedAt = rec.updatedAt;
+  const common = {
+    tenderId: rec.tenderId,
+    tenderVersion: rec.tenderVersion,
+    podId: rec.podId!,
+    disputeId,
+    resolution: input.resolution,
+    releaseAmountAtomic: input.releaseAmountAtomic,
+    refundAmountAtomic: input.refundAmountAtomic,
+    rationaleCode: "REVIEWED",
+    refereeId: REFEREE_ID,
+    signedAt,
+    actionId,
+  };
+  const signature = signRefereeAction(common);
+  const auth = refereeAuth(rec, { ...common, signature });
+  return reduceLifecycle(
+    rec,
+    {
+      type: "REFEREE_RESOLUTION_RECORDED",
+      actionId,
+      eventTime: signedAt,
+      disputeId,
+      podId: rec.podId!,
+      resolution: input.resolution,
+      releaseAmountAtomic: input.releaseAmountAtomic,
+      refundAmountAtomic: input.refundAmountAtomic,
+      rationaleCode: "REVIEWED",
+      refereeId: REFEREE_ID,
+      signature,
+      signedAt,
+      signerKind: "HUMAN_REFEREE",
+    },
+    { verifiedAuth: auth },
+  );
+}
+
 export function activationEvent(
   tenderId: string,
   tenderVersion = 1,

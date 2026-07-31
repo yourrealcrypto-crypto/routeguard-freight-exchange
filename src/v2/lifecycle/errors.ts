@@ -26,6 +26,9 @@ export class LifecycleGuardError extends Error {
 }
 
 export class LifecycleVersionConflictError extends Error {
+  /** Stable persistence error category (see store/persistence-errors.ts). */
+  readonly code = "VERSION_CONFLICT" as const;
+
   constructor(
     public readonly tenderId: string,
     public readonly expectedVersion: number,
@@ -39,6 +42,8 @@ export class LifecycleVersionConflictError extends Error {
 }
 
 export class LifecycleActionConflictError extends Error {
+  readonly code = "ACTION_ID_CONFLICT" as const;
+
   constructor(
     public readonly actionId: string,
     message?: string,
@@ -52,6 +57,8 @@ export class LifecycleActionConflictError extends Error {
 }
 
 export class LifecycleNotFoundError extends Error {
+  readonly code = "RECORD_NOT_FOUND" as const;
+
   constructor(public readonly tenderId: string) {
     super(`Lifecycle record not found: ${tenderId}`);
     this.name = "LifecycleNotFoundError";

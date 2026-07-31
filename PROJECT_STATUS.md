@@ -1,13 +1,145 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.2
+**Version:** 0.7.3
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `73dc7def000351202ccb6a4cd231a42d7b57c2f9` (v0.7.1 Phase A review)
+**Prior checkpoint HEAD:** `322247e` (v0.7.2 Phase A3a authorization bindings)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A3b — lifecycle persistence hardening (v0.7.3)
+
+Remediation of the remaining independent-review blockers **RG-V2-A-004** (file
+CAS concurrency) and **RG-V2-A-005** (unvalidated persisted state). Offline
+only: no HTTP routes, x402 middleware, facilitator, Mirror, HCS submit, escrow,
+POD, AI, timeout worker, frontend, or testnet work. **Network writes: 0.**
+v1 behaviour and v1 live evidence unchanged.
+
+### Findings fixed
+
+| ID | Fix |
+|---|---|
+| RG-V2-A-004 | Per-tender cross-process lock file (`wx` exclusive create) wraps the entire read → validate → compare → write → verify sequence; loser fails closed with `VERSION_CONFLICT`/`LOCK_BUSY`/`LOCK_TIMEOUT` |
+| RG-V2-A-005 | Raw `JSON.parse(...) as LifecycleRecord` replaced by a versioned persisted envelope with complete structural, nested, and cross-field validation; typed corruption errors |
+
+### Persisted-envelope validation
+
+- Storage schema `routeguard-v2-lifecycle-store-1.0`, version `1`; unknown
+  identifiers/versions fail closed with `UNSUPPORTED_STORAGE_VERSION`.
+- Envelope carries schema id/version, tenderId, tenderVersion, monotonic
+  `recordVersion`, `createdAt`/`updatedAt`, the lifecycle record, the
+  trust-policy snapshot, a tender-bound processed-action index, and sha256
+  integrity metadata over record + action index.
+- Load path: read bytes → strict UTF-8 decode → guarded `JSON.parse` → schema
+  gate → strict envelope validation → full record validation → cross-field
+  invariants → integrity recomputation. No `as` cast substitutes for validation;
+  unknown persisted fields are rejected.
+- Cross-field invariants: envelope↔record tender/version/recordVersion/timestamp
+  equality; trust snapshot equality plus shipper fingerprint recomputation;
+  per-action tender binding, uniqueness, and record agreement;
+  `history.length === processedActions size`, `recordVersion === history + 1`;
+  `createdAt <= updatedAt`; state-specific required metadata; absence of
+  state-incompatible settlement metadata; funded ≥ budget; win ≤ budget;
+  `locked === winning` and `locked + excess === budget`; referee decisions
+  conserve the locked amount, match the resolution kind, and name a referee in
+  the persisted registry; access receipt pinned to token `0.0.429274`, amount
+  `1000` atomic, configured treasury, and the canonical tender-versioned
+  resource.
+- New durable field `record.accessReceipt` (written by the reducer at
+  `TENDER_ACTIVATION_PAID`) makes the paid access gate re-verifiable after
+  restart. `payerAccount` is now validated as a Hedera account id.
+
+### Locking implementation
+
+- One lock file per tender (`lifecycle-<tenderId>.lock`) — never a global lock.
+- Atomic exclusive create; metadata `{ v, pid, host, token, tenderId, acquiredAt }`.
+- Release verifies the ownership token; another owner's lock is never removed.
+- Bounded retry/backoff with explicit timeout — defaults `acquireTimeoutMs 5000`,
+  `retryIntervalMs 20`, `staleAfterMs 60000`; `acquireTimeoutMs: 0` fails
+  immediately with `LOCK_BUSY`.
+- In-process `KeyedMutex` retained as an optimization only.
+
+### Stale-lock policy
+
+- Reclaim only when metadata is valid **and** age exceeds `staleAfterMs`.
+- Race-safe: atomic rename aside to `<lock>.stale.<token>`, then confirmation
+  that the moved lock carries the exact inspected ownership token; a replacement
+  observed mid-flight fails closed with `LOCK_CORRUPT` and preserves evidence.
+- Malformed/empty/unreadable locks are never auto-deleted — `LOCK_CORRUPT`
+  requires operator recovery.
+
+### Atomic-write strategy and corruption behaviour
+
+- Unique temp name (`pid` + lock token + UUID) in the target directory, created
+  with `wx`; write → fsync → atomic rename → best-effort directory fsync →
+  read-back re-validation; lock released only after the rename.
+- Failure preserves the previous authoritative record, cleans up only the owned
+  temp file, releases the lock, and raises `ATOMIC_WRITE_FAILED`.
+- `.tmp` files are never authoritative or promoted;
+  `cleanupAbandonedLifecycleTempFiles()` gives deterministic, age-bounded
+  recovery that never touches `.json` or `.lock` files.
+- Corrupt authoritative state is never deleted, repaired, or reset to `DRAFT`.
+- Typed categories: `RECORD_NOT_FOUND`, `VERSION_CONFLICT`, `LOCK_BUSY`,
+  `LOCK_TIMEOUT`, `LOCK_CORRUPT`, `RECORD_CORRUPT`,
+  `UNSUPPORTED_STORAGE_VERSION`, `ATOMIC_WRITE_FAILED`, `ACTION_ID_CONFLICT`.
+  Public messages expose no filesystem paths, POD content, or key material.
+
+### Store parity
+
+In-memory and file adapters now share expected-version checks, action-id
+replay/conflict rules, tender/version binding, full record validation, and
+store-owned version increment. Only lock/corruption behaviour differs.
+
+### Changed / added files (v0.7.3)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.7.3 A3b checkpoint |
+| `docs/v2-lifecycle-file-store.md` | **New** — storage schema, lock model, stale policy, atomic write, corruption + operator recovery, Windows assumptions, limitations |
+| `src/v2/store/persistence-errors.ts` | **New** — typed persistence error categories |
+| `src/v2/store/file-lock.ts` | **New** — per-tender cross-process lock, stale reclamation |
+| `src/v2/store/persisted-record.ts` | **New** — persisted envelope + complete validation |
+| `src/v2/store/lifecycle-store.ts` | Lock-held CAS, envelope persistence, atomic write + verify, temp-file recovery, in-memory parity |
+| `src/v2/lifecycle/record.ts` | `accessReceipt` durable field |
+| `src/v2/lifecycle/reducer.ts` | Records the access receipt; validates `payerAccount` |
+| `src/v2/lifecycle/errors.ts` | Stable `code` on not-found / version-conflict / action-conflict errors |
+| `test/v2-lifecycle-fixtures.ts` | `rejectToDispute`, `recordRefereeDecision` helpers |
+| `test/v2-lifecycle-file-lock.test.ts` | **New** — 9 tests |
+| `test/v2-lifecycle-persisted-validation.test.ts` | **New** — 36 tests |
+| `test/v2-lifecycle-file-store-concurrency.test.ts` | **New** — 10 tests |
+| `test/v2-lifecycle-atomic-write.test.ts` | **New** — 3 tests |
+
+### Validation (v0.7.3)
+
+- `npm run typecheck`: **PASS**
+- Phase A1/A2/A3a/A3b focused tests (`test/v2-*.test.ts`): **PASS** — 18 files /
+  145 tests; 0 failed
+- full `npm test`: **PASS** — 62 files / 702 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 244 files scanned
+- `git diff --check`: **PASS** (CRLF warnings only)
+- v1 evidence `evidence/` + `data/`: **unchanged** (0 modified paths)
+- live Hedera / x402 / HCS writes: **NOT RUN**
+
+### Current state
+
+Phase A blockers RG-V2-A-001 … A-007 are all remediated. Lifecycle persistence
+is concurrency-safe across processes, fully validated on load, atomically
+committed with its idempotency index, and documented for operators. Local-file
+persistence remains a guarded testnet/demo choice — production multi-instance
+deployment should use a transactional database or equivalent strongly
+consistent store (not introduced in this phase).
+
+### Next step
+
+Targeted independent re-review of **RG-V2-A-001 through A-007 and Phase A3b**;
+only then plan Phase B x402 tender/bid gates. Do **not** re-run the v1 live
+final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 
