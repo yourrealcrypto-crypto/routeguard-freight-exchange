@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { tenderActivateResource } from "../src/v2/access/resource";
+import { deriveAccessFeeAtomic } from "../src/v2/access/fee";
 import {
   IllegalLifecycleTransitionError,
   LifecycleGuardError,
@@ -11,6 +13,7 @@ import {
 } from "../src/v2/lifecycle/reducer";
 import { V2_LIFECYCLE_STATES } from "../src/v2/lifecycle/states";
 import {
+  acceptPod,
   allocate,
   AUCTION_ENDS,
   baseRecord,
@@ -18,19 +21,21 @@ import {
   EXCESS,
   fund,
   HASH,
-  happyToPodSubmitted,
   happyToUnderReview,
-  REFEREE_KEY,
+  REFEREE_ID,
+  REFEREE_PUBLIC,
+  refereeAuth,
   reserve,
   selectWinner,
-  SIG,
+  signRefereeAction,
+  signShipperAction,
+  shipperAuth,
   T0,
   toBidding,
   activate,
   WIN_AMOUNT,
   BUDGET,
 } from "./v2-lifecycle-fixtures";
-import { deriveAccessFeeAtomic } from "../src/v2/access/fee";
 
 describe("v2 lifecycle legal transitions", () => {
   it("exposes a non-empty legal transition graph", () => {
@@ -40,13 +45,7 @@ describe("v2 lifecycle legal transitions", () => {
   it("walks the primary happy path to TENDER_COMPLETED", () => {
     let r = happyToUnderReview();
     const deadline = r.reviewDeadlineAt!;
-    r = reduceLifecycle(r, {
-      type: "POD_ACCEPTED_BY_SHIPPER",
-      actionId: "act-accept",
-      eventTime: deadline,
-      shipperSignature: SIG,
-      reviewDeadlineAt: deadline,
-    });
+    r = acceptPod(r, deadline);
     expect(r.state).toBe("POD_ACCEPTED");
     r = reduceLifecycle(r, {
       type: "ESCROW_RELEASE_CONFIRMED",
@@ -93,8 +92,7 @@ describe("v2 lifecycle legal transitions", () => {
     expect(r.state).toBe("TENDER_COMPLETED");
   });
 
-  it("covers every legal edge with a successful reduce where practical", () => {
-    // Spot-check core edges exist
+  it("covers core legal edges", () => {
     expect(isLegalTransition("DRAFT", "ESCROW_FUNDED")).toBe(true);
     expect(isLegalTransition("POD_UNDER_REVIEW", "POD_DEEMED_ACCEPTED")).toBe(
       true,
@@ -117,7 +115,7 @@ describe("v2 lifecycle legal transitions", () => {
       }),
     ).toThrow(IllegalLifecycleTransitionError);
 
-    let r = fund(draft);
+    const r = fund(draft);
     expect(() =>
       reduceLifecycle(r, {
         type: "WINNER_SELECTION_CONFIRMED",
@@ -169,7 +167,6 @@ describe("v2 lifecycle legal transitions", () => {
     });
     expect(r.state).toBe("POD_UNDER_REVIEW");
     expect(r.advisoryReportHash).toBe(HASH);
-    // Still need shipper / timeout / dispute for exit
     expect(() =>
       reduceLifecycle(r, {
         type: "ESCROW_RELEASE_CONFIRMED",
@@ -181,75 +178,125 @@ describe("v2 lifecycle legal transitions", () => {
     ).toThrow(IllegalLifecycleTransitionError);
   });
 
-  it("referee path requires allowlisted human key and conservation", () => {
+  it("referee path requires sealed auth and exact settlement match", () => {
     let r = happyToUnderReview();
     const deadline = r.reviewDeadlineAt!;
-    r = reduceLifecycle(r, {
-      type: "POD_REJECTED_TO_DISPUTE",
-      actionId: "act-reject",
-      eventTime: deadline,
-      reasons: [{ code: "DAMAGED", message: "Seal broken" }],
-      shipperSignature: SIG,
+    const rejectId = "act-reject";
+    const rejectSig = signShipperAction({
+      tenderId: r.tenderId,
+      tenderVersion: r.tenderVersion,
+      podId: "pod-1",
+      reviewAction: "REJECT_DISPUTE",
+      reasonCodes: ["DAMAGED"],
+      signedAt: deadline,
       reviewDeadlineAt: deadline,
-      disputeId: "disp-1",
+      actionId: rejectId,
     });
+    const sAuth = shipperAuth(r, {
+      reviewAction: "REJECT_DISPUTE",
+      actionId: rejectId,
+      signedAt: deadline,
+      reviewDeadlineAt: deadline,
+      reasonCodes: ["DAMAGED"],
+      signature: rejectSig,
+    });
+    r = reduceLifecycle(
+      r,
+      {
+        type: "POD_REJECTED_TO_DISPUTE",
+        actionId: rejectId,
+        eventTime: deadline,
+        reasons: [{ code: "DAMAGED", message: "Seal broken" }],
+        shipperSignature: rejectSig,
+        signedAt: deadline,
+        reviewDeadlineAt: deadline,
+        disputeId: "disp-1",
+      },
+      { verifiedAuth: sAuth },
+    );
     expect(r.state).toBe("POD_DISPUTED");
 
+    // Missing sealed auth fails
     expect(() =>
       reduceLifecycle(r, {
         type: "REFEREE_RESOLUTION_RECORDED",
-        actionId: "ref-bad",
+        actionId: "ref-noauth",
         eventTime: deadline,
         disputeId: "disp-1",
         podId: "pod-1",
         resolution: "PARTIAL",
         releaseAmountAtomic: "400000",
         refundAmountAtomic: "300000",
-        refereeId: "ref-1",
-        refereePublicKey: "02notallowlisted",
-        signature: SIG,
-        signedPayloadHash: HASH,
+        rationaleCode: "SPLIT",
+        refereeId: REFEREE_ID,
+        signature: "ab".repeat(64),
+        signedAt: deadline,
         signerKind: "HUMAN_REFEREE",
-        allowlistedRefereeKeys: [REFEREE_KEY],
       }),
-    ).toThrow(LifecycleGuardError);
+    ).toThrow(/sealed referee|REFEREE_AUTH/i);
 
-    expect(() =>
-      reduceLifecycle(r, {
-        type: "REFEREE_RESOLUTION_RECORDED",
-        actionId: "ref-sig",
-        eventTime: deadline,
-        disputeId: "disp-1",
-        podId: "pod-1",
-        resolution: "PARTIAL",
-        releaseAmountAtomic: "400000",
-        refundAmountAtomic: "300000",
-        refereeId: "ref-1",
-        refereePublicKey: REFEREE_KEY,
-        signature: "deadbeef",
-        signedPayloadHash: HASH,
-        signerKind: "HUMAN_REFEREE",
-        allowlistedRefereeKeys: [REFEREE_KEY],
-      }),
-    ).toThrow(/signature/i);
-
-    r = reduceLifecycle(r, {
-      type: "REFEREE_RESOLUTION_RECORDED",
-      actionId: "ref-ok",
-      eventTime: deadline,
+    const refActionId = "ref-ok";
+    const refSig = signRefereeAction({
+      tenderId: r.tenderId,
+      tenderVersion: r.tenderVersion,
+      podId: "pod-1",
+      disputeId: "disp-1",
+      resolution: "PARTIAL",
+      releaseAmountAtomic: "400000",
+      refundAmountAtomic: "300000",
+      rationaleCode: "SPLIT",
+      refereeId: REFEREE_ID,
+      signedAt: deadline,
+      actionId: refActionId,
+    });
+    const rAuth = refereeAuth(r, {
+      actionId: refActionId,
       disputeId: "disp-1",
       podId: "pod-1",
       resolution: "PARTIAL",
       releaseAmountAtomic: "400000",
       refundAmountAtomic: "300000",
-      refereeId: "ref-1",
-      refereePublicKey: REFEREE_KEY,
-      signature: SIG,
-      signedPayloadHash: HASH,
-      signerKind: "HUMAN_REFEREE",
-      allowlistedRefereeKeys: [REFEREE_KEY],
+      rationaleCode: "SPLIT",
+      refereeId: REFEREE_ID,
+      signedAt: deadline,
+      signature: refSig,
+      eventPublicKey: REFEREE_PUBLIC,
     });
+    r = reduceLifecycle(
+      r,
+      {
+        type: "REFEREE_RESOLUTION_RECORDED",
+        actionId: refActionId,
+        eventTime: deadline,
+        disputeId: "disp-1",
+        podId: "pod-1",
+        resolution: "PARTIAL",
+        releaseAmountAtomic: "400000",
+        refundAmountAtomic: "300000",
+        rationaleCode: "SPLIT",
+        refereeId: REFEREE_ID,
+        refereePublicKey: REFEREE_PUBLIC,
+        signature: refSig,
+        signedAt: deadline,
+        signerKind: "HUMAN_REFEREE",
+      },
+      { verifiedAuth: rAuth },
+    );
     expect(r.state).toBe("REFEREE_DECISION");
+    expect(r.resolutionPayloadHash).toBeTruthy();
+
+    // Conserving but different split fails (A-003)
+    expect(() =>
+      reduceLifecycle(r, {
+        type: "ESCROW_PARTIAL_RELEASE_CONFIRMED",
+        actionId: "partial-bad",
+        eventTime: deadline,
+        releaseTxId: "0.0.1@2.1",
+        refundTxId: "0.0.1@2.2",
+        releaseAmountAtomic: "100000",
+        refundAmountAtomic: "600000",
+      }),
+    ).toThrow(/DECISION_AMOUNT_MISMATCH|exactly match/i);
 
     r = reduceLifecycle(r, {
       type: "ESCROW_PARTIAL_RELEASE_CONFIRMED",
@@ -263,23 +310,40 @@ describe("v2 lifecycle legal transitions", () => {
     expect(r.state).toBe("PARTIAL_RELEASE");
   });
 
-  it("requires exact access fee and asset on activation", () => {
+  it("requires versioned access resource and treasury payTo", () => {
     const r = fund(baseRecord());
     expect(() =>
       reduceLifecycle(r, {
         type: "TENDER_ACTIVATION_PAID",
-        actionId: "bad-fee",
+        actionId: "bad-res",
         eventTime: T0,
         accessActionType: "TENDER_ACTIVATE",
         asset: "0.0.429274",
-        amountAtomic: "999",
+        amountAtomic: deriveAccessFeeAtomic(),
         resource: `/api/v2/tenders/${r.tenderId}/activate`,
         paymentTransactionId: "x",
         paymentPayloadHash: HASH,
         payerAccount: "0.0.9197513",
-        payTo: "0.0.9197513",
+        payTo: r.trust.accessTreasuryAccountId,
       }),
-    ).toThrow(/amountAtomic/);
+    ).toThrow(/resource|ACCESS_RESOURCE/i);
+
+    expect(() =>
+      reduceLifecycle(r, {
+        type: "TENDER_ACTIVATION_PAID",
+        actionId: "bad-payto",
+        eventTime: T0,
+        accessActionType: "TENDER_ACTIVATE",
+        asset: "0.0.429274",
+        amountAtomic: deriveAccessFeeAtomic(),
+        resource: tenderActivateResource(r.tenderId, r.tenderVersion),
+        paymentTransactionId: "x",
+        paymentPayloadHash: HASH,
+        payerAccount: "0.0.9197513",
+        payTo: "0.0.9215954",
+      }),
+    ).toThrow(/treasury|ACCESS_TREASURY/i);
+
     expect(deriveAccessFeeAtomic()).toBe("1000");
   });
 
@@ -319,5 +383,19 @@ describe("v2 lifecycle legal transitions", () => {
         authoritativeBidSetHash: HASH,
       }),
     ).toThrow(/auctionEndsAt|AUCTION_NOT_ENDED|at or after/i);
+  });
+
+  it("shipper accept without sealed auth fails", () => {
+    const r = happyToUnderReview();
+    expect(() =>
+      reduceLifecycle(r, {
+        type: "POD_ACCEPTED_BY_SHIPPER",
+        actionId: "noauth",
+        eventTime: r.reviewDeadlineAt!,
+        shipperSignature: "ab".repeat(64),
+        signedAt: r.reviewDeadlineAt!,
+        reviewDeadlineAt: r.reviewDeadlineAt!,
+      }),
+    ).toThrow(LifecycleGuardError);
   });
 });

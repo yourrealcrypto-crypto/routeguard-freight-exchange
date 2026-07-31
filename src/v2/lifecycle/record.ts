@@ -2,6 +2,12 @@
  * Durable lifecycle record shape (CAS versioned).
  */
 
+import {
+  publicKeyFingerprint,
+  snapshotTrustPolicy,
+  type TrustPolicy,
+  type TrustPolicySnapshot,
+} from "../trust/policy";
 import type { LifecycleEventType } from "./events";
 import type { V2LifecycleState } from "./states";
 
@@ -42,6 +48,9 @@ export type LifecycleRecord = {
   readonly history: readonly LifecycleTransitionRecord[];
   readonly processedActions: Readonly<Record<string, ProcessedActionRecord>>;
 
+  /** Snapshot of external trust policy at tender create (no private keys). */
+  readonly trust: TrustPolicySnapshot;
+
   // Funding / access
   readonly fundingTxId: string | null;
   readonly fundedAmountAtomic: string | null;
@@ -70,11 +79,16 @@ export type LifecycleRecord = {
   readonly shipperActionTaken: boolean;
   readonly advisoryReportHash: string | null;
   readonly disputeId: string | null;
+  readonly lastShipperAuthPayloadHash: string | null;
+  readonly lastShipperKeyFingerprint: string | null;
 
-  // Settlement
+  // Settlement — authorized by verified referee decision
   readonly refereeResolution: string | null;
   readonly releaseAmountAtomic: string | null;
   readonly refundAmountAtomic: string | null;
+  readonly resolutionPayloadHash: string | null;
+  readonly refereeId: string | null;
+  readonly refereeKeyFingerprint: string | null;
   readonly releaseTxId: string | null;
   readonly refundTxId: string | null;
 };
@@ -86,11 +100,14 @@ export type CreateLifecycleInput = {
   readonly maximumFreightBudgetAtomic: string;
   readonly auctionEndsAt: string;
   readonly createdAt: string;
+  /** External trust policy — snapshotted onto the record. */
+  readonly trust: TrustPolicy;
 };
 
 export function createLifecycleRecord(
   input: CreateLifecycleInput,
 ): LifecycleRecord {
+  const trust = snapshotTrustPolicy(input.trust);
   return {
     schemaVersion: LIFECYCLE_RECORD_SCHEMA,
     tenderId: input.tenderId,
@@ -105,6 +122,7 @@ export function createLifecycleRecord(
     lastActionId: null,
     history: [],
     processedActions: {},
+    trust,
     fundingTxId: null,
     fundedAmountAtomic: null,
     activationPaymentTxId: null,
@@ -128,10 +146,30 @@ export function createLifecycleRecord(
     shipperActionTaken: false,
     advisoryReportHash: null,
     disputeId: null,
+    lastShipperAuthPayloadHash: null,
+    lastShipperKeyFingerprint: null,
     refereeResolution: null,
     releaseAmountAtomic: null,
     refundAmountAtomic: null,
+    resolutionPayloadHash: null,
+    refereeId: null,
+    refereeKeyFingerprint: null,
     releaseTxId: null,
     refundTxId: null,
   };
+}
+
+/** Rebuild TrustPolicy from durable snapshot for verification. */
+export function trustPolicyFromRecord(record: LifecycleRecord): TrustPolicy {
+  return Object.freeze({
+    schemaVersion: record.trust.schemaVersion,
+    shipperPublicKey: record.trust.shipperPublicKey,
+    referees: record.trust.referees,
+    accessTreasuryAccountId: record.trust.accessTreasuryAccountId,
+    signatureAlgorithm: record.trust.signatureAlgorithm,
+  });
+}
+
+export function fingerprintKey(publicKey: string): string {
+  return publicKeyFingerprint(publicKey);
 }

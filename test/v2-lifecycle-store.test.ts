@@ -14,6 +14,7 @@ import {
 import {
   AUCTION_ENDS,
   BUDGET,
+  defaultTrustPolicy,
   HASH,
   T0,
 } from "./v2-lifecycle-fixtures";
@@ -39,6 +40,7 @@ describe("v2 lifecycle CAS store", () => {
       maximumFreightBudgetAtomic: BUDGET,
       auctionEndsAt: AUCTION_ENDS,
       createdAt: T0,
+      trust: defaultTrustPolicy(),
     });
     expect(created.recordVersion).toBe(1);
 
@@ -72,6 +74,7 @@ describe("v2 lifecycle CAS store", () => {
       maximumFreightBudgetAtomic: BUDGET,
       auctionEndsAt: AUCTION_ENDS,
       createdAt: T0,
+      trust: defaultTrustPolicy(),
     });
     await svc.apply("t-file", {
       type: "ESCROW_FUNDING_CONFIRMED",
@@ -88,5 +91,6 @@ describe("v2 lifecycle CAS store", () => {
     const loaded = await store2.get("t-file");
     expect(loaded?.state).toBe("ESCROW_FUNDED");
     expect(loaded?.recordVersion).toBe(2);
+    expect(loaded?.trust.accessTreasuryAccountId).toBeTruthy();
   });
 });

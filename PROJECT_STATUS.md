@@ -1,13 +1,94 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.1
+**Version:** 0.7.2
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `8f4265fabe1a2162b94689628f475c6de526b426` (v0.7.0 Phase A2)
+**Prior checkpoint HEAD:** `73dc7def000351202ccb6a4cd231a42d7b57c2f9` (v0.7.1 Phase A review)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A3a — authorization bindings (v0.7.2)
+
+Remediation of independent-review findings **RG-V2-A-001, A-002, A-003, A-006,
+A-007**. No network writes. File-store concurrency/corruption (A-004/A-005)
+deferred to Phase A3b.
+
+### Findings fixed
+
+| ID | Fix |
+|---|---|
+| RG-V2-A-001 | Referee allowlist removed from events; registry only on injected `TrustPolicy` snapshotted at create |
+| RG-V2-A-002 | Real Hiero ECDSA verify via `verifyCanonicalPayload` over domain-separated payloads; sealed `VerifiedAuth` (WeakSet) required by reducer |
+| RG-V2-A-003 | Settlement confirmation amounts must exactly match recorded referee decision (not merely conserve lock) |
+| RG-V2-A-006 | Access resources bind `tenderId` + `tenderVersion` (`tenderActivateResource` / `bidSubmitResource`) |
+| RG-V2-A-007 | `payTo` must equal `record.trust.accessTreasuryAccountId` |
+
+### Cryptographic approach
+
+- Reuses existing `src/domain/signature.ts` (Hiero ECDSA secp256k1, 64-byte r‖s hex).
+- No new cryptography dependencies.
+- Domain separation purposes:
+  - `ROUTEGUARD_V2_SHIPPER_POD_REVIEW`
+  - `ROUTEGUARD_V2_REFEREE_RESOLUTION`
+- Canonical JSON via repository `canonicalize()` (sorted keys).
+- Tests generate ephemeral ECDSA key pairs at runtime (never committed).
+
+### Trust-policy boundary
+
+- `src/v2/trust/policy.ts` — immutable `TrustPolicy` (shipper key, referee registry, access treasury).
+- Snapshotted onto lifecycle record at create; events cannot override.
+- Verification in `LifecycleService` before pure reduce; reducer never reads env/files.
+
+### Changed / added files (v0.7.2)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.7.2 A3a checkpoint |
+| `src/v2/trust/policy.ts` | **New** — external trust policy |
+| `src/v2/access/resource.ts` | **New** — versioned protected resources |
+| `src/v2/auth/canonical.ts` | **New** — domain-separated sign payloads |
+| `src/v2/auth/verify.ts` | **New** — ECDSA verify + sealed auth |
+| `src/v2/lifecycle/events.ts` | Shipper/referee fields; remove event allowlist |
+| `src/v2/lifecycle/record.ts` | Trust snapshot + resolution binding fields |
+| `src/v2/lifecycle/reducer.ts` | Auth, treasury, resource, settlement exact match |
+| `src/v2/store/lifecycle-service.ts` | Pre-reduce verification |
+| `test/v2-lifecycle-fixtures.ts` | Ephemeral keys + signed helpers |
+| `test/v2-lifecycle-*.test.ts` | Updated for auth |
+| `test/v2-authorization-signatures.test.ts` | **New** |
+| `test/v2-referee-resolution-binding.test.ts` | **New** |
+| `test/v2-access-policy-binding.test.ts` | **New** |
+
+### Validation (v0.7.2)
+
+- `npm run typecheck`: **PASS**
+- Phase A focused tests: **PASS** — 14 files / 87 tests
+- full `npm test`: **PASS** — 58 files / 644 tests
+- `npm run check:secrets`: **PASS** — 236 files scanned
+- `git diff --check`: **PASS**
+- v1 evidence: **unchanged**
+- Network writes: **0**
+
+### Unresolved blockers (deferred)
+
+- **RG-V2-A-004** — File CAS concurrency lock
+- **RG-V2-A-005** — File load schema validation / corrupt-state fail-closed
+
+### Current state
+
+Authorization and access-payment bindings hardened. Phase B still blocked on
+A-004/A-005 file-store hardening (A3b).
+
+### Next steps
+
+1. Phase A3b: file-store concurrency and corruption hardening (A-004, A-005).
+2. Re-review blockers; then Phase B x402 tender/bid gates.
+3. Do **not** re-run v1 live final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 

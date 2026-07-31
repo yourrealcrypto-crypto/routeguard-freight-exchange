@@ -1,6 +1,7 @@
 /**
  * Pure deterministic lifecycle reducer.
- * No Date.now, random, filesystem, or network.
+ * No Date.now, random, filesystem, network, or env reads.
+ * Cryptographic verification is performed outside and supplied as sealed auth.
  */
 
 import { canonicalSha256 } from "../../domain/canonical-hash";
@@ -14,6 +15,13 @@ import {
   isNonNegativeAtomicString,
   isPositiveAtomicString,
 } from "../access/fee";
+import { tenderActivateResource } from "../access/resource";
+import {
+  isSealedVerifiedAuth,
+  type VerifiedAuth,
+  type VerifiedRefereeResolutionAuth,
+  type VerifiedShipperReviewAuth,
+} from "../auth/verify";
 import {
   computeCorrectionDeadline,
   computePostResubmitReviewDeadline,
@@ -29,6 +37,14 @@ import type {
   LifecycleTransitionRecord,
 } from "./record";
 import type { V2LifecycleState } from "./states";
+
+/**
+ * Explicit reduce context. Trust identities are snapshotted on the record;
+ * sealed verifiedAuth is produced only by the verification module.
+ */
+export type LifecycleReduceContext = {
+  readonly verifiedAuth?: VerifiedAuth;
+};
 
 const LEGAL: ReadonlyMap<V2LifecycleState, readonly V2LifecycleState[]> =
   new Map([
@@ -183,13 +199,62 @@ function withTransition(
   };
 }
 
+function requireSealedShipperAuth(
+  context: LifecycleReduceContext | undefined,
+  event: LifecycleEvent,
+  action: "ACCEPT" | "REQUEST_CORRECTION" | "REJECT_DISPUTE",
+): VerifiedShipperReviewAuth {
+  const auth = context?.verifiedAuth;
+  if (!auth || !isSealedVerifiedAuth(auth) || auth.kind !== "SHIPPER_POD_REVIEW") {
+    throw new LifecycleGuardError(
+      "SHIPPER_AUTH_REQUIRED",
+      "sealed shipper authorization is required",
+    );
+  }
+  if (auth.actionId !== event.actionId) {
+    throw new LifecycleGuardError(
+      "AUTH_ACTION_MISMATCH",
+      "verified auth actionId does not match event",
+    );
+  }
+  if (auth.reviewAction !== action) {
+    throw new LifecycleGuardError(
+      "AUTH_ACTION_MISMATCH",
+      "verified auth review action does not match event",
+    );
+  }
+  return auth;
+}
+
+function requireSealedRefereeAuth(
+  context: LifecycleReduceContext | undefined,
+  event: LifecycleEvent,
+): VerifiedRefereeResolutionAuth {
+  const auth = context?.verifiedAuth;
+  if (!auth || !isSealedVerifiedAuth(auth) || auth.kind !== "REFEREE_RESOLUTION") {
+    throw new LifecycleGuardError(
+      "REFEREE_AUTH_REQUIRED",
+      "sealed referee authorization is required",
+    );
+  }
+  if (auth.actionId !== event.actionId) {
+    throw new LifecycleGuardError(
+      "AUTH_ACTION_MISMATCH",
+      "verified auth actionId does not match event",
+    );
+  }
+  return auth;
+}
+
 /**
  * Apply one lifecycle event. Pure: returns a new record.
  * Does not implement CAS / store persistence.
+ * Signed transitions require sealed verifiedAuth from the verification service.
  */
 export function reduceLifecycle(
   record: LifecycleRecord,
   event: LifecycleEvent,
+  context: LifecycleReduceContext = {},
 ): LifecycleRecord {
   requireUtc("eventTime", event.eventTime);
 
@@ -312,11 +377,20 @@ export function reduceLifecycle(
           `amountAtomic must be ${expectedFee}`,
         );
       }
-      const expectedResource = `/api/v2/tenders/${record.tenderId}/activate`;
+      const expectedResource = tenderActivateResource(
+        record.tenderId,
+        record.tenderVersion,
+      );
       if (event.resource !== expectedResource) {
         throw new LifecycleGuardError(
           "ACCESS_RESOURCE",
-          `resource must bind tender: expected ${expectedResource}`,
+          `resource must bind tenderId+version: expected ${expectedResource}`,
+        );
+      }
+      if (event.payTo !== record.trust.accessTreasuryAccountId) {
+        throw new LifecycleGuardError(
+          "ACCESS_TREASURY",
+          "payTo must equal configured access treasury account",
         );
       }
       if (!event.paymentTransactionId || !event.paymentPayloadHash) {
@@ -603,15 +677,40 @@ export function reduceLifecycle(
           "reviewDeadlineAt missing",
         );
       }
+      if (event.reviewDeadlineAt !== record.reviewDeadlineAt) {
+        throw new LifecycleGuardError(
+          "DEADLINE_BIND",
+          "reviewDeadlineAt must match bound deadline",
+        );
+      }
       if (!isBeforeOrEqualUtc(event.eventTime, record.reviewDeadlineAt)) {
         throw new LifecycleGuardError(
           "AFTER_REVIEW_DEADLINE",
           "correction request must be at or before review deadline",
         );
       }
+      if (!record.podId) {
+        throw new LifecycleGuardError("POD_REQUIRED", "podId missing on record");
+      }
+      const auth = requireSealedShipperAuth(
+        context,
+        event,
+        "REQUEST_CORRECTION",
+      );
+      if (auth.signPayload.podId !== record.podId) {
+        throw new LifecycleGuardError("POD_MISMATCH", "auth podId mismatch");
+      }
+      if (
+        auth.signPayload.tenderId !== record.tenderId ||
+        auth.signPayload.tenderVersion !== record.tenderVersion
+      ) {
+        throw new LifecycleGuardError("TENDER_MISMATCH", "auth tender mismatch");
+      }
       return withTransition(record, "POD_CORRECTION_REQUESTED", event, {
         correctionDeadlineAt: computeCorrectionDeadline(event.eventTime),
         shipperActionTaken: true,
+        lastShipperAuthPayloadHash: auth.payloadHash,
+        lastShipperKeyFingerprint: auth.trustedKeyFingerprint,
       });
     }
 
@@ -653,12 +752,6 @@ export function reduceLifecycle(
           "POD_ACCEPTED",
         );
       }
-      if (!event.shipperSignature) {
-        throw new LifecycleGuardError(
-          "SHIPPER_SIGNATURE",
-          "shipperSignature required",
-        );
-      }
       if (!record.reviewDeadlineAt) {
         throw new LifecycleGuardError(
           "NO_REVIEW_DEADLINE",
@@ -677,8 +770,23 @@ export function reduceLifecycle(
           "acceptance must be at or before review deadline",
         );
       }
+      if (!record.podId) {
+        throw new LifecycleGuardError("POD_REQUIRED", "podId missing on record");
+      }
+      const auth = requireSealedShipperAuth(context, event, "ACCEPT");
+      if (auth.signPayload.podId !== record.podId) {
+        throw new LifecycleGuardError("POD_MISMATCH", "auth podId mismatch");
+      }
+      if (
+        auth.signPayload.tenderId !== record.tenderId ||
+        auth.signPayload.tenderVersion !== record.tenderVersion
+      ) {
+        throw new LifecycleGuardError("TENDER_MISMATCH", "auth tender mismatch");
+      }
       return withTransition(record, "POD_ACCEPTED", event, {
         shipperActionTaken: true,
+        lastShipperAuthPayloadHash: auth.payloadHash,
+        lastShipperKeyFingerprint: auth.trustedKeyFingerprint,
       });
     }
 
@@ -747,10 +855,10 @@ export function reduceLifecycle(
           "structured rejection reasons required",
         );
       }
-      if (!event.shipperSignature || !event.disputeId) {
+      if (!event.disputeId) {
         throw new LifecycleGuardError(
           "REJECT_FIELDS",
-          "shipperSignature and disputeId required",
+          "disputeId required",
         );
       }
       if (!record.reviewDeadlineAt) {
@@ -771,9 +879,24 @@ export function reduceLifecycle(
           "rejection must be at or before review deadline",
         );
       }
+      if (!record.podId) {
+        throw new LifecycleGuardError("POD_REQUIRED", "podId missing on record");
+      }
+      const auth = requireSealedShipperAuth(context, event, "REJECT_DISPUTE");
+      if (auth.signPayload.podId !== record.podId) {
+        throw new LifecycleGuardError("POD_MISMATCH", "auth podId mismatch");
+      }
+      if (
+        auth.signPayload.tenderId !== record.tenderId ||
+        auth.signPayload.tenderVersion !== record.tenderVersion
+      ) {
+        throw new LifecycleGuardError("TENDER_MISMATCH", "auth tender mismatch");
+      }
       return withTransition(record, "POD_DISPUTED", event, {
         disputeId: event.disputeId,
         shipperActionTaken: true,
+        lastShipperAuthPayloadHash: auth.payloadHash,
+        lastShipperKeyFingerprint: auth.trustedKeyFingerprint,
       });
     }
 
@@ -790,28 +913,30 @@ export function reduceLifecycle(
           "AI signer is not permitted",
         );
       }
-      if (!event.allowlistedRefereeKeys.includes(event.refereePublicKey)) {
+      const auth = requireSealedRefereeAuth(context, event);
+      if (auth.refereeId !== event.refereeId) {
         throw new LifecycleGuardError(
-          "REFEREE_NOT_ALLOWLISTED",
-          "referee public key is not allowlisted",
+          "REFEREE_ID_MISMATCH",
+          "verified refereeId does not match event",
         );
       }
-      if (!event.signature || event.signature.length !== 128) {
+      if (auth.disputeId !== event.disputeId || auth.podId !== event.podId) {
         throw new LifecycleGuardError(
-          "REFEREE_SIGNATURE",
-          "referee signature must be 128 hex characters",
-        );
-      }
-      if (!/^[0-9a-fA-F]{128}$/.test(event.signature)) {
-        throw new LifecycleGuardError(
-          "REFEREE_SIGNATURE",
-          "referee signature must be hex",
+          "AUTH_BINDING",
+          "verified dispute/pod does not match event",
         );
       }
       if (
-        record.disputeId &&
-        event.disputeId !== record.disputeId
+        auth.resolution !== event.resolution ||
+        auth.releaseAmountAtomic !== event.releaseAmountAtomic ||
+        auth.refundAmountAtomic !== event.refundAmountAtomic
       ) {
+        throw new LifecycleGuardError(
+          "AUTH_AMOUNT_MISMATCH",
+          "verified resolution amounts do not match event",
+        );
+      }
+      if (record.disputeId && event.disputeId !== record.disputeId) {
         throw new LifecycleGuardError(
           "DISPUTE_MISMATCH",
           "disputeId mismatch",
@@ -819,6 +944,12 @@ export function reduceLifecycle(
       }
       if (record.podId && event.podId !== record.podId) {
         throw new LifecycleGuardError("POD_MISMATCH", "podId mismatch");
+      }
+      if (
+        auth.signPayload.tenderId !== record.tenderId ||
+        auth.signPayload.tenderVersion !== record.tenderVersion
+      ) {
+        throw new LifecycleGuardError("TENDER_MISMATCH", "auth tender mismatch");
       }
       requireNonNegAtomic("releaseAmountAtomic", event.releaseAmountAtomic);
       requireNonNegAtomic("refundAmountAtomic", event.refundAmountAtomic);
@@ -853,6 +984,9 @@ export function reduceLifecycle(
         refereeResolution: event.resolution,
         releaseAmountAtomic: event.releaseAmountAtomic,
         refundAmountAtomic: event.refundAmountAtomic,
+        resolutionPayloadHash: auth.payloadHash,
+        refereeId: auth.refereeId,
+        refereeKeyFingerprint: auth.trustedKeyFingerprint,
         disputeId: event.disputeId,
       });
     }
@@ -873,13 +1007,37 @@ export function reduceLifecycle(
         throw new LifecycleGuardError("RELEASE_TX", "releaseTxId required");
       }
       requirePositiveAtomic("releaseAmountAtomic", event.releaseAmountAtomic);
-      const expected =
+      const locked =
         record.lockedAmountAtomic ?? record.winningAmountAtomic;
-      if (expected && event.releaseAmountAtomic !== expected) {
+      if (!locked) {
+        throw new LifecycleGuardError(
+          "LOCKED_MISSING",
+          "locked amount required for release",
+        );
+      }
+      if (event.releaseAmountAtomic !== locked) {
         throw new LifecycleGuardError(
           "RELEASE_AMOUNT",
           "releaseAmountAtomic must equal locked amount",
         );
+      }
+      // When releasing after referee full release, amounts must match decision.
+      if (record.state === "REFEREE_DECISION") {
+        if (record.refereeResolution !== "RELEASE_FULL") {
+          throw new LifecycleGuardError(
+            "RESOLUTION_MISMATCH",
+            "full release requires RELEASE_FULL decision",
+          );
+        }
+        if (
+          record.releaseAmountAtomic !== event.releaseAmountAtomic ||
+          record.refundAmountAtomic !== "0"
+        ) {
+          throw new LifecycleGuardError(
+            "DECISION_AMOUNT_MISMATCH",
+            "release must exactly match verified referee decision",
+          );
+        }
       }
       return withTransition(record, "PAYMENT_RELEASED", event, {
         releaseTxId: event.releaseTxId,
@@ -908,6 +1066,15 @@ export function reduceLifecycle(
         throw new LifecycleGuardError(
           "CONSERVATION",
           "partial release + refund must equal locked amount",
+        );
+      }
+      if (
+        event.releaseAmountAtomic !== record.releaseAmountAtomic ||
+        event.refundAmountAtomic !== record.refundAmountAtomic
+      ) {
+        throw new LifecycleGuardError(
+          "DECISION_AMOUNT_MISMATCH",
+          "partial settlement must exactly match verified referee decision",
         );
       }
       if (!event.releaseTxId || !event.refundTxId) {
@@ -943,14 +1110,31 @@ export function reduceLifecycle(
             "full budget refund required for NO_QUALIFIED_BID",
           );
         }
-      } else if (
-        record.lockedAmountAtomic &&
-        event.refundAmountAtomic !== record.lockedAmountAtomic
-      ) {
-        throw new LifecycleGuardError(
-          "REFUND_AMOUNT",
-          "refund must equal locked amount",
-        );
+      } else {
+        if (record.refereeResolution !== "REFUND_FULL") {
+          throw new LifecycleGuardError(
+            "RESOLUTION_MISMATCH",
+            "full refund requires REFUND_FULL decision",
+          );
+        }
+        if (
+          record.refundAmountAtomic !== event.refundAmountAtomic ||
+          record.releaseAmountAtomic !== "0"
+        ) {
+          throw new LifecycleGuardError(
+            "DECISION_AMOUNT_MISMATCH",
+            "refund must exactly match verified referee decision",
+          );
+        }
+        if (
+          record.lockedAmountAtomic &&
+          event.refundAmountAtomic !== record.lockedAmountAtomic
+        ) {
+          throw new LifecycleGuardError(
+            "REFUND_AMOUNT",
+            "refund must equal locked amount",
+          );
+        }
       }
       return withTransition(record, "REFUNDED", event, {
         refundTxId: event.refundTxId,

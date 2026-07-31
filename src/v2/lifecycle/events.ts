@@ -127,6 +127,9 @@ export type PodReviewStarted = LifecycleEventBase & {
 export type PodCorrectionRequested = LifecycleEventBase & {
   readonly type: "POD_CORRECTION_REQUESTED";
   readonly reasons: readonly { code: string; message: string }[];
+  readonly shipperSignature: string;
+  readonly signedAt: string;
+  readonly reviewDeadlineAt: string;
 };
 
 export type PodPackageResubmitted = LifecycleEventBase & {
@@ -139,6 +142,7 @@ export type PodPackageResubmitted = LifecycleEventBase & {
 export type PodAcceptedByShipper = LifecycleEventBase & {
   readonly type: "POD_ACCEPTED_BY_SHIPPER";
   readonly shipperSignature: string;
+  readonly signedAt: string;
   readonly reviewDeadlineAt: string;
 };
 
@@ -155,6 +159,7 @@ export type PodRejectedToDispute = LifecycleEventBase & {
   readonly type: "POD_REJECTED_TO_DISPUTE";
   readonly reasons: readonly { code: string; message: string }[];
   readonly shipperSignature: string;
+  readonly signedAt: string;
   readonly reviewDeadlineAt: string;
   readonly disputeId: string;
 };
@@ -166,12 +171,16 @@ export type RefereeResolutionRecorded = LifecycleEventBase & {
   readonly resolution: "RELEASE_FULL" | "REFUND_FULL" | "PARTIAL";
   readonly releaseAmountAtomic: string;
   readonly refundAmountAtomic: string;
+  readonly rationaleCode: string;
   readonly refereeId: string;
-  readonly refereePublicKey: string;
+  /**
+   * Optional event-supplied key; if present must equal trusted registry key.
+   * Never used as allowlist authority.
+   */
+  readonly refereePublicKey?: string;
   readonly signature: string;
-  readonly signedPayloadHash: string;
+  readonly signedAt: string;
   readonly signerKind: "HUMAN_REFEREE";
-  readonly allowlistedRefereeKeys: readonly string[];
 };
 
 export type EscrowReleaseConfirmed = LifecycleEventBase & {
