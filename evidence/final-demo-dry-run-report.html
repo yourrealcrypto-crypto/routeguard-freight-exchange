@@ -52,6 +52,29 @@
       border: 1px solid var(--border);
       border-radius: 16px;
     }
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin: 24px 0 0;
+      padding: 14px 20px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .brand-bar .rg-compact {
+      display: block;
+      width: 240px;
+      height: auto;
+      max-width: 100%;
+    }
+    .brand-bar .rg-symbol-mobile {
+      display: none;
+      width: 40px;
+      height: auto;
+    }
     .brand-row {
       display: flex;
       align-items: center;
@@ -59,12 +82,29 @@
       gap: 16px;
       flex-wrap: wrap;
     }
-    .rg-mark {
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--pay);
+    .proof-motif {
+      margin: 0 0 18px;
+      text-align: center;
+    }
+    .proof-motif .trust-lane-desktop {
+      display: block;
+      width: 100%;
+      max-width: 800px;
+      height: auto;
+      margin: 0 auto;
+    }
+    .proof-motif .proof-rail-mobile {
+      display: none;
+      width: 120px;
+      height: auto;
+      margin: 0 auto;
+    }
+    .footer-brand {
+      display: block;
+      width: 320px;
+      height: auto;
+      max-width: 100%;
+      margin: 0 0 14px;
     }
     h1 {
       margin: 10px 0 8px;
@@ -248,15 +288,37 @@
       .actors, .timeline, .proof-row { grid-template-columns: 1fr; }
       h1 { font-size: 30px; }
     }
+    @media (max-width: 480px) {
+      .brand-bar .rg-compact { display: none; }
+      .brand-bar .rg-symbol-mobile { display: block; }
+      .proof-motif .trust-lane-desktop { display: none; }
+      .proof-motif .proof-rail-mobile { display: block; }
+      .footer-brand { width: 100%; max-width: 260px; }
+    }
   </style>
+  <link rel="icon" href="../public/brand/routeguard/routeguard-favicon.svg" type="image/svg+xml" />
 </head>
 <body>
   <div class="mode-banner mode-dry" role="status">○ OFFLINE_DRY_RUN — rehearsal only — zero network writes — identifiers are simulated — no live HashScan links</div>
   <div class="wrap">
-    <header class="hero" role="banner">
+    <div class="brand-bar" role="banner">
+      <img
+        class="rg-compact"
+        src="../public/brand/routeguard/routeguard-compact-header-light.svg"
+        width="240"
+        alt="RouteGuard"
+      />
+      <img
+        class="rg-symbol-mobile"
+        src="../public/brand/routeguard/routeguard-symbol-small.svg"
+        width="40"
+        alt="RouteGuard"
+      />
+      <div class="chip"><strong>OFFLINE_DRY_RUN</strong></div>
+    </div>
+    <header class="hero">
       <div class="brand-row">
-        <div class="rg-mark">RouteGuard</div>
-        <div class="chip"><strong>OFFLINE_DRY_RUN</strong></div>
+        <div class="chip"><strong>Public proof report</strong></div>
       </div>
       <h1>RouteGuard Freight Exchange</h1>
       <p class="tagline">Carrier software offers transport capacity. Shipper software accepts the winning offer by paying an x402 reservation fee on Hedera. Confirmed settlement — not a promise — creates the route reservation.</p>
@@ -301,6 +363,19 @@
 
       <section aria-labelledby="timeline-heading">
         <h2 id="timeline-heading">Seven-step timeline</h2>
+        <div class="proof-motif" aria-hidden="true">
+          <img
+            class="trust-lane-desktop"
+            src="../public/brand/routeguard/routeguard-trust-lane-horizontal.svg"
+            alt=""
+          />
+          <img
+            class="proof-rail-mobile"
+            src="../public/brand/routeguard/routeguard-proof-rail-mobile.svg"
+            width="120"
+            alt=""
+          />
+        </div>
         <div class="timeline" role="list">
           <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">2026-07-27T17:03:40.737456789Z</div></div>
           <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">2026-07-27T17:03:40.857456789Z</div></div>
@@ -476,7 +551,13 @@
     </main>
 
     <footer class="site-footer" role="contentinfo">
-      <div><strong>RouteGuard</strong> primary brand · public repository:
+      <img
+        class="footer-brand"
+        src="../public/brand/routeguard/routeguard-full-lockup-dark.svg"
+        width="320"
+        alt="RouteGuard Freight Exchange"
+      />
+      <div>Primary brand · public repository:
         <a href="https://github.com/yourrealcrypto-crypto/routeguard-freight-exchange" rel="noopener noreferrer">https://github.com/yourrealcrypto-crypto/routeguard-freight-exchange</a>
       </div>
       <div class="attrib">

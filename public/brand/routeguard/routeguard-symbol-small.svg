@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 501 328" width="501" height="328" role="img" aria-labelledby="t d">
-  <title id="t">RouteGuard symbol</title>
-  <desc id="d">Standalone RouteGuard symbol: gateway, origin node, three waypoints, verification checkmark, short verified exit and terminal node. Product identity mark, not a status icon.</desc>
+  <title id="t">RouteGuard symbol — small optical size</title>
+  <desc id="d">Optical-size symbol for 16-48 px: gateway, origin node, two waypoints, verification checkmark and short verified exit. Separate asset; the standard symbol is unchanged.</desc>
   <g id="routeguard-gateway" fill="none" stroke="#0E243A" stroke-width="32" stroke-linecap="butt">
     <path d="M130 135 L130 58 A42 42 0 0 1 172 16 L381 16 A42 42 0 0 1 423 58 L423 155"></path>
     <path d="M130 218 L130 270 A42 42 0 0 0 172 312 L381 312 A42 42 0 0 0 423 270 L423 213"></path>
@@ -9,7 +9,6 @@
     <circle cx="26" cy="184" r="26"></circle>
     <circle cx="82" cy="184" r="10.5"></circle>
     <circle cx="126" cy="184" r="10.5"></circle>
-    <circle cx="170" cy="184" r="10.5"></circle>
   </g>
   <g id="routeguard-verified-route" fill="#0A9F4D">
     <path d="M337 174 L480 174 L480 194 L321 194 Z"></path>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 60" width="700" height="60" role="img" aria-labelledby="t d">
+  <title id="t">RouteGuard route divider</title>
+  <desc id="d">Restrained horizontal divider derived from the master geometry at 35%: short dotted inbound segment, small verification pivot and solid confirmed segment. Not a logo.</desc>
+  <g id="routeguard-route-divider" transform="translate(-9.6,-24.4) scale(0.35)">
+  <g id="routeguard-inbound" fill="#0A9F4D">
+    <circle cx="38" cy="184" r="10.5"></circle>
+    <circle cx="82" cy="184" r="10.5"></circle>
+    <circle cx="126" cy="184" r="10.5"></circle>
+    <circle cx="170" cy="184" r="10.5"></circle>
+  </g>
+  <g id="routeguard-verified-route" fill="#0A9F4D">
+    <path d="M337 174 L2006.4 174 L2006.4 194 L321 194 Z"></path>
+    <circle id="routeguard-terminal-node" cx="2006.4" cy="184" r="21"></circle>
+  </g>
+  <path id="routeguard-check" fill="none" stroke="#0A9F4D" stroke-width="29" stroke-linecap="round" stroke-linejoin="round" d="M219 172 L258 213 L366 98"></path>
+  </g>
+</svg>

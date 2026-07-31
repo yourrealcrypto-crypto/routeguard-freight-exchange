@@ -1,12 +1,107 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.5.0
+**Version:** 0.5.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-brand-assets` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `e72e2065dcac3ebdbd3501f912226ca7ff084dfb` (brand-assets branch base)
+**Prior checkpoint HEAD:** `fe0a4f255d775fe2adbda987dec8d774bf3d7425` (v0.5.0 vector brand assets)
 **Authoritative plan:** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard production brand integration (v0.5.1)
+
+Approved Stitch production SVG assets and the brand integration handoff are
+copied into the repository and wired into the existing development shell and
+public proof report. **No payment, auction, settlement, or live evidence values
+changed.** Hedera brand assets remain unmodified. Network writes: **0**.
+
+### Brand assets integrated
+
+Source: `F:\Temp\RouteGuard_Stitch_Production_Assets` →
+`assets/brand/routeguard/` (canonical) and `public/brand/routeguard/` (served).
+
+| Asset | Role |
+|---|---|
+| `routeguard-full-lockup-light.svg` | Design-system / formal identity |
+| `routeguard-full-lockup-dark.svg` | Dark footer brand anchor |
+| `routeguard-compact-header-light.svg` | Desktop global / proof header |
+| `routeguard-compact-header-dark.svg` | Ops console expanded sidebar |
+| `routeguard-symbol.svg` | Ops console collapsed sidebar |
+| `routeguard-symbol-small.svg` | Mobile header / proof mobile header |
+| `routeguard-trust-lane-horizontal.svg` | How-it-works + proof timeline motif |
+| `routeguard-proof-rail-mobile.svg` | Mobile process / evidence rail |
+| `routeguard-route-divider.svg` | Available divider motif |
+| `routeguard-favicon.svg` | Browser favicon |
+| `routeguard-app-icon.svg` | App icon source |
+| `routeguard-full-lockup-monochrome.svg` | Single-color formal lockup |
+| `routeguard-full-lockup-white.svg` | White formal lockup |
+| `ROUTEGUARD_BRAND_ASSET_MANIFEST.md` | Asset index |
+| `routeguard-logo-specification.md` | Geometry specification |
+| `ROUTEGUARD_BRAND_INTEGRATION_HANDOFF.md` | Screen/component placement contract |
+
+### Screens / components updated
+
+| Surface | Placements |
+|---|---|
+| Design system / development shell (`src/server/page.ts`) | Master identity (full lockup light); desktop compact header; mobile symbol-small; ops sidebar expanded/collapsed; how-it-works trust-lane + mobile proof-rail; dark footer full lockup; favicon |
+| Live proof report (`scripts/render-final-demo-report.ts` → `evidence/*-report.html`) | Light brand bar compact header; mobile symbol-small; trust-lane + mobile proof-rail on timeline (labels/timestamps preserved); dark footer lockup; favicon |
+| Static serving (`src/server/app.ts`) | `/brand/*` from `public/` (RouteGuard + existing Hedera) |
+
+Responsive substitutions (≤480px): compact → symbol-small; trust-lane → proof-rail-mobile.
+Accessibility: meaningful alt on lockups/symbols; empty alt + `aria-hidden` on motifs.
+Symbol is not used as a status icon. Sequence labels and verified facts unchanged.
+
+### Changed / added files (v0.5.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | Version 0.5.1 brand integration checkpoint |
+| `assets/brand/routeguard/routeguard-*.svg` (production family) | Exact copy from Stitch production package |
+| `assets/brand/routeguard/ROUTEGUARD_BRAND_ASSET_MANIFEST.md` | Manifest |
+| `assets/brand/routeguard/routeguard-logo-specification.md` | Logo specification |
+| `assets/brand/routeguard/ROUTEGUARD_BRAND_INTEGRATION_HANDOFF.md` | Integration handoff |
+| `public/brand/routeguard/*.svg` | Served production SVGs (byte-identical copies) |
+| `src/server/page.ts` | Brand placements per handoff |
+| `src/server/app.ts` | Static `/brand/*` serving |
+| `scripts/render-final-demo-report.ts` | Live-proof brand placements |
+| `evidence/final-demo-report.html` | Regenerated presentation only |
+| `evidence/final-demo-dry-run-report.html` | Regenerated presentation only |
+
+### Validation (v0.5.1)
+
+- all referenced SVG files exist: **PASS**
+- no embedded raster / external SVG resources: **PASS**
+- source ↔ `assets` ↔ `public` SHA-256 match for 13 production SVGs: **PASS**
+- responsive substitutions present in CSS: **PASS**
+- accessibility alt / aria-hidden rules: **PASS**
+- aspect ratios via width + height:auto (no forced square distortion): **PASS**
+- Hedera assets under `public/brand/hedera/` unchanged: **PASS**
+- live evidence JSON/MD/reservation record byte-identical: **PASS**
+- `npm run typecheck`: **PASS**
+- `npm test`: **PASS** — 44 files / 557 tests; 0 failed
+- `npm run report:final-demo`: **PASS** (presentation regeneration only)
+- `npm run check:secrets`: **PASS** — 205 files scanned
+- `git diff --check` (integration paths): **PASS**
+- no `lint` script in package.json (not currently supported)
+- no separate `build` script; typecheck is the compile gate
+- `npm run verify` / live demo: **NOT RUN** (prohibited)
+
+### Current state
+
+Production brand family is integrated into the development shell and judge-facing
+reports per the Stitch handoff. Authoritative live evidence remains unchanged.
+Ready for owner review of visual placement; still no live re-run.
+
+### Next steps
+
+1. Owner visual review of development shell + reports with brand assets.
+2. Record submission video when authorized (no live payment).
+3. Push / PR only when owner authorizes publish.
+
+**Network writes in this checkpoint: 0.** No Hedera transaction, HCS submission,
+payment, push, deployment, or other network write occurred.
 
 ---
 

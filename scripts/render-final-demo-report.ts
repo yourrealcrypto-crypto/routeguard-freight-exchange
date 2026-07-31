@@ -463,7 +463,7 @@ function linkButton(
  */
 export function renderFinalDemoReportHtml(
   evidence: FinalDemoEvidenceJson,
-  options?: { brandAssetBase?: string },
+  options?: { brandAssetBase?: string; routeGuardBrandBase?: string },
 ): string {
   const isLive = evidence.mode === FINAL_DEMO_MODE_LIVE;
   if (isLive) {
@@ -488,6 +488,13 @@ export function renderFinalDemoReportHtml(
 
   const brandBase = options?.brandAssetBase ?? "../public/brand/hedera";
   const hederaLogo = `${brandBase}/hedera-primary-logo-alt.svg`;
+  const routeGuardBrandBase =
+    options?.routeGuardBrandBase ?? "../public/brand/routeguard";
+  const rgCompactLight = `${routeGuardBrandBase}/routeguard-compact-header-light.svg`;
+  const rgSymbolSmall = `${routeGuardBrandBase}/routeguard-symbol-small.svg`;
+  const rgFullLockupDark = `${routeGuardBrandBase}/routeguard-full-lockup-dark.svg`;
+  const rgTrustLane = `${routeGuardBrandBase}/routeguard-trust-lane-horizontal.svg`;
+  const rgProofRailMobile = `${routeGuardBrandBase}/routeguard-proof-rail-mobile.svg`;
 
   const topicId = evidence.topic?.topicId ?? "missing";
   const sequences = [...(evidence.sequences ?? [])].sort(
@@ -614,6 +621,29 @@ export function renderFinalDemoReportHtml(
       border: 1px solid var(--border);
       border-radius: 16px;
     }
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin: 24px 0 0;
+      padding: 14px 20px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .brand-bar .rg-compact {
+      display: block;
+      width: 240px;
+      height: auto;
+      max-width: 100%;
+    }
+    .brand-bar .rg-symbol-mobile {
+      display: none;
+      width: 40px;
+      height: auto;
+    }
     .brand-row {
       display: flex;
       align-items: center;
@@ -621,12 +651,29 @@ export function renderFinalDemoReportHtml(
       gap: 16px;
       flex-wrap: wrap;
     }
-    .rg-mark {
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--pay);
+    .proof-motif {
+      margin: 0 0 18px;
+      text-align: center;
+    }
+    .proof-motif .trust-lane-desktop {
+      display: block;
+      width: 100%;
+      max-width: 800px;
+      height: auto;
+      margin: 0 auto;
+    }
+    .proof-motif .proof-rail-mobile {
+      display: none;
+      width: 120px;
+      height: auto;
+      margin: 0 auto;
+    }
+    .footer-brand {
+      display: block;
+      width: 320px;
+      height: auto;
+      max-width: 100%;
+      margin: 0 0 14px;
     }
     h1 {
       margin: 10px 0 8px;
@@ -810,15 +857,37 @@ export function renderFinalDemoReportHtml(
       .actors, .timeline, .proof-row { grid-template-columns: 1fr; }
       h1 { font-size: 30px; }
     }
+    @media (max-width: 480px) {
+      .brand-bar .rg-compact { display: none; }
+      .brand-bar .rg-symbol-mobile { display: block; }
+      .proof-motif .trust-lane-desktop { display: none; }
+      .proof-motif .proof-rail-mobile { display: block; }
+      .footer-brand { width: 100%; max-width: 260px; }
+    }
   </style>
+  <link rel="icon" href="${escapeHtml(routeGuardBrandBase)}/routeguard-favicon.svg" type="image/svg+xml" />
 </head>
 <body>
   ${banner}
   <div class="wrap">
-    <header class="hero" role="banner">
+    <div class="brand-bar" role="banner">
+      <img
+        class="rg-compact"
+        src="${escapeHtml(rgCompactLight)}"
+        width="240"
+        alt="RouteGuard"
+      />
+      <img
+        class="rg-symbol-mobile"
+        src="${escapeHtml(rgSymbolSmall)}"
+        width="40"
+        alt="RouteGuard"
+      />
+      <div class="chip"><strong>${escapeHtml(evidence.mode)}</strong></div>
+    </div>
+    <header class="hero">
       <div class="brand-row">
-        <div class="rg-mark">RouteGuard</div>
-        <div class="chip"><strong>${escapeHtml(evidence.mode)}</strong></div>
+        <div class="chip"><strong>Public proof report</strong></div>
       </div>
       <h1>RouteGuard Freight Exchange</h1>
       <p class="tagline">Carrier software offers transport capacity. Shipper software accepts the winning offer by paying an x402 reservation fee on Hedera. Confirmed settlement — not a promise — creates the route reservation.</p>
@@ -863,6 +932,19 @@ export function renderFinalDemoReportHtml(
 
       <section aria-labelledby="timeline-heading">
         <h2 id="timeline-heading">Seven-step timeline</h2>
+        <div class="proof-motif" aria-hidden="true">
+          <img
+            class="trust-lane-desktop"
+            src="${escapeHtml(rgTrustLane)}"
+            alt=""
+          />
+          <img
+            class="proof-rail-mobile"
+            src="${escapeHtml(rgProofRailMobile)}"
+            width="120"
+            alt=""
+          />
+        </div>
         <div class="timeline" role="list">
           <div class="step hcs" role="listitem"><div class="n">1 · HCS</div><div class="t">Tender opened (seq 1)</div><div class="ts">${escapeHtml(sequences[0]?.consensusTimestamp ?? "")}</div></div>
           <div class="step hcs" role="listitem"><div class="n">2 · HCS</div><div class="t">Bid committed — alpha (seq 2)</div><div class="ts">${escapeHtml(sequences[1]?.consensusTimestamp ?? "")}</div></div>
@@ -1004,7 +1086,13 @@ export function renderFinalDemoReportHtml(
     </main>
 
     <footer class="site-footer" role="contentinfo">
-      <div><strong>RouteGuard</strong> primary brand · public repository:
+      <img
+        class="footer-brand"
+        src="${escapeHtml(rgFullLockupDark)}"
+        width="320"
+        alt="RouteGuard Freight Exchange"
+      />
+      <div>Primary brand · public repository:
         <a href="${escapeHtml(PUBLIC_REPO_URL)}" rel="noopener noreferrer">${escapeHtml(PUBLIC_REPO_URL)}</a>
       </div>
       <div class="attrib">
@@ -1048,6 +1136,7 @@ export function writeFinalDemoReport(options: {
   evidencePath: string;
   outputPath: string;
   brandAssetBase?: string;
+  routeGuardBrandBase?: string;
   expectMode?: FinalDemoReportMode;
 }): string {
   const evidence = loadFinalDemoEvidence(options.evidencePath);
@@ -1063,6 +1152,9 @@ export function writeFinalDemoReport(options: {
   const html = renderFinalDemoReportHtml(evidence, {
     ...(options.brandAssetBase
       ? { brandAssetBase: options.brandAssetBase }
+      : {}),
+    ...(options.routeGuardBrandBase
+      ? { routeGuardBrandBase: options.routeGuardBrandBase }
       : {}),
   });
   mkdirSync(path.dirname(options.outputPath), { recursive: true });
@@ -1094,6 +1186,7 @@ if (isMain()) {
       outputPath: dryOut,
       expectMode: FINAL_DEMO_MODE_DRY,
       brandAssetBase: "../public/brand/hedera",
+      routeGuardBrandBase: "../public/brand/routeguard",
     }),
   );
   console.log(`Wrote dry report: ${dryOut}`);
@@ -1106,6 +1199,7 @@ if (isMain()) {
           outputPath: liveOut,
           expectMode: FINAL_DEMO_MODE_LIVE,
           brandAssetBase: "../public/brand/hedera",
+          routeGuardBrandBase: "../public/brand/routeguard",
         }),
       );
       console.log(`Wrote live report: ${liveOut}`);

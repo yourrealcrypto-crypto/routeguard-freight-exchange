@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 501 328" width="501" height="328" role="img" aria-labelledby="t d">
-  <title id="t">RouteGuard symbol</title>
-  <desc id="d">Standalone RouteGuard symbol: gateway, origin node, three waypoints, verification checkmark, short verified exit and terminal node. Product identity mark, not a status icon.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1304 328" width="1304" height="328" role="img" aria-labelledby="t d">
+  <title id="t">RouteGuard trust lane — horizontal motif</title>
+  <desc id="d">Derived process motif, not a logo: dotted inbound route, controlled checkpoint, verification, solid confirmed route and terminal state. No wordmark.</desc>
   <g id="routeguard-gateway" fill="none" stroke="#0E243A" stroke-width="32" stroke-linecap="butt">
     <path d="M130 135 L130 58 A42 42 0 0 1 172 16 L381 16 A42 42 0 0 1 423 58 L423 155"></path>
     <path d="M130 218 L130 270 A42 42 0 0 0 172 312 L381 312 A42 42 0 0 0 423 270 L423 213"></path>
@@ -12,8 +12,8 @@
     <circle cx="170" cy="184" r="10.5"></circle>
   </g>
   <g id="routeguard-verified-route" fill="#0A9F4D">
-    <path d="M337 174 L480 174 L480 194 L321 194 Z"></path>
-    <circle id="routeguard-terminal-node" cx="480" cy="184" r="21"></circle>
+    <path d="M337 174 L1283 174 L1283 194 L321 194 Z"></path>
+    <circle id="routeguard-terminal-node" cx="1283" cy="184" r="21"></circle>
   </g>
   <path id="routeguard-check" fill="none" stroke="#0A9F4D" stroke-width="29" stroke-linecap="round" stroke-linejoin="round" d="M219 172 L258 213 L366 98"></path>
 </svg>

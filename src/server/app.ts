@@ -1,3 +1,4 @@
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 
 import { config } from "../config";
@@ -21,6 +22,14 @@ app.onError((error, context) => {
 app.get("/", (context) => {
   return context.html(renderDevelopmentPage());
 });
+
+// Locked production brand assets (RouteGuard + Hedera). Read-only static files.
+app.use(
+  "/brand/*",
+  serveStatic({
+    root: "./public",
+  }),
+);
 
 app.get("/api/health", (context) => {
   return context.json({
