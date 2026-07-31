@@ -1,13 +1,215 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.0
+**Version:** 0.7.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `34e04c6510f8722c0900fb835166fd5dbb4ede7c` (v0.6.1 brand assets)
+**Prior checkpoint HEAD:** `8f4265fabe1a2162b94689628f475c6de526b426` (v0.7.0 Phase A2)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A independent review (v0.7.1)
+
+**Review type:** adversarial, documentation-only (no production source/test changes).  
+**Scope:** Phase A1 (`875c352`) + Phase A2 (`8f4265f`) only.  
+**Network writes:** **0**.  
+**v1 evidence:** **unchanged**.
+
+### Review validation
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | **PASS** |
+| Phase A focused tests (11 files) | **PASS** — 63 / 63 |
+| full `npm test` | **PASS** — 55 files / 620 tests |
+| `npm run check:secrets` | **PASS** — 229 files |
+| `git diff --check` | **PASS** |
+| Live Hedera / x402 / HCS writes | **NOT RUN** |
+
+### Verdict
+
+**PHASE_A_REVIEW = FAIL** (blocking defects).  
+**PHASE_B_READY = NO** until CRITICAL/HIGH findings are remediated.
+
+Category scores (relative to Phase A claims):
+
+| Category | Score | Notes |
+|---|---|---|
+| State machine graph | PASS | Intended edges; terminal complete path; no illegal shortcuts found |
+| Event binding | FAIL | Referee allowlist attacker-controlled; weak auth bindings |
+| Deadlines | PASS | 48h/24h/24h exact; at-boundary accept/deemed; after-boundary reject |
+| Action idempotency | PASS | Canonical payload hash; replay no version bump; conflict on payload change |
+| CAS persistence | FAIL | No concurrent lock; unvalidated file load |
+| Money conservation | FAIL | Allocation OK; partial settlement not bound to referee amounts |
+| Access fee model | PASS | Derived 1000; minor binding gaps (version/payTo) |
+| AI non-binding | PASS | Advisory cannot authorize settlement states |
+| Referee authorization | FAIL | No crypto verify; allowlist from event |
+| HCS 2.0 contracts | PASS | 16 types; UTF-8 `<1024`; privacy by field name (gaps on free text) |
+
+### Findings
+
+#### RG-V2-A-001 — CRITICAL — Referee authorization
+- **Category:** Referee authorization / event binding  
+- **Location:** `src/v2/lifecycle/reducer.ts` ~793–798 (`REFEREE_RESOLUTION_RECORDED`)  
+- **Current:** `event.allowlistedRefereeKeys.includes(event.refereePublicKey)` — allowlist is **supplied by the event**.  
+- **Attack:** Submit a resolution with `allowlistedRefereeKeys: [attackerKey]` and matching `refereePublicKey`; any hex signature of length 128 passes later shape checks. Reaches `REFEREE_DECISION` then release/refund/partial.  
+- **Expected:** Allowlist from deployment config / tender record only; never from the untrusted event body.  
+- **Minimal fix:** Store `allowlistedRefereeKeys` on lifecycle create or config; ignore event allowlist; fail if event tries to supply one.  
+- **Regression test:** Event carrying self-allowlisted key must fail; config allowlist must succeed.  
+- **Block Phase B:** **YES** (before any settlement-dependent path; treat as blocker for A remediation even if B is access-only).
+
+#### RG-V2-A-002 — CRITICAL — Signature presence ≠ verification
+- **Category:** Referee / shipper authorization  
+- **Location:** `reducer.ts` ~656–661 (shipper), ~799–809 (referee); `src/v2/schemas/referee.ts` ~33–35  
+- **Current:** Only format checks (non-empty / 128 hex). No ECDSA verify over canonical resolution/accept payload. `signedPayloadHash` is not bound by crypto.  
+- **Attack:** After A-001 fix, still forge signatures without the private key if only format is checked; transplant any 128-hex blob between disputes.  
+- **Expected:** Verify signature with allowlisted key over canonical bytes of outcome, amounts, tenderId, podId, disputeId (existing `signature.ts` pattern). Shipper accept/reject similarly.  
+- **Minimal fix:** Call `verifyCanonicalPayload` (or equivalent) before transitioning.  
+- **Regression test:** Wrong signature fails; signature for dispute A fails on dispute B (transplant).  
+- **Block Phase B:** **YES** for settlement; **YES** for any path claiming human authorization.
+
+#### RG-V2-A-003 — HIGH — Partial settlement not bound to referee decision amounts
+- **Category:** Money conservation / event binding  
+- **Location:** `reducer.ts` ~891–924 (`ESCROW_PARTIAL_RELEASE_CONFIRMED`)  
+- **Current:** Checks `release + refund === locked` only; does **not** require equality with `record.releaseAmountAtomic` / `record.refundAmountAtomic` set at `REFEREE_DECISION`.  
+- **Attack:** Referee records 400k/300k; later settlement event posts 100k/600k (still conserves lock) — different economic outcome than the signed decision.  
+- **Expected:** Settlement amounts must exactly match recorded referee resolution (and resolution type).  
+- **Minimal fix:** Assert event amounts === record fields; fail closed on mismatch.  
+- **Regression test:** Mismatched partial amounts after referee decision fail.  
+- **Block Phase B:** **YES** before escrow release integration.
+
+#### RG-V2-A-004 — HIGH — File CAS lacks concurrency control
+- **Category:** CAS / persistence  
+- **Location:** `src/v2/store/lifecycle-store.ts` ~146–171 (`FileLifecycleStore.compareAndSet`)  
+- **Current:** Read version → check → writeAtomic with no file lock / mutex (unlike v1 reservation store).  
+- **Failure:** Two writers both observe version N; both write N+1; last writer wins; one transition lost despite CAS intent.  
+- **Expected:** Exclusive lock or atomic CAS primitive; loser must fail and retry after re-read.  
+- **Minimal fix:** Port reservation-style `wx` lock or keyed mutex around read-check-write.  
+- **Regression test:** Concurrent applies; at most one succeeds per version; no silent clobber.  
+- **Block Phase B:** **YES** if multi-process/server writers; **YES** before production-like durability claims.
+
+#### RG-V2-A-005 — HIGH — File load trusts unvalidated JSON
+- **Category:** CAS / persistence  
+- **Location:** `lifecycle-store.ts` ~138–144 (`get`); no schema assert on CAS write  
+- **Current:** `JSON.parse(raw) as LifecycleRecord` with no Zod/schema validation.  
+- **Attack/failure:** Corrupt or hand-edited file can present `state: PAYMENT_RELEASED`, forged `lockedAmountAtomic`, empty `processedActions` → illegal economic assumptions on next apply.  
+- **Expected:** Fail-closed parse via record schema (state enum, atomic strings, version).  
+- **Minimal fix:** Validate with Zod on every read/write (v1 reservation pattern).  
+- **Regression test:** Mutated state/amount on disk fails on load.  
+- **Block Phase B:** **YES** before relying on file durability for gates/settlement.
+
+#### RG-V2-A-006 — MEDIUM — Access resource omits tender version
+- **Category:** Access fee / event binding  
+- **Location:** `reducer.ts` ~315–320  
+- **Current:** Resource must equal `/api/v2/tenders/${tenderId}/activate` only.  
+- **Scenario:** Payment for version 1 could be presented for a different lifecycle row sharing tenderId (if versioning model ever reuses ids) or resource replay across versions.  
+- **Expected:** Resource binds tenderId **and** tenderVersion (and ideally actionId).  
+- **Minimal fix:** Include version in expected path or challenge description fields.  
+- **Regression test:** Wrong version resource fails.  
+- **Block Phase B:** Recommended before x402 gate wiring.
+
+#### RG-V2-A-007 — MEDIUM — Access payTo not bound to treasury
+- **Category:** Access fee  
+- **Location:** `reducer.ts` `TENDER_ACTIVATION_PAID`; `fee.ts` documents env key only  
+- **Current:** Asset/amount checked; `payTo`/`payerAccount` not validated against `ROUTEGUARD_ACCESS_TREASURY_ACCOUNT_ID`.  
+- **Scenario:** Access receipt can name arbitrary payTo while still opening tender.  
+- **Expected:** When treasury configured, payTo must match; fail closed if required and missing.  
+- **Minimal fix:** Bind payTo from config in reducer/service.  
+- **Regression test:** Wrong payTo fails.  
+- **Block Phase B:** Recommended for Phase B gates.
+
+#### RG-V2-A-008 — MEDIUM — Overfund excess not modeled on no-bid refund
+- **Category:** Money conservation  
+- **Location:** `reducer.ts` ~939–945  
+- **Current:** NO_QUALIFIED_BID refund must equal `maximumFreightBudgetAtomic`, not `fundedAmountAtomic`.  
+- **Scenario:** Shipper funded budget+delta; only budget refunded; leftover stuck in escrow model.  
+- **Expected:** Refund funded amount or explicit residual accounting.  
+- **Minimal fix:** Refund `fundedAmountAtomic` (or locked residual field).  
+- **Regression test:** Overfund → full fund refund.  
+- **Block Phase B:** No (escrow Phase C).
+
+#### RG-V2-A-009 — MEDIUM — HCS free-text fields can smuggle PII
+- **Category:** HCS privacy  
+- **Location:** `src/hcs/v2/privacy.ts` (key-name blocklist only); `DISPUTE_OPENED.reasonCode` free string  
+- **Current:** Privacy is field-name based; values in `reasonCode` / similar can hold names, phones, narratives.  
+- **Expected:** Structured reason codes only, or length/charset limits + denylist content checks for free text.  
+- **Minimal fix:** Enum reason codes; reject free narrative fields.  
+- **Regression test:** PII-like reasonCode fails or is rejected by schema.  
+- **Block Phase B:** No.
+
+#### RG-V2-A-010 — MEDIUM — HCS size only checked on small samples
+- **Category:** HCS contracts / tests  
+- **Location:** `src/hcs/v2/envelope.ts` `assertHcsV2EnvelopeWithinLimit`; `test/v2-hcs-v2-messages.test.ts`  
+- **Current:** Build path enforces UTF-8 `<1024` (good); tests use short IDs. Max-length IDs (128) across fields may fail at runtime only.  
+- **Expected:** Explicit max-budget envelope fixture test; consider tighter field budgets.  
+- **Minimal fix:** Add worst-case size test; shrink allowed id lengths if needed.  
+- **Regression test:** Max-length fields still `<1024` or fail closed predictably.  
+- **Block Phase B:** No.
+
+#### RG-V2-A-011 — MEDIUM — Lifecycle create lacks money/schema guards
+- **Category:** Money / persistence  
+- **Location:** `src/v2/lifecycle/record.ts` `createLifecycleRecord`  
+- **Current:** Accepts any string budget/hash without atomic/hash validation.  
+- **Expected:** Positive atomic budget; valid tenderHash at create.  
+- **Minimal fix:** Validate on create and on store write.  
+- **Regression test:** Invalid budget/hash rejected.  
+- **Block Phase B:** Recommended.
+
+#### RG-V2-A-012 — LOW — No monotonic eventTime guard
+- **Category:** Deadlines  
+- **Location:** `reducer.ts` (all events)  
+- **Current:** `eventTime` can be earlier than `updatedAt`.  
+- **Expected:** Optional fail-closed non-decreasing eventTime for audit integrity.  
+- **Minimal fix:** Reject `eventTime < updatedAt` where appropriate.  
+- **Regression test:** Backward eventTime fails.  
+- **Block Phase B:** No.
+
+#### RG-V2-A-013 — LOW — POD resubmit omits ciphertextHash requirement
+- **Category:** Event binding  
+- **Location:** `reducer.ts` ~637–646  
+- **Current:** Requires podId + contentHash only.  
+- **Expected:** Require ciphertextHash as on first submit.  
+- **Minimal fix:** Require both hashes.  
+- **Regression test:** Missing ciphertextHash fails.  
+- **Block Phase B:** No.
+
+#### RG-V2-A-014 — LOW — Test gaps (non-exhaustive)
+- **Category:** Test adequacy  
+- **Missing:** crypto verify/transplant; concurrent file CAS; load corrupt JSON; max HCS size; actionId after process restart via file store; cross-tender service misuse; overfund refund; resource version binding.  
+- **Block Phase B:** No by itself; required with A-001–A-005 fixes.
+
+### Positive controls confirmed
+
+- Access fee `0.001` → derived **1000** atomic via decimals 6 (not bare hardcode as sole authority).  
+- Token pin `0.0.429274`.  
+- Pure reducer: no `Date.now` / random / network in lifecycle reduce path.  
+- Deadline boundaries (at/after) covered by tests.  
+- AI `POD_ADVISORY_ANCHORED` cannot move to release/accept/dispute.  
+- Allocation conservation `win + excess = max` enforced.  
+- HCS schema `routeguard-hcs-2.0`; size uses UTF-8 byte length.  
+- v1 final-demo evidence and tests unaffected (suite green).
+
+### Changed files (v0.7.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | **Only** — this independent review record |
+
+### Current state
+
+Phase A1+A2 implementation remains as committed. Independent review found **2 CRITICAL**, **3 HIGH**, **6 MEDIUM**, **3 LOW**. Remediation required before Phase B.
+
+### Next steps
+
+1. Focused Codex remediation of **RG-V2-A-001 … A-005** (blockers), then A-006/A-007/A-011.  
+2. Add regression tests listed per finding.  
+3. Re-review; only then plan Phase B x402 tender/bid gates.  
+4. Do **not** re-run v1 live final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 
