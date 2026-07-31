@@ -11,6 +11,8 @@
     "dev": "tsx watch src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
+    "contracts:compile": "tsx scripts/compile-contracts.ts",
+    "contracts:test": "vitest run test/escrow-contract-registration.test.ts test/escrow-contract-settlement.test.ts test/escrow-contract-security.test.ts",
     "preflight": "tsx scripts/preflight.ts",
     "check:accounts": "tsx scripts/check-accounts.ts",
     "check:usdc": "tsx scripts/check-usdc-readiness.ts",
@@ -48,11 +50,16 @@
     "@x402/hedera": "2.16.0",
     "@x402/hono": "2.16.0",
     "dotenv": "^16.4.0",
+    "ethers": "6.16.0",
     "hono": "^4.6.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@ethereumjs/evm": "3.1.1",
+    "@ethereumjs/util": "9.1.0",
+    "@openzeppelin/contracts": "5.1.0",
     "@types/node": "^22.0.0",
+    "solc": "0.8.28",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.9"

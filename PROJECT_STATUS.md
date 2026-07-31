@@ -1,13 +1,158 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.8.2
+**Version:** 0.9.0
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-phase-b` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `d01232062986f4427c14611609ee41e60f024511` (v0.8.1 Phase B2a recovery)
+**Branch:** `feat/routeguard-v2-phase-c` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `a2e4bb8bdabf0246a44b880b9f592021a687bf0e` (v0.8.2 Phase B2b live access payments)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase C1 — freight-principal escrow contract (v0.9.0)
+
+The HTS USDC freight escrow that will custody the actual freight principal,
+plus its TypeScript integration boundary. **Entirely offline.**
+
+**NETWORK_WRITES=0.** **LIVE_FREIGHT_ESCROW=NO.** No contract deployed, no
+escrow funded, no Hedera transaction, HCS message, Mirror query, facilitator
+call, or x402 payment. v1 evidence and the Phase B live access evidence
+(`evidence/v2/access/`) are unchanged.
+
+### Contract
+
+`contracts/RouteGuardFreightEscrow.sol` — one contract, many tenders, keyed by a
+canonical `bytes32` tender key derived from an explicit RouteGuard domain
+separator, the tender identity hash, and the tender version. The HTS USDC token
+is `immutable`; there is no per-tender token and no setter.
+
+| State transition | Reached by |
+|---|---|
+| `UNREGISTERED` → `REGISTERED` | operator `registerTender` |
+| `REGISTERED` → `FUNDED` | **shipper** `fundTender` (exact budget) |
+| `FUNDED` → `ALLOCATED` | operator `allocateWinner` (+ immediate exact excess refund) |
+| `FUNDED` → `REFUNDED` | operator `refundNoQualifiedBid` |
+| `ALLOCATED` → `RELEASED` | operator `releaseFull` (POD accepted / deemed accepted) |
+| `ALLOCATED` → `DISPUTED` | operator `openDispute` |
+| `DISPUTED` → `RELEASED` / `REFUNDED` / `PARTIALLY_RELEASED` | referee-authorized `resolveDisputeRelease` / `refundFull` / `partialRelease` |
+
+`RELEASED`, `REFUNDED`, and `PARTIALLY_RELEASED` are terminal and inescapable.
+Once a dispute is open the ordinary `releaseFull` path is closed.
+
+### Money model
+
+- **Exact funding**, matching the Phase A lock: underfunding and overfunding
+  both revert. No unmodeled residual can enter the escrow.
+- **Allocation conservation:** `winningAmount + excessRefunded == fundedAmount`.
+  The exact excess returns to the shipper in the same transaction, the tender's
+  escrow balance then equals exactly the winning amount, and the carrier
+  receives nothing during allocation.
+- **Settlement** moves only the locked amount, in full, with strict partial
+  conservation.
+- Amounts arrive as `uint256`, are bounded to `int64.max` and only then narrowed
+  to `uint64`, so no wrap can produce a valid amount. `totalEscrowedAmount`
+  always equals the sum of per-tender balances.
+
+### Authorization model
+
+OpenZeppelin `Ownable2Step` operator (two-step transfer, never unowned) plus
+`ReentrancyGuard`. Only the operator registers/allocates/disputes/settles; only
+the registered shipper funds their own tender. RouteGuard verifies shipper and
+referee signatures **off-chain** and submits the canonical authorization hash,
+which the contract records and enforces as **globally single-use**. The contract
+evaluates no POD document and accepts no AI output as authorization — an
+"AI advisory" is simply an unauthorized caller. On-chain signature verification
+/ multisig remains a documented production hardening option and is stated as a
+limitation in `docs/v2-freight-escrow.md`.
+
+### HTS token-transfer architecture
+
+The production contract calls the HTS system contract at `0x167`
+(`transferToken`, `associateToken`) with the immutable escrow token, checks
+**every** response code (only `SUCCESS` proceeds), and uses the precompile as
+its **only** external callee — no arbitrary call target, `delegatecall`,
+upgrade/proxy surface, or sweep function. State is written before transfers
+(checks-effects-interactions) and every entry point is `nonReentrant`.
+
+The state machine lives in the abstract `RouteGuardFreightEscrowBase`; the
+production contract implements the transfer primitives over HTS and the offline
+test contract over an in-contract ledger, so the tested logic is the deployed
+logic and only the token rail differs.
+
+### Tooling added (development only unless noted)
+
+| Package | Scope | Why |
+|---|---|---|
+| `solc@0.8.28` | dev | Pinned Solidity compiler; pure JS, local imports only, no external binary |
+| `@ethereumjs/evm@3.1.1`, `@ethereumjs/util@9.1.0` | dev | In-process EVM so contract tests run under the existing vitest runner |
+| `@openzeppelin/contracts@5.1.0` | dev | Proven `Ownable2Step` + `ReentrancyGuard`; no custom access control or cryptography |
+| `ethers@6.16.0` | **prod** | keccak256 / ABI coding / log decoding for the TS boundary (already present transitively via `@hiero-ledger/sdk`, so no new install weight) |
+
+New scripts: `npm run contracts:compile`, `npm run contracts:test`. Generated
+`artifacts/` is gitignored and recreated by the compile script.
+
+### Changed / added files (v0.9.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.9.0 Phase C1 checkpoint |
+| `docs/v2-freight-escrow.md` | **New** — purpose, x402 separation, states, money rules, authorization limits, HTS transfers, events, TS boundary, offline test status, Phase C2 configuration plan |
+| `contracts/RouteGuardFreightEscrowBase.sol` | **New** — abstract state machine, accounting, authorization-hash single use |
+| `contracts/RouteGuardFreightEscrow.sol` | **New** — deployable HTS implementation |
+| `contracts/interfaces/IHederaTokenService.sol` | **New** — minimal HTS surface + response codes |
+| `contracts/test/MockLedgerFreightEscrow.sol` | **New** — offline ledger harness (never deployed) |
+| `contracts/test/ReentrantSettlementAttacker.sol` | **New** — offline reentrancy probe |
+| `scripts/compile-contracts.ts` | **New** — offline solc compilation + artifacts |
+| `src/v2/escrow/tender-key.ts` | **New** — canonical key derivation and identity validation |
+| `src/v2/escrow/amounts.ts` | **New** — atomic validation, HTS bounds, conservation |
+| `src/v2/escrow/abi.ts` | **New** — exported ABI |
+| `src/v2/escrow/requests.ts` | **New** — pure transaction-plan builders |
+| `src/v2/escrow/events.ts` | **New** — public-safe event and result parsers |
+| `src/v2/escrow/states.ts` | **New** — escrow state enum mirroring the contract |
+| `src/v2/escrow/lifecycle-map.ts` | **New** — lifecycle ↔ escrow mapping |
+| `src/v2/escrow/index.ts` | **New** — boundary barrel |
+| `test/helpers/escrow-evm.ts` | **New** — in-process EVM harness |
+| `test/helpers/escrow-fixtures.ts` | **New** — shared escrow fixtures |
+| `test/escrow-contract-registration.test.ts` | **New** — 28 tests |
+| `test/escrow-contract-settlement.test.ts` | **New** — 20 tests |
+| `test/escrow-contract-security.test.ts` | **New** — 12 tests |
+| `test/v2-escrow-boundary.test.ts` | **New** — 28 tests |
+| `package.json` / `package-lock.json` | Contract toolchain + scripts |
+| `.gitignore` | Ignore generated `artifacts/` |
+
+### Validation (v0.9.0)
+
+- Solidity compile (`npm run contracts:compile`): **PASS** — solc 0.8.28, 0 errors
+- Solidity offline tests (`npm run contracts:test`): **PASS** — 3 files / **60** tests
+- `npm run typecheck`: **PASS**
+- Phase A + B + C1 focused tests: **PASS** — 28 files / 353 tests
+- full `npm test`: **PASS** — 72 files / **910** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 289 files scanned
+- `git diff --check`: **PASS**
+- v1 `evidence/final-demo-*` and Phase B `evidence/v2/access/`: **unchanged** — 0 modified paths
+- live Hedera / HCS / Mirror / facilitator / x402: **NOT RUN**
+
+### Current state
+
+The freight-principal escrow contract exists, compiles, and is proved offline
+against its real bytecode: registration, exact funding, allocation with exact
+excess refund, no-winner refund, POD release, dispute, referee resolutions,
+terminal-state protection, reentrancy, transfer-failure rollback, unsafe
+narrowing, multi-tender isolation, accounting integrity, and access control.
+The TypeScript boundary derives tender keys byte-identically to the contract and
+produces transaction plans only. **No freight escrow is deployed and no freight
+principal has moved.**
+
+### Next step
+
+**Phase C2: guarded Hedera testnet contract deployment**, escrow registration,
+funding, winner allocation, and excess-refund proof — with Mirror verification
+at each step and evidence written only under `evidence/v2/`. Do **not** re-run
+the v1 live final-auction and do **not** repeat the Phase B access payments.
+
+**NETWORK_WRITES=0.**
 
 ---
 
