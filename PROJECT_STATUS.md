@@ -1,13 +1,81 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.6.1
+**Version:** 0.7.0
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `875c352643d7e99893fcdd4db1214ccb522c75a2` (v0.6.0 Phase A1 — preserved)
+**Prior checkpoint HEAD:** `34e04c6510f8722c0900fb835166fd5dbb4ede7c` (v0.6.1 brand assets)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase A2 — lifecycle engine and HCS 2.0 (v0.7.0)
+
+Deterministic, pure lifecycle reducer with legal-transition guards, deadline
+arithmetic, action-id idempotency, CAS persistence (memory + filesystem), and
+offline `routeguard-hcs-2.0` message contracts. **No network writes. No HTTP
+routes, x402 middleware, HCS submit, escrow runtime, or POD upload.** Phase A1
+schemas preserved. v1 live evidence unchanged.
+
+### Delivered
+
+| Area | Implementation |
+|---|---|
+| Events + reducer | `src/v2/lifecycle/events.ts`, `reducer.ts` — pure; no Date.now/random/IO |
+| Deadlines | `src/v2/lifecycle/deadlines.ts` — 48h review / 24h correction / 24h post-resubmit |
+| Record | `src/v2/lifecycle/record.ts` — versioned history + processedActions |
+| CAS store | `src/v2/store/lifecycle-store.ts` — InMemory + File (atomic write/rename) |
+| Idempotency service | `src/v2/store/lifecycle-service.ts` — replay vs conflict |
+| HCS 2.0 | `src/hcs/v2/*` — 16 message types, builders, size & privacy checks |
+
+### Changed / added files (v0.7.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | Version 0.7.0 Phase A2 checkpoint |
+| `src/v2/lifecycle/deadlines.ts` | **New** — deadline arithmetic |
+| `src/v2/lifecycle/errors.ts` | **New** — typed lifecycle errors |
+| `src/v2/lifecycle/events.ts` | **New** — typed events |
+| `src/v2/lifecycle/record.ts` | **New** — durable record shape |
+| `src/v2/lifecycle/reducer.ts` | **New** — pure reducer + legal graph |
+| `src/v2/store/lifecycle-store.ts` | **New** — CAS memory/file stores |
+| `src/v2/store/lifecycle-service.ts` | **New** — apply + idempotency |
+| `src/hcs/v2/types.ts` | **New** — HCS 2.0 message types |
+| `src/hcs/v2/privacy.ts` | **New** — public-safe field enforcement |
+| `src/hcs/v2/envelope.ts` | **New** — builders, serialize, size checks |
+| `test/v2-lifecycle-fixtures.ts` | **New** — shared A2 fixtures |
+| `test/v2-lifecycle-state-machine.test.ts` | **New** |
+| `test/v2-lifecycle-deadlines.test.ts` | **New** |
+| `test/v2-lifecycle-idempotency.test.ts` | **New** |
+| `test/v2-lifecycle-store.test.ts` | **New** |
+| `test/v2-hcs-v2-messages.test.ts` | **New** |
+| `test/v2-hcs-v2-privacy.test.ts` | **New** |
+
+### Validation (v0.7.0)
+
+- `npm run typecheck`: **PASS**
+- Phase A1+A2 focused vitest: **PASS** — 11 files / 63 tests; 0 failed
+- full `npm test`: **PASS** — 55 files / 620 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 229 files scanned
+- `git diff --check`: **PASS**
+- v1 evidence `evidence/final-demo-*`: **unchanged**
+- live final-auction / Hedera writes: **NOT RUN**
+
+### Current state
+
+Phase A2 complete offline: lifecycle engine, CAS, idempotency, and HCS 2.0
+contracts are test-backed. Ready for independent Phase A review, then Phase B
+x402 tender/bid access gates.
+
+### Next steps
+
+1. Independent Phase A review.
+2. Phase B: x402 tender-activation and bid-submission gates (testnet-ready, guarded).
+3. Do **not** re-run v1 live final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 
