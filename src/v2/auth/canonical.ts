@@ -15,6 +15,9 @@ export const REFEREE_RESOLUTION_PURPOSE =
 
 export const CARRIER_BID_PURPOSE = "ROUTEGUARD_V2_CARRIER_BID" as const;
 
+export const CARRIER_POD_SUBMISSION_PURPOSE =
+  "ROUTEGUARD_V2_POD_SUBMISSION" as const;
+
 export type ShipperReviewActionKind =
   | "ACCEPT"
   | "REQUEST_CORRECTION"
@@ -147,6 +150,63 @@ export function buildCarrierBidSignPayload(input: {
     carrierAccountId: input.carrierAccountId,
     bidHash: input.bidHash,
     signedAt: input.signedAt,
+    actionId: input.actionId,
+  });
+}
+
+/**
+ * Carrier POD submission authorization payload.
+ * Binds tender, POD version, escrow key, manifest/package hashes, and actionId
+ * so a signature cannot be transplanted across packages or tenders.
+ */
+export type CarrierPodSubmissionSignPayload = {
+  readonly protocolVersion: typeof AUTH_PROTOCOL_VERSION;
+  readonly purpose: typeof CARRIER_POD_SUBMISSION_PURPOSE;
+  readonly podId: string;
+  readonly podVersion: number;
+  readonly tenderId: string;
+  readonly tenderVersion: number;
+  readonly winningBidId: string;
+  readonly escrowTenderKey: string;
+  readonly carrierId: string;
+  readonly carrierAccountId: string;
+  readonly deliveryTimestamp: string;
+  readonly manifestHash: string;
+  readonly packageContentHash: string;
+  readonly submittedAt: string;
+  readonly actionId: string;
+};
+
+export function buildCarrierPodSubmissionSignPayload(input: {
+  podId: string;
+  podVersion: number;
+  tenderId: string;
+  tenderVersion: number;
+  winningBidId: string;
+  escrowTenderKey: string;
+  carrierId: string;
+  carrierAccountId: string;
+  deliveryTimestamp: string;
+  manifestHash: string;
+  packageContentHash: string;
+  submittedAt: string;
+  actionId: string;
+}): CarrierPodSubmissionSignPayload {
+  return Object.freeze({
+    protocolVersion: AUTH_PROTOCOL_VERSION,
+    purpose: CARRIER_POD_SUBMISSION_PURPOSE,
+    podId: input.podId,
+    podVersion: input.podVersion,
+    tenderId: input.tenderId,
+    tenderVersion: input.tenderVersion,
+    winningBidId: input.winningBidId,
+    escrowTenderKey: input.escrowTenderKey,
+    carrierId: input.carrierId,
+    carrierAccountId: input.carrierAccountId,
+    deliveryTimestamp: input.deliveryTimestamp,
+    manifestHash: input.manifestHash,
+    packageContentHash: input.packageContentHash,
+    submittedAt: input.submittedAt,
     actionId: input.actionId,
   });
 }

@@ -14,13 +14,16 @@ import {
 } from "../trust/policy";
 import {
   buildCarrierBidSignPayload,
+  buildCarrierPodSubmissionSignPayload,
   buildRefereeResolutionSignPayload,
   buildShipperPodReviewSignPayload,
   CARRIER_BID_PURPOSE,
+  CARRIER_POD_SUBMISSION_PURPOSE,
   REFEREE_RESOLUTION_PURPOSE,
   SHIPPER_POD_REVIEW_PURPOSE,
   signPayloadHash,
   type CarrierBidSignPayload,
+  type CarrierPodSubmissionSignPayload,
   type RefereeResolutionSignPayload,
   type ShipperPodReviewSignPayload,
   type ShipperReviewActionKind,
@@ -69,10 +72,23 @@ export type VerifiedCarrierBidAuth = {
   readonly signPayload: CarrierBidSignPayload;
 };
 
+export type VerifiedCarrierPodAuth = {
+  readonly kind: "CARRIER_POD_SUBMISSION";
+  readonly purpose: typeof CARRIER_POD_SUBMISSION_PURPOSE;
+  readonly actionId: string;
+  readonly podId: string;
+  readonly podVersion: number;
+  readonly payloadHash: string;
+  readonly trustedKeyFingerprint: string;
+  readonly signatureAlgorithm: "ECDSA_SECP256K1_HIERO";
+  readonly signPayload: CarrierPodSubmissionSignPayload;
+};
+
 export type VerifiedAuth =
   | VerifiedShipperReviewAuth
   | VerifiedRefereeResolutionAuth
-  | VerifiedCarrierBidAuth;
+  | VerifiedCarrierBidAuth
+  | VerifiedCarrierPodAuth;
 
 export function isSealedVerifiedAuth(value: unknown): value is VerifiedAuth {
   return typeof value === "object" && value !== null && sealedAuth.has(value);
@@ -295,10 +311,89 @@ export function verifyCarrierBid(input: {
   });
 }
 
+/**
+ * Verify a carrier POD submission signature against the registered carrier key.
+ */
+export function verifyCarrierPodSubmission(input: {
+  registeredPublicKey: string;
+  podId: string;
+  podVersion: number;
+  tenderId: string;
+  tenderVersion: number;
+  winningBidId: string;
+  escrowTenderKey: string;
+  carrierId: string;
+  carrierAccountId: string;
+  deliveryTimestamp: string;
+  manifestHash: string;
+  packageContentHash: string;
+  submittedAt: string;
+  actionId: string;
+  signature: string;
+}): VerifiedCarrierPodAuth {
+  if (!input.signature || typeof input.signature !== "string") {
+    throw new AuthorizationError(
+      "MISSING_SIGNATURE",
+      "carrier POD signature required",
+    );
+  }
+  if (!input.registeredPublicKey) {
+    throw new AuthorizationError(
+      "CARRIER_NOT_REGISTERED",
+      "carrier has no registered signing key",
+    );
+  }
+  const signPayload = buildCarrierPodSubmissionSignPayload({
+    podId: input.podId,
+    podVersion: input.podVersion,
+    tenderId: input.tenderId,
+    tenderVersion: input.tenderVersion,
+    winningBidId: input.winningBidId,
+    escrowTenderKey: input.escrowTenderKey,
+    carrierId: input.carrierId,
+    carrierAccountId: input.carrierAccountId,
+    deliveryTimestamp: input.deliveryTimestamp,
+    manifestHash: input.manifestHash,
+    packageContentHash: input.packageContentHash,
+    submittedAt: input.submittedAt,
+    actionId: input.actionId,
+  });
+  const ok = verifyCanonicalPayload(
+    signPayload,
+    input.signature,
+    input.registeredPublicKey,
+  );
+  if (!ok) {
+    throw new AuthorizationError(
+      "POD_SIGNATURE_INVALID",
+      "carrier POD signature verification failed",
+    );
+  }
+  return seal({
+    kind: "CARRIER_POD_SUBMISSION" as const,
+    purpose: CARRIER_POD_SUBMISSION_PURPOSE,
+    actionId: input.actionId,
+    podId: input.podId,
+    podVersion: input.podVersion,
+    payloadHash: signPayloadHash(signPayload),
+    trustedKeyFingerprint: publicKeyFingerprint(input.registeredPublicKey),
+    signatureAlgorithm: "ECDSA_SECP256K1_HIERO" as const,
+    signPayload,
+  });
+}
+
 /** Test helper — sign a carrier bid payload with an ephemeral private key. */
 export function signCarrierBidForTests(
   privateKeyHex: string,
   payload: CarrierBidSignPayload,
+): string {
+  return signCanonicalPayload(payload, privateKeyHex);
+}
+
+/** Test helper — sign a carrier POD submission payload. */
+export function signCarrierPodForTests(
+  privateKeyHex: string,
+  payload: CarrierPodSubmissionSignPayload,
 ): string {
   return signCanonicalPayload(payload, privateKeyHex);
 }

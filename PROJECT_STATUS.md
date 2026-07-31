@@ -1,13 +1,78 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.9.1
+**Version:** 0.10.0
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-phase-c` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `f415340bd5fa0cf22fa5b8461671d0611f493311` (v0.9.0 Phase C1 offline escrow)
+**Branch:** `feat/routeguard-v2-phase-d` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `0719166a3ab2a5ba48e2e3d81e20d9b643f50474` (v0.9.1 Phase C2 live escrow)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase D1 — encrypted POD and shipper review (v0.10.0)
+
+Offline-complete POD workflow: signed carrier submission, AES-256-GCM encrypted
+storage, deterministic non-binding advisory, signed shipper review, and escrow
+release/dispute **transaction plans** only.
+
+**NETWORK_WRITES=0.** No HCS submit, Mirror call, live AI provider, freight
+release, contract dispute call, x402 payment, or live Phase D evidence.
+v1 `evidence/final-demo-*`, `evidence/v2/access/`, and `evidence/v2/escrow/` are
+**unchanged**.
+
+### Architecture
+
+| Concern | Choice |
+|---|---|
+| Content encryption | AES-256-GCM, unique DEK + IV per POD version |
+| AAD | tenderId, tenderVersion, podId, podVersion, manifestHash |
+| Key protection | `PodKeyProtector` + AES-256-GCM wrap under `ROUTEGUARD_POD_MASTER_KEY_BASE64` (32 bytes) |
+| Storage | `routeguard-v2-pod-store-1.0` envelope; `data/v2-pods/` (gitignored) |
+| Carrier auth | `ROUTEGUARD_V2_POD_SUBMISSION` domain-separated ECDSA |
+| Shipper auth | Existing `ROUTEGUARD_V2_SHIPPER_POD_REVIEW` |
+| Adviser | Deterministic stub `routeguard-deterministic-pod-assurance-v1` (`NON_BINDING_ADVISORY`) |
+| Escrow | `releaseFull` / `openDispute` plans bound to Phase C builders; never submitted |
+| HCS | `POD_SUBMITTED`, `POD_ADVISORY_ANCHORED`, `POD_REVIEW_ACTION`, `DISPUTE_OPENED` outbox only |
+
+Windows: review **48h**, correction **24h**, post-resubmit review **24h**.
+
+### Changed / added files (v0.10.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.10.0 Phase D1 checkpoint |
+| `docs/v2-pod-review.md` | **New** — POD, crypto, advisory, review, plan boundary, D2 prep |
+| `src/v2/pod/*` | **New** — package, policy, encrypt, storage, service, routes, adviser, plans, outbox |
+| `src/v2/auth/canonical.ts` | Carrier POD submission sign payload |
+| `src/v2/auth/verify.ts` | `verifyCarrierPodSubmission` + test helper |
+| `test/v2-pod-workflow.test.ts` | **New** — focused Phase D1 matrix |
+
+### Validation (v0.10.0)
+
+- `npm run typecheck`: **PASS**
+- Phase D1 focused suite (POD + A/C samples): **PASS** — 9 files / **191** tests
+- Solidity compile: **PASS** — solc 0.8.28
+- Solidity offline tests: **PASS** — **60** tests
+- full `npm test`: **PASS** — 73 files / **934** tests; 0 failed
+- `npm run check:secrets`: **PASS** — 319 files scanned
+- `git diff --check`: **PASS**
+- v1 / v2 access / v2 escrow evidence: **unchanged**
+- live Hedera / HCS / AI: **NOT RUN**
+
+### Current state
+
+Phase D1 complete offline: encrypted POD path connects the live ALLOCATED escrow
+to a typed release/dispute plan without moving funds. No live POD evidence yet.
+
+### Next step
+
+**Phase D2: guarded live synthetic POD, HCS anchors, and shipper acceptance
+proof** — still no freight release (Phase E). Do not re-run Phase B or C2 live
+writes.
+
+**NETWORK_WRITES=0.**
 
 ---
 
