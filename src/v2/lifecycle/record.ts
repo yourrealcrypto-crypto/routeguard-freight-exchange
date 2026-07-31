@@ -50,6 +50,49 @@ export type LifecycleAccessReceipt = {
   readonly paidAt: string;
 };
 
+/**
+ * Durable index entry for one consumed x402 access settlement.
+ *
+ * Every paid access action appends exactly one entry. The settlement
+ * transaction id is unique across the index, so a settled payment can never
+ * authorize a second action (tender activation or another bid).
+ */
+export type LifecycleAccessPayment = {
+  readonly accessActionType: "TENDER_ACTIVATE" | "BID_SUBMIT";
+  readonly actionId: string;
+  readonly bidId: string | null;
+  readonly asset: string;
+  readonly amountAtomic: string;
+  readonly resource: string;
+  readonly payTo: string;
+  readonly payerAccount: string;
+  readonly paymentTransactionId: string;
+  readonly paymentPayloadHash: string;
+  readonly settledAt: string;
+};
+
+/**
+ * Durable public-safe record of an accepted carrier bid.
+ * Carries the salted commitment only — never the freight amount, the salt, or
+ * any other private bid field.
+ */
+export type LifecycleBidEntry = {
+  readonly bidId: string;
+  readonly carrierId: string;
+  readonly carrierAccountId: string;
+  /** Salted hash of the complete private bid (the public commitment). */
+  readonly bidHash: string;
+  /** Hash of the signed bid envelope (bid + carrier signature). */
+  readonly signedBidEnvelopeHash: string;
+  /** Canonical hash of the HCS BID_COMMITMENT payload built at acceptance. */
+  readonly commitmentPayloadHash: string;
+  readonly carrierKeyFingerprint: string;
+  readonly bidAuthPayloadHash: string;
+  readonly accessPaymentTxId: string;
+  readonly actionId: string;
+  readonly acceptedAt: string;
+};
+
 export type LifecycleRecord = {
   readonly schemaVersion: typeof LIFECYCLE_RECORD_SCHEMA;
   readonly tenderId: string;
@@ -75,6 +118,10 @@ export type LifecycleRecord = {
   readonly activationPaymentTxId: string | null;
   /** Durable access-fee receipt recorded at TENDER_ACTIVATION_PAID. */
   readonly accessReceipt: LifecycleAccessReceipt | null;
+  /** Append-only index of every consumed x402 access settlement. */
+  readonly accessPayments: readonly LifecycleAccessPayment[];
+  /** Append-only registry of durably accepted carrier bids (public-safe). */
+  readonly bidRegistry: readonly LifecycleBidEntry[];
 
   // Auction
   readonly closureProofRef: string | null;
@@ -152,6 +199,8 @@ export function createLifecycleRecord(
     fundedAmountAtomic: null,
     activationPaymentTxId: null,
     accessReceipt: null,
+    accessPayments: [],
+    bidRegistry: [],
     closureProofRef: null,
     authoritativeBidSetHash: null,
     decisionManifestHash: null,

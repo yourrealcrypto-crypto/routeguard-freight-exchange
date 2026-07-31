@@ -13,6 +13,8 @@ export const SHIPPER_POD_REVIEW_PURPOSE =
 export const REFEREE_RESOLUTION_PURPOSE =
   "ROUTEGUARD_V2_REFEREE_RESOLUTION" as const;
 
+export const CARRIER_BID_PURPOSE = "ROUTEGUARD_V2_CARRIER_BID" as const;
+
 export type ShipperReviewActionKind =
   | "ACCEPT"
   | "REQUEST_CORRECTION"
@@ -99,6 +101,51 @@ export function buildRefereeResolutionSignPayload(input: {
     refundAmountAtomic: input.refundAmountAtomic,
     rationaleCode: input.rationaleCode,
     refereeId: input.refereeId,
+    signedAt: input.signedAt,
+    actionId: input.actionId,
+  });
+}
+
+/**
+ * Carrier bid authorization payload.
+ *
+ * Binds the salted bid hash (which commits to every private field, including
+ * the freight amount and the salt) together with the tender, bid, carrier, and
+ * action identity, so a signature cannot be transplanted onto another tender
+ * version, bid id, or paid action.
+ */
+export type CarrierBidSignPayload = {
+  readonly protocolVersion: typeof AUTH_PROTOCOL_VERSION;
+  readonly purpose: typeof CARRIER_BID_PURPOSE;
+  readonly tenderId: string;
+  readonly tenderVersion: number;
+  readonly bidId: string;
+  readonly carrierId: string;
+  readonly carrierAccountId: string;
+  readonly bidHash: string;
+  readonly signedAt: string;
+  readonly actionId: string;
+};
+
+export function buildCarrierBidSignPayload(input: {
+  tenderId: string;
+  tenderVersion: number;
+  bidId: string;
+  carrierId: string;
+  carrierAccountId: string;
+  bidHash: string;
+  signedAt: string;
+  actionId: string;
+}): CarrierBidSignPayload {
+  return Object.freeze({
+    protocolVersion: AUTH_PROTOCOL_VERSION,
+    purpose: CARRIER_BID_PURPOSE,
+    tenderId: input.tenderId,
+    tenderVersion: input.tenderVersion,
+    bidId: input.bidId,
+    carrierId: input.carrierId,
+    carrierAccountId: input.carrierAccountId,
+    bidHash: input.bidHash,
     signedAt: input.signedAt,
     actionId: input.actionId,
   });

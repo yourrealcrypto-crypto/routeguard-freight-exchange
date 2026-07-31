@@ -8,6 +8,7 @@ export const LIFECYCLE_EVENT_TYPES = [
   "ESCROW_FUNDING_CONFIRMED",
   "TENDER_ACTIVATION_PAID",
   "BIDDING_STARTED",
+  "BID_SUBMISSION_PAID",
   "AUCTION_CLOSE_CONFIRMED",
   "NO_QUALIFIED_BID_CONFIRMED",
   "WINNER_SELECTION_CONFIRMED",
@@ -65,6 +66,32 @@ export type TenderActivationPaid = LifecycleEventBase & {
 
 export type BiddingStarted = LifecycleEventBase & {
   readonly type: "BIDDING_STARTED";
+};
+
+/**
+ * A carrier bid whose x402 access fee is settled and whose private body is
+ * durably stored. Carries the salted commitment only — never the freight
+ * amount, the salt, or any other private bid field.
+ */
+export type BidSubmissionPaid = LifecycleEventBase & {
+  readonly type: "BID_SUBMISSION_PAID";
+  readonly accessActionType: AccessActionType;
+  readonly bidId: string;
+  readonly carrierId: string;
+  readonly carrierAccountId: string;
+  readonly bidHash: string;
+  readonly signedBidEnvelopeHash: string;
+  readonly commitmentPayloadHash: string;
+  /** Carrier authorization over the canonical bid payload. */
+  readonly carrierSignature: string;
+  readonly signedAt: string;
+  readonly asset: string;
+  readonly amountAtomic: string;
+  readonly resource: string;
+  readonly paymentTransactionId: string;
+  readonly paymentPayloadHash: string;
+  readonly payerAccount: string;
+  readonly payTo: string;
 };
 
 export type AuctionCloseConfirmed = LifecycleEventBase & {
@@ -219,6 +246,7 @@ export type LifecycleEvent =
   | EscrowFundingConfirmed
   | TenderActivationPaid
   | BiddingStarted
+  | BidSubmissionPaid
   | AuctionCloseConfirmed
   | NoQualifiedBidConfirmed
   | WinnerSelectionConfirmed

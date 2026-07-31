@@ -1,13 +1,123 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.7.5
+**Version:** 0.8.0
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `5cf8deae6819103307d584b5ebfb2d7806c87794` (v0.7.4 Phase A remediation re-review)
+**Branch:** `feat/routeguard-v2-phase-b` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `e7f110a551ddfcb4e6d3aba581a09c3418bc1e3e` (v0.7.5 Phase A accepted)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard v2 Phase B1 — x402 access gates (v0.8.0)
+
+Two real x402-protected RouteGuard actions implemented on the existing Hedera /
+x402 stack, with **mocked facilitator settlement** and complete offline
+integration tests. Phase A is accepted and unchanged in intent.
+
+**NETWORK_WRITES=0.** No real Hedera transfer, facilitator settlement, live HCS
+submission, Mirror confirmation, escrow funding, contract deployment, or live
+evidence generation occurred. v1 evidence is unchanged.
+
+### Delivered routes
+
+| Action | Route | Protected resource |
+|---|---|---|
+| Tender activation | `POST /api/v2/tenders/:tenderId/v/:tenderVersion/activate` | `/api/v2/tenders/<id>/v/<version>/activate` |
+| Durable carrier bid | `POST /api/v2/tenders/:tenderId/v/:tenderVersion/bids/:bidId` | `/api/v2/tenders/<id>/v/<version>/bids/<bidId>` |
+
+Both charge exactly **0.001 USDC = 1000 atomic units** of token **`0.0.429274`**
+(6 decimals, derived) to **`ROUTEGUARD_ACCESS_TREASURY_ACCOUNT_ID`**, scheme
+`exact`, network `hedera:testnet`. The fee is the RouteGuard application access
+price — never the network fee, freight principal, escrow funding, freight
+payment, or a payment to a carrier.
+
+### Implementation notes
+
+- Real x402 composition: `x402ResourceServer` + `ExactHederaScheme` +
+  `@x402/core/http` codecs build the 402, decode payloads, verify, and settle.
+  The facilitator is injected through the standard `FacilitatorClient`
+  interface, so tests supply unpaid / verified / rejected / settlement-failure /
+  duplicate-transaction / delayed behavior with no test-only production switch.
+- **Settlement precedes the durable commit** so the receipt binds the settlement
+  identity. The Hono `paymentMiddleware` settles only after the handler has
+  produced its response, which cannot bind a settlement id into durable state —
+  documented in `docs/v2-x402-access-gates.md`.
+- Pre-payment validation runs before any challenge: malformed, ineligible, late,
+  over-budget, unsigned, wrong-state, and unknown-tender requests are never
+  charged.
+- Atomic commit: lifecycle transition + processed action + access-settlement
+  index entry + bid registry entry land in one durable record write, reusing the
+  Phase A CAS, immutable-field, and strict-envelope guarantees.
+- New durable fields `accessPayments` (append-only settlement index, unique
+  transaction ids) and `bidRegistry` (public-safe accepted bids) with full
+  persisted-envelope validation and cross-field invariants.
+- First accepted paid bid performs `TENDER_OPENED → BIDDING` atomically; later
+  bids stay in `BIDDING`. No new graph edge.
+- Private bid bodies (freight amount, salt, nonce) live only in a
+  content-addressed bid-body store — never in the record, public evidence, or a
+  response.
+- `TENDER_OPENED` / `BID_COMMITMENT` HCS 2.0 envelopes are built and validated
+  offline from durable state; **not submitted** in Phase B1.
+- Dependencies unchanged: no x402 package upgrade was required.
+
+### Changed / added files (v0.8.0)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | v0.8.0 Phase B1 checkpoint |
+| `docs/v2-x402-access-gates.md` | **New** — endpoints, 402 → paid flow, fee, binding, idempotency, privacy, error codes, config |
+| `src/v2/config.ts` | **New** — validated access config; fails closed without a treasury |
+| `src/v2/access/x402-gate.ts` | **New** — real x402 requirements / decode / verify / settle boundary |
+| `src/v2/http/routes.ts` | **New** — both protected routes, pre-payment validation, sanitized errors |
+| `src/v2/http/errors.ts` | **New** — stable error vocabulary and status mapping |
+| `src/v2/http/app.ts` | **New** — production composition (file stores, facilitator, registry) |
+| `src/v2/hcs/outbox.ts` | **New** — offline TENDER_OPENED / BID_COMMITMENT builders |
+| `src/v2/schemas/bid.ts` | **New** — v2 carrier bid, salted commitment, public projection |
+| `src/v2/store/bid-body-store.ts` | **New** — private content-addressed bid bodies (memory + file) |
+| `src/v2/auth/canonical.ts` | Carrier-bid domain-separated sign payload |
+| `src/v2/auth/verify.ts` | Sealed carrier-bid verification against the registered key |
+| `src/v2/lifecycle/events.ts` | `BID_SUBMISSION_PAID` event |
+| `src/v2/lifecycle/record.ts` | `accessPayments` + `bidRegistry` durable fields |
+| `src/v2/lifecycle/reducer.ts` | Paid-bid rules, settlement replay guard, activation payment index |
+| `src/v2/store/persisted-record.ts` | Validation + cross-field invariants for the new fields |
+| `src/v2/store/lifecycle-service.ts` | Carrier registry injection and paid-bid verification |
+| `src/server/app.ts` | Conditional v2 route registration; 503 when disabled |
+| `test/v2-access-route-fixtures.ts` | **New** — facilitator double + route harness |
+| `test/v2-tender-activation-route.test.ts` | **New** — 19 tests |
+| `test/v2-bid-access-route.test.ts` | **New** — 13 tests |
+| `test/v2-x402-route-replay.test.ts` | **New** — 8 tests |
+| `test/v2-x402-route-config.test.ts` | **New** — 11 tests |
+
+### Validation (v0.8.0)
+
+- `npm run typecheck`: **PASS**
+- Phase A + Phase B1 focused tests (`test/v2-*.test.ts`): **PASS** — 23 files /
+  247 tests; 0 failed
+- full `npm test`: **PASS** — 67 files / 804 tests; 0 failed
+- `npm run check:secrets`: **PASS** — 258 files scanned
+- `git diff --check`: **PASS** (CRLF warnings only)
+- v1 evidence `evidence/` + `data/`: **unchanged** — 0 modified paths
+- explicit no-egress assertion during a complete paid flow: **PASS**
+- live Hedera / facilitator / Mirror / HCS: **NOT RUN**
+
+### Current state
+
+Phase A is accepted; Phase B1 is implemented. Both access gates return a correct
+x402 402 challenge, verify and settle through the injected facilitator boundary,
+and commit the protected resource atomically with its durable access receipt.
+All settlement in this checkpoint is mocked.
+
+### Next step
+
+**Phase B2: guarded Hedera testnet tender and bid payments** — real facilitator
+settlement plus Mirror confirmation, a settle-to-commit reconciliation claim for
+the crash window, and HCS submission of the already-built `TENDER_OPENED` and
+`BID_COMMITMENT` envelopes. Do **not** re-run the v1 live final-auction.
+
+**NETWORK_WRITES=0.**
 
 ---
 

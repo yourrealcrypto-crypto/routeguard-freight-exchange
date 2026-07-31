@@ -13,11 +13,14 @@ import {
   type TrustPolicy,
 } from "../trust/policy";
 import {
+  buildCarrierBidSignPayload,
   buildRefereeResolutionSignPayload,
   buildShipperPodReviewSignPayload,
+  CARRIER_BID_PURPOSE,
   REFEREE_RESOLUTION_PURPOSE,
   SHIPPER_POD_REVIEW_PURPOSE,
   signPayloadHash,
+  type CarrierBidSignPayload,
   type RefereeResolutionSignPayload,
   type ShipperPodReviewSignPayload,
   type ShipperReviewActionKind,
@@ -52,9 +55,24 @@ export type VerifiedRefereeResolutionAuth = {
   readonly podId: string;
 };
 
+export type VerifiedCarrierBidAuth = {
+  readonly kind: "CARRIER_BID";
+  readonly purpose: typeof CARRIER_BID_PURPOSE;
+  readonly actionId: string;
+  readonly bidId: string;
+  readonly carrierId: string;
+  readonly carrierAccountId: string;
+  readonly bidHash: string;
+  readonly payloadHash: string;
+  readonly trustedKeyFingerprint: string;
+  readonly signatureAlgorithm: "ECDSA_SECP256K1_HIERO";
+  readonly signPayload: CarrierBidSignPayload;
+};
+
 export type VerifiedAuth =
   | VerifiedShipperReviewAuth
-  | VerifiedRefereeResolutionAuth;
+  | VerifiedRefereeResolutionAuth
+  | VerifiedCarrierBidAuth;
 
 export function isSealedVerifiedAuth(value: unknown): value is VerifiedAuth {
   return typeof value === "object" && value !== null && sealedAuth.has(value);
@@ -211,6 +229,78 @@ export function verifyRefereeResolution(input: {
     disputeId: input.disputeId,
     podId: input.podId,
   });
+}
+
+/**
+ * Verify a carrier bid signature against the **registered** carrier key.
+ * A public key supplied by the request is never trusted.
+ */
+export function verifyCarrierBid(input: {
+  registeredPublicKey: string;
+  tenderId: string;
+  tenderVersion: number;
+  bidId: string;
+  carrierId: string;
+  carrierAccountId: string;
+  bidHash: string;
+  signedAt: string;
+  actionId: string;
+  signature: string;
+}): VerifiedCarrierBidAuth {
+  if (!input.signature || typeof input.signature !== "string") {
+    throw new AuthorizationError(
+      "MISSING_SIGNATURE",
+      "carrier bid signature required",
+    );
+  }
+  if (!input.registeredPublicKey) {
+    throw new AuthorizationError(
+      "CARRIER_NOT_REGISTERED",
+      "carrier has no registered signing key",
+    );
+  }
+  const signPayload = buildCarrierBidSignPayload({
+    tenderId: input.tenderId,
+    tenderVersion: input.tenderVersion,
+    bidId: input.bidId,
+    carrierId: input.carrierId,
+    carrierAccountId: input.carrierAccountId,
+    bidHash: input.bidHash,
+    signedAt: input.signedAt,
+    actionId: input.actionId,
+  });
+  const ok = verifyCanonicalPayload(
+    signPayload,
+    input.signature,
+    input.registeredPublicKey,
+  );
+  if (!ok) {
+    throw new AuthorizationError(
+      "CARRIER_SIGNATURE_INVALID",
+      "carrier bid signature verification failed",
+    );
+  }
+  return seal({
+    kind: "CARRIER_BID" as const,
+    purpose: CARRIER_BID_PURPOSE,
+    actionId: input.actionId,
+    bidId: input.bidId,
+    carrierId: input.carrierId,
+    carrierAccountId: input.carrierAccountId,
+    bidHash: input.bidHash,
+    payloadHash: signPayloadHash(signPayload),
+    trustedKeyFingerprint: publicKeyFingerprint(input.registeredPublicKey),
+    signatureAlgorithm: "ECDSA_SECP256K1_HIERO" as const,
+    signPayload,
+  });
+}
+
+/** Test helper — sign a carrier bid payload with an ephemeral private key. */
+export function signCarrierBidForTests(
+  privateKeyHex: string,
+  payload: CarrierBidSignPayload,
+): string {
+  return signCanonicalPayload(payload, privateKeyHex);
 }
 
 /** Test helper — sign shipper payload with ephemeral private key. */

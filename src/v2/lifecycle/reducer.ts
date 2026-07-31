@@ -16,10 +16,11 @@ import {
   isNonNegativeAtomicString,
   isPositiveAtomicString,
 } from "../access/fee";
-import { tenderActivateResource } from "../access/resource";
+import { bidSubmitResource, tenderActivateResource } from "../access/resource";
 import {
   isSealedVerifiedAuth,
   type VerifiedAuth,
+  type VerifiedCarrierBidAuth,
   type VerifiedRefereeResolutionAuth,
   type VerifiedShipperReviewAuth,
 } from "../auth/verify";
@@ -227,6 +228,46 @@ function requireSealedShipperAuth(
   return auth;
 }
 
+function requireSealedCarrierBidAuth(
+  context: LifecycleReduceContext | undefined,
+  event: LifecycleEvent,
+): VerifiedCarrierBidAuth {
+  const auth = context?.verifiedAuth;
+  if (!auth || !isSealedVerifiedAuth(auth) || auth.kind !== "CARRIER_BID") {
+    throw new LifecycleGuardError(
+      "CARRIER_AUTH_REQUIRED",
+      "sealed carrier bid authorization is required",
+    );
+  }
+  if (auth.actionId !== event.actionId) {
+    throw new LifecycleGuardError(
+      "AUTH_ACTION_MISMATCH",
+      "verified auth actionId does not match event",
+    );
+  }
+  return auth;
+}
+
+/**
+ * A settled access payment authorizes exactly one action. The durable index is
+ * append-only, so reuse of a settlement transaction fails closed.
+ */
+function assertUnusedAccessSettlement(
+  record: LifecycleRecord,
+  paymentTransactionId: string,
+): void {
+  if (
+    record.accessPayments.some(
+      (payment) => payment.paymentTransactionId === paymentTransactionId,
+    )
+  ) {
+    throw new LifecycleGuardError(
+      "ACCESS_PAYMENT_REPLAY",
+      "settlement transaction has already authorized an access action",
+    );
+  }
+}
+
 function requireSealedRefereeAuth(
   context: LifecycleReduceContext | undefined,
   event: LifecycleEvent,
@@ -409,6 +450,7 @@ export function reduceLifecycle(
           "payerAccount must be a valid Hedera account id",
         );
       }
+      assertUnusedAccessSettlement(record, event.paymentTransactionId);
       return withTransition(record, "TENDER_OPENED", event, {
         activationPaymentTxId: event.paymentTransactionId,
         accessReceipt: {
@@ -422,6 +464,147 @@ export function reduceLifecycle(
           paymentPayloadHash: event.paymentPayloadHash,
           paidAt: event.eventTime,
         },
+        accessPayments: [
+          ...record.accessPayments,
+          {
+            accessActionType: "TENDER_ACTIVATE",
+            actionId: event.actionId,
+            bidId: null,
+            asset: event.asset,
+            amountAtomic: event.amountAtomic,
+            resource: event.resource,
+            payTo: event.payTo,
+            payerAccount: event.payerAccount,
+            paymentTransactionId: event.paymentTransactionId,
+            paymentPayloadHash: event.paymentPayloadHash,
+            settledAt: event.eventTime,
+          },
+        ],
+      });
+    }
+
+    case "BID_SUBMISSION_PAID": {
+      if (record.state !== "TENDER_OPENED" && record.state !== "BIDDING") {
+        throw new IllegalLifecycleTransitionError(record.state, "BIDDING");
+      }
+      if (event.accessActionType !== "BID_SUBMIT") {
+        throw new LifecycleGuardError(
+          "ACCESS_ACTION",
+          "accessActionType must be BID_SUBMIT",
+        );
+      }
+      const auth = requireSealedCarrierBidAuth(context, event);
+      if (
+        auth.signPayload.tenderId !== record.tenderId ||
+        auth.signPayload.tenderVersion !== record.tenderVersion
+      ) {
+        throw new LifecycleGuardError("TENDER_MISMATCH", "auth tender mismatch");
+      }
+      if (
+        auth.bidId !== event.bidId ||
+        auth.carrierId !== event.carrierId ||
+        auth.carrierAccountId !== event.carrierAccountId ||
+        auth.bidHash !== event.bidHash
+      ) {
+        throw new LifecycleGuardError(
+          "AUTH_BINDING",
+          "verified carrier bid does not match event",
+        );
+      }
+      if (!isValidHederaAccountId(event.carrierAccountId)) {
+        throw new LifecycleGuardError(
+          "BID_CARRIER_ACCOUNT",
+          "carrierAccountId must be a valid Hedera account id",
+        );
+      }
+      if (!isBeforeOrEqualUtc(event.eventTime, record.auctionEndsAt)) {
+        throw new LifecycleGuardError(
+          "AUCTION_CLOSED",
+          "bid acceptance must be at or before auctionEndsAt",
+        );
+      }
+      if (record.bidRegistry.some((entry) => entry.bidId === event.bidId)) {
+        throw new LifecycleGuardError(
+          "BID_ALREADY_ACCEPTED",
+          "bidId is already durably accepted for this tender",
+        );
+      }
+      if (event.asset !== ACCESS_FEE_TOKEN_ID) {
+        throw new LifecycleGuardError(
+          "ACCESS_ASSET",
+          `asset must be ${ACCESS_FEE_TOKEN_ID}`,
+        );
+      }
+      const expectedBidFee = deriveAccessFeeAtomic();
+      if (event.amountAtomic !== expectedBidFee) {
+        throw new LifecycleGuardError(
+          "ACCESS_AMOUNT",
+          `amountAtomic must be ${expectedBidFee}`,
+        );
+      }
+      const expectedBidResource = bidSubmitResource(
+        record.tenderId,
+        record.tenderVersion,
+        event.bidId,
+      );
+      if (event.resource !== expectedBidResource) {
+        throw new LifecycleGuardError(
+          "ACCESS_RESOURCE",
+          "resource must bind tenderId+version+bidId",
+        );
+      }
+      if (event.payTo !== record.trust.accessTreasuryAccountId) {
+        throw new LifecycleGuardError(
+          "ACCESS_TREASURY",
+          "payTo must equal configured access treasury account",
+        );
+      }
+      if (!event.paymentTransactionId || !event.paymentPayloadHash) {
+        throw new LifecycleGuardError(
+          "ACCESS_PAYMENT",
+          "payment transaction and payload hash required",
+        );
+      }
+      if (!isValidHederaAccountId(event.payerAccount)) {
+        throw new LifecycleGuardError(
+          "ACCESS_PAYER",
+          "payerAccount must be a valid Hedera account id",
+        );
+      }
+      assertUnusedAccessSettlement(record, event.paymentTransactionId);
+
+      const bidEntry = {
+        bidId: event.bidId,
+        carrierId: event.carrierId,
+        carrierAccountId: event.carrierAccountId,
+        bidHash: event.bidHash,
+        signedBidEnvelopeHash: event.signedBidEnvelopeHash,
+        commitmentPayloadHash: event.commitmentPayloadHash,
+        carrierKeyFingerprint: auth.trustedKeyFingerprint,
+        bidAuthPayloadHash: auth.payloadHash,
+        accessPaymentTxId: event.paymentTransactionId,
+        actionId: event.actionId,
+        acceptedAt: event.eventTime,
+      };
+      const accessPayment = {
+        accessActionType: "BID_SUBMIT" as const,
+        actionId: event.actionId,
+        bidId: event.bidId,
+        asset: event.asset,
+        amountAtomic: event.amountAtomic,
+        resource: event.resource,
+        payTo: event.payTo,
+        payerAccount: event.payerAccount,
+        paymentTransactionId: event.paymentTransactionId,
+        paymentPayloadHash: event.paymentPayloadHash,
+        settledAt: event.eventTime,
+      };
+
+      // The first durably accepted bid opens bidding; later bids stay in
+      // BIDDING (self-transition, no illegal shortcut).
+      return withTransition(record, "BIDDING", event, {
+        bidRegistry: [...record.bidRegistry, bidEntry],
+        accessPayments: [...record.accessPayments, accessPayment],
       });
     }
 

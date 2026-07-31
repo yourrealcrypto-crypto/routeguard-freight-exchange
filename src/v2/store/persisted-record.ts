@@ -17,11 +17,13 @@ import {
   isNonNegativeAtomicString,
   isPositiveAtomicString,
 } from "../access/fee";
-import { tenderActivateResource } from "../access/resource";
+import { bidSubmitResource, tenderActivateResource } from "../access/resource";
 import { LIFECYCLE_EVENT_TYPES } from "../lifecycle/events";
 import {
   LIFECYCLE_RECORD_SCHEMA,
+  type LifecycleAccessPayment,
   type LifecycleAccessReceipt,
+  type LifecycleBidEntry,
   type LifecycleRecord,
   type LifecycleTransitionRecord,
   type ProcessedActionRecord,
@@ -161,6 +163,34 @@ const ACCESS_RECEIPT_KEYS = new Set([
   "paidAt",
 ]);
 
+const ACCESS_PAYMENT_KEYS = new Set([
+  "accessActionType",
+  "actionId",
+  "bidId",
+  "asset",
+  "amountAtomic",
+  "resource",
+  "payTo",
+  "payerAccount",
+  "paymentTransactionId",
+  "paymentPayloadHash",
+  "settledAt",
+]);
+
+const BID_ENTRY_KEYS = new Set([
+  "bidId",
+  "carrierId",
+  "carrierAccountId",
+  "bidHash",
+  "signedBidEnvelopeHash",
+  "commitmentPayloadHash",
+  "carrierKeyFingerprint",
+  "bidAuthPayloadHash",
+  "accessPaymentTxId",
+  "actionId",
+  "acceptedAt",
+]);
+
 const RECORD_KEYS = new Set([
   "schemaVersion",
   "tenderId",
@@ -180,6 +210,8 @@ const RECORD_KEYS = new Set([
   "fundedAmountAtomic",
   "activationPaymentTxId",
   "accessReceipt",
+  "accessPayments",
+  "bidRegistry",
   "closureProofRef",
   "authoritativeBidSetHash",
   "decisionManifestHash",
@@ -271,6 +303,30 @@ const POST_ACTIVATION = set(
 );
 
 const POST_AUCTION_CLOSE = set(
+  "AUCTION_CLOSED",
+  "NO_QUALIFIED_BID",
+  "WINNER_SELECTED",
+  "WINNING_AMOUNT_LOCKED",
+  "ROUTE_RESERVED",
+  "IN_TRANSIT",
+  "DELIVERY_REPORTED",
+  "POD_SUBMITTED",
+  "POD_UNDER_REVIEW",
+  "POD_CORRECTION_REQUESTED",
+  "POD_RESUBMITTED",
+  "POD_ACCEPTED",
+  "POD_DEEMED_ACCEPTED",
+  "POD_DISPUTED",
+  "REFEREE_DECISION",
+  "PAYMENT_RELEASED",
+  "PARTIAL_RELEASE",
+  "REFUNDED",
+  "TENDER_COMPLETED",
+);
+
+/** Bidding has opened: accepted bids may exist from here onward. */
+const BIDDING_REACHED = set(
+  "BIDDING",
   "AUCTION_CLOSED",
   "NO_QUALIFIED_BID",
   "WINNER_SELECTED",
@@ -647,6 +703,184 @@ function validateTrustSnapshot(
   };
 }
 
+/**
+ * Validate the append-only access-settlement index.
+ * Every entry re-derives its canonical resource and re-checks the pinned token,
+ * amount, and treasury; settlement transaction ids are unique across the index.
+ */
+function validateAccessPayments(
+  ctx: Ctx,
+  value: unknown,
+  record: {
+    tenderId: string;
+    tenderVersion: number;
+    treasury: string;
+  },
+): LifecycleAccessPayment[] {
+  if (!Array.isArray(value)) {
+    ctx.fail("accessPayments must be an array");
+  }
+  const raw = value as unknown[];
+  if (raw.length > MAX_HISTORY) {
+    ctx.fail("accessPayments exceeds the supported length");
+  }
+  const expectedFee = deriveAccessFeeAtomic();
+  const seenTransactions = new Set<string>();
+  const seenActions = new Set<string>();
+
+  return raw.map((entry, i) => {
+    const field = `accessPayments[${i}]`;
+    const p = plainObject(ctx, entry, field);
+    strictKeys(ctx, p, ACCESS_PAYMENT_KEYS, field);
+    requireKeys(ctx, p, ACCESS_PAYMENT_KEYS, field);
+
+    const accessActionType = str(ctx, p.accessActionType, `${field}.accessActionType`, 32);
+    if (accessActionType !== "TENDER_ACTIVATE" && accessActionType !== "BID_SUBMIT") {
+      ctx.fail(`${field}.accessActionType must be TENDER_ACTIVATE or BID_SUBMIT`);
+    }
+    const actionId = str(ctx, p.actionId, `${field}.actionId`, 128);
+    if (seenActions.has(actionId)) {
+      ctx.fail(`${field} duplicates an access payment for actionId "${actionId}"`);
+    }
+    seenActions.add(actionId);
+
+    const bidId = nullableStr(ctx, p.bidId, `${field}.bidId`, 128);
+    if (accessActionType === "BID_SUBMIT" && bidId === null) {
+      ctx.fail(`${field} requires bidId for a BID_SUBMIT payment`);
+    }
+    if (accessActionType === "TENDER_ACTIVATE" && bidId !== null) {
+      ctx.fail(`${field} must not carry bidId for a TENDER_ACTIVATE payment`);
+    }
+
+    if (p.asset !== ACCESS_FEE_TOKEN_ID) {
+      ctx.fail(`${field}.asset must be ${ACCESS_FEE_TOKEN_ID}`);
+    }
+    if (p.amountAtomic !== expectedFee) {
+      ctx.fail(`${field}.amountAtomic must be ${expectedFee} atomic units`);
+    }
+    const expectedResource =
+      accessActionType === "TENDER_ACTIVATE"
+        ? tenderActivateResource(record.tenderId, record.tenderVersion)
+        : bidSubmitResource(record.tenderId, record.tenderVersion, bidId!);
+    if (p.resource !== expectedResource) {
+      ctx.fail(`${field}.resource is not the canonical protected resource`);
+    }
+    if (p.payTo !== record.treasury) {
+      ctx.fail(`${field}.payTo must equal the configured access treasury account`);
+    }
+    account(ctx, p.payerAccount, `${field}.payerAccount`);
+    const paymentTransactionId = str(
+      ctx,
+      p.paymentTransactionId,
+      `${field}.paymentTransactionId`,
+      128,
+    );
+    if (seenTransactions.has(paymentTransactionId)) {
+      ctx.fail(
+        `${field} reuses a settlement transaction that already authorized another action`,
+      );
+    }
+    seenTransactions.add(paymentTransactionId);
+    hash(ctx, p.paymentPayloadHash, `${field}.paymentPayloadHash`);
+    const settledAt = utc(ctx, p.settledAt, `${field}.settledAt`);
+
+    return {
+      accessActionType: accessActionType as "TENDER_ACTIVATE" | "BID_SUBMIT",
+      actionId,
+      bidId,
+      asset: p.asset as string,
+      amountAtomic: p.amountAtomic as string,
+      resource: p.resource as string,
+      payTo: p.payTo as string,
+      payerAccount: p.payerAccount as string,
+      paymentTransactionId,
+      paymentPayloadHash: p.paymentPayloadHash as string,
+      settledAt,
+    };
+  });
+}
+
+/** Validate the append-only accepted-bid registry (public-safe entries only). */
+function validateBidRegistry(
+  ctx: Ctx,
+  value: unknown,
+): LifecycleBidEntry[] {
+  if (!Array.isArray(value)) {
+    ctx.fail("bidRegistry must be an array");
+  }
+  const raw = value as unknown[];
+  if (raw.length > MAX_HISTORY) {
+    ctx.fail("bidRegistry exceeds the supported length");
+  }
+  const seenBidIds = new Set<string>();
+
+  return raw.map((entry, i) => {
+    const field = `bidRegistry[${i}]`;
+    const b = plainObject(ctx, entry, field);
+    strictKeys(ctx, b, BID_ENTRY_KEYS, field);
+    requireKeys(ctx, b, BID_ENTRY_KEYS, field);
+
+    const bidId = str(ctx, b.bidId, `${field}.bidId`, 128);
+    if (seenBidIds.has(bidId)) {
+      ctx.fail(`${field} duplicates bidId "${bidId}"`);
+    }
+    seenBidIds.add(bidId);
+    const carrierId = str(ctx, b.carrierId, `${field}.carrierId`, 128);
+    const carrierAccountId = account(
+      ctx,
+      b.carrierAccountId,
+      `${field}.carrierAccountId`,
+    );
+    const bidHash = hash(ctx, b.bidHash, `${field}.bidHash`);
+    const signedBidEnvelopeHash = hash(
+      ctx,
+      b.signedBidEnvelopeHash,
+      `${field}.signedBidEnvelopeHash`,
+    );
+    const commitmentPayloadHash = hash(
+      ctx,
+      b.commitmentPayloadHash,
+      `${field}.commitmentPayloadHash`,
+    );
+    const carrierKeyFingerprint = str(
+      ctx,
+      b.carrierKeyFingerprint,
+      `${field}.carrierKeyFingerprint`,
+      64,
+    );
+    if (!FINGERPRINT_RE.test(carrierKeyFingerprint)) {
+      ctx.fail(`${field}.carrierKeyFingerprint must be 64 lowercase hex characters`);
+    }
+    const bidAuthPayloadHash = hash(
+      ctx,
+      b.bidAuthPayloadHash,
+      `${field}.bidAuthPayloadHash`,
+    );
+    const accessPaymentTxId = str(
+      ctx,
+      b.accessPaymentTxId,
+      `${field}.accessPaymentTxId`,
+      128,
+    );
+    const actionId = str(ctx, b.actionId, `${field}.actionId`, 128);
+    const acceptedAt = utc(ctx, b.acceptedAt, `${field}.acceptedAt`);
+
+    return {
+      bidId,
+      carrierId,
+      carrierAccountId,
+      bidHash,
+      signedBidEnvelopeHash,
+      commitmentPayloadHash,
+      carrierKeyFingerprint,
+      bidAuthPayloadHash,
+      accessPaymentTxId,
+      actionId,
+      acceptedAt,
+    };
+  });
+}
+
 function validateAccessReceipt(
   ctx: Ctx,
   value: unknown,
@@ -941,6 +1175,12 @@ export function assertValidLifecycleRecord(
           treasury: trust.accessTreasuryAccountId,
           activationPaymentTxId,
         });
+  const accessPayments = validateAccessPayments(ctx, r.accessPayments, {
+    tenderId,
+    tenderVersion,
+    treasury: trust.accessTreasuryAccountId,
+  });
+  const bidRegistry = validateBidRegistry(ctx, r.bidRegistry);
 
   // Auction / award
   const closureProofRef = nullableStr(ctx, r.closureProofRef, "closureProofRef", 256);
@@ -1042,6 +1282,69 @@ export function assertValidLifecycleRecord(
   } else {
     requireAbsent(ctx, activationPaymentTxId, "activationPaymentTxId", state);
     requireAbsent(ctx, accessReceipt, "accessReceipt", state);
+    if (accessPayments.length > 0) {
+      ctx.fail(`state ${state} must not carry access settlements`);
+    }
+  }
+
+  // Access-settlement index ↔ activation receipt / bid registry consistency.
+  const activationPayments = accessPayments.filter(
+    (p) => p.accessActionType === "TENDER_ACTIVATE",
+  );
+  if (accessReceipt !== null) {
+    if (activationPayments.length !== 1) {
+      ctx.fail(
+        "an activated tender requires exactly one TENDER_ACTIVATE access settlement",
+      );
+    }
+    const activation = activationPayments[0]!;
+    if (
+      activation.paymentTransactionId !== accessReceipt.paymentTransactionId ||
+      activation.paymentPayloadHash !== accessReceipt.paymentPayloadHash ||
+      activation.payerAccount !== accessReceipt.payerAccount ||
+      activation.payTo !== accessReceipt.payTo ||
+      activation.resource !== accessReceipt.resource ||
+      activation.amountAtomic !== accessReceipt.amountAtomic ||
+      activation.asset !== accessReceipt.asset
+    ) {
+      ctx.fail("activation access settlement does not match the access receipt");
+    }
+  } else if (activationPayments.length > 0) {
+    ctx.fail("a TENDER_ACTIVATE settlement exists without an access receipt");
+  }
+
+  const bidPayments = new Map(
+    accessPayments
+      .filter((p) => p.accessActionType === "BID_SUBMIT")
+      .map((p) => [p.bidId!, p]),
+  );
+  if (bidPayments.size !== accessPayments.length - activationPayments.length) {
+    ctx.fail("bid access settlements must be unique per bidId");
+  }
+  if (bidRegistry.length !== bidPayments.size) {
+    ctx.fail(
+      "every accepted bid requires exactly one paid access settlement (atomic bid + payment commit)",
+    );
+  }
+  for (const bid of bidRegistry) {
+    const payment = bidPayments.get(bid.bidId);
+    if (!payment) {
+      ctx.fail(`accepted bid "${bid.bidId}" has no paid access settlement`);
+    }
+    if (payment!.paymentTransactionId !== bid.accessPaymentTxId) {
+      ctx.fail(`accepted bid "${bid.bidId}" is bound to a different settlement`);
+    }
+    if (payment!.actionId !== bid.actionId) {
+      ctx.fail(`accepted bid "${bid.bidId}" is bound to a different action`);
+    }
+    if (!(bid.actionId in processedActions)) {
+      ctx.fail(
+        `accepted bid "${bid.bidId}" has no committed action record (non-atomic acceptance)`,
+      );
+    }
+  }
+  if (bidRegistry.length > 0 && !BIDDING_REACHED.has(state)) {
+    ctx.fail(`state ${state} must not carry accepted bids`);
   }
 
   if (POST_AUCTION_CLOSE.has(state)) {
