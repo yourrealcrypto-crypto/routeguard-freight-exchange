@@ -37,9 +37,13 @@ outlined, and no raster, base64, external URL, filter, shadow, gradient, mask or
 | 10 | `routeguard-route-divider.svg` | Derived motif | Light | None | 240 px wide |
 | 11 | `routeguard-proof-rail-mobile.svg` | Derived motif | Light | None | 120 px wide |
 | 12 | `routeguard-favicon.svg` | Logo | Any | None | 16 × 16 |
+| 12a | `routeguard-favicon-16.png` | Render | Transparent | None | 16 × 16 |
+| 12b | `routeguard-favicon-32.png` | Render | Transparent | None | 32 × 32 |
+| 12c | `routeguard-favicon-48.png` | Render | Transparent | None | 48 × 48 |
 | 13 | `routeguard-app-icon.svg` | Logo | Own canvas | None | 192 × 192 |
 | 14 | `routeguard-social-card.svg` | Composite | Own canvas | Yes | 1200 × 630 |
 | 15 | `routeguard-video-title.svg` | Composite | Own canvas | Yes | 1920 × 1080 |
+| 16 | `routeguard-logo.svg` | Logo | Light | Wordmark + descriptor | 320 px wide |
 
 ---
 
@@ -144,7 +148,8 @@ outlined, and no raster, base64, external URL, filter, shadow, gradient, mask or
 
 ## 12 — `routeguard-favicon.svg`
 - **viewBox** 0 0 512 512 · transparent
-- **Purpose** Favicon mark derived from the small-size symbol — gateway and verification checkmark only, squared for the 1:1 slot. Rendered previews: `routeguard-favicon-16.png`, `-32.png`, `-48.png`.
+- **Purpose** Favicon mark derived from the small-size symbol — gateway and verification checkmark only, squared for the 1:1 slot.
+- **Rendered previews (tracked)** `routeguard-favicon-16.png` (16×16), `routeguard-favicon-32.png` (32×32), `routeguard-favicon-48.png` (48×48) — PNG ARGB, no redesign; raster only for browser/OS slots that require bitmap favicons.
 - **Permitted** Browser favicon (16 / 32 / 48), browser tab, bookmark, PWA small icon.
 - **Prohibited** Use above 48 px as a brand mark; adding the wordmark; adding a background plate.
 - **Background** Transparent; sits on browser chrome.
@@ -178,6 +183,16 @@ outlined, and no raster, base64, external URL, filter, shadow, gradient, mask or
 - **Background** Own canvas.
 - **Text** Yes — all outlined.
 - **Type** Composite application of the lockup.
+
+## 16 — `routeguard-logo.svg`
+- **viewBox** 0 0 1316 338 · transparent
+- **Purpose** General-purpose horizontal production lockup (symbol + RouteGuard wordmark + FREIGHT EXCHANGE descriptor). Distinct file from the formal production family masters (`routeguard-full-lockup-light.svg`, `routeguard-freight-exchange-master.svg`); not a byte-duplicate of either.
+- **Permitted** Product README identity, repository social previews where a simple lockup is needed, offline decks that already reference this filename.
+- **Prohibited** Replacing the formal production family (01–08) without design review; charcoal backgrounds (use reverse family); sizes under 320 px wide where the descriptor closes up.
+- **Background** Light only.
+- **Text** RouteGuard + FREIGHT EXCHANGE, outlined.
+- **Type** Logo.
+- **Integrity** SVG XML well-formed; no embedded raster / base64; no external resource references (xmlns only); internal `mask` used for gateway stroke cut.
 
 ---
 

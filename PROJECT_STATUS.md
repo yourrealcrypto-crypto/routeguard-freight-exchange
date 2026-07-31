@@ -1,13 +1,79 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.6.0
+**Version:** 0.6.1
 **Date:** 2026-07-31
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
 **Branch:** `feat/routeguard-v2-phase-a` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** brand-assets baseline on `feat/routeguard-brand-assets` (v0.5.1)
+**Prior checkpoint HEAD:** `875c352643d7e99893fcdd4db1214ccb522c75a2` (v0.6.0 Phase A1 — preserved)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Production brand assets finalized (v0.6.1)
+
+Pre-existing untracked production brand candidates under
+`assets/brand/routeguard/` are validated and committed so the working tree is
+clean before Phase A2. **No redesign, no regeneration, no application-code
+changes.** Phase A1 commit `875c352` is preserved (not amended). Network
+writes: **0**.
+
+### Files retained (production)
+
+| Asset | Role / check |
+|---|---|
+| `routeguard-logo.svg` | General horizontal lockup; XML OK; no embedded raster; no external resources |
+| `routeguard-social-card.svg` | OG / social composite 1200×630; already in manifest §14 |
+| `routeguard-video-title.svg` | Video title 1920×1080; already in manifest §15 |
+| `routeguard-favicon-16.png` | 16×16 ARGB favicon render of favicon SVG |
+| `routeguard-favicon-32.png` | 32×32 ARGB favicon render |
+| `routeguard-favicon-48.png` | 48×48 ARGB favicon render |
+
+### Files removed as duplicates
+
+None — none of the six candidates were byte-duplicates of tracked masters, and
+no scrap/export/thumbnail files remained untracked on this branch.
+
+### Manifest
+
+`ROUTEGUARD_BRAND_ASSET_MANIFEST.md` updated: favicon PNG renders (12a–12c) and
+`routeguard-logo.svg` (§16) documented; social/video entries already present.
+
+### Changed / added files (v0.6.1)
+
+| File | Change |
+|---|---|
+| `PROJECT_STATUS.md` | Version 0.6.1 brand-asset finalization |
+| `assets/brand/routeguard/routeguard-logo.svg` | **Tracked** — production lockup |
+| `assets/brand/routeguard/routeguard-social-card.svg` | **Tracked** — social composite |
+| `assets/brand/routeguard/routeguard-video-title.svg` | **Tracked** — video title |
+| `assets/brand/routeguard/routeguard-favicon-16.png` | **Tracked** — 16×16 favicon |
+| `assets/brand/routeguard/routeguard-favicon-32.png` | **Tracked** — 32×32 favicon |
+| `assets/brand/routeguard/routeguard-favicon-48.png` | **Tracked** — 48×48 favicon |
+| `assets/brand/routeguard/ROUTEGUARD_BRAND_ASSET_MANIFEST.md` | Index entries for logo + favicon PNGs |
+
+### Validation (v0.6.1)
+
+- SVG integrity (XML parse; no `data:image` / base64; no external hrefs): **PASS**
+- PNG dimensions 16 / 32 / 48: **PASS**
+- `npm run check:secrets`: **PASS**
+- `git diff --check`: **PASS**
+- Phase A1 commit `875c352`: **preserved**
+- v1 evidence `evidence/final-demo-*`: **unchanged**
+- Network writes: **0**
+
+### Current state
+
+Working tree brand dirt cleared; production brand set complete for tracked
+canonical assets. Phase A1 schemas/ADR remain as committed. Ready for Phase A2.
+
+### Next steps
+
+1. Phase A2: deterministic lifecycle state machine, CAS persistence, HCS v2 definitions.
+2. Do **not** re-run v1 live final-auction.
+
+**Network writes in this checkpoint: 0.**
 
 ---
 
