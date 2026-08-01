@@ -24,6 +24,11 @@ import { registerUsdcSmokeRoute } from "../x402/usdc-smoke";
 import { renderDevelopmentPage } from "./page";
 
 const app = new Hono();
+const DEMO_VIDEO_URL = "https://streamable.com/clnr7b";
+
+app.get("/freight-exchange/demovideo", (c) => {
+  return c.redirect(DEMO_VIDEO_URL, 302);
+});
 const operationsConfig = resolveOperationsDemoConfig(process.env);
 const operationsStore = new OperationsDemoStore(operationsConfig.demoDataDir);
 const operationsOrchestrator = new OperationsDemoOrchestrator(
