@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  base: "/freight-exchange/",
   root: path.resolve("web"),
   publicDir: path.resolve("public"),
   plugins: [react(), tailwindcss()],
