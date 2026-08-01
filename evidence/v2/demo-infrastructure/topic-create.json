@@ -1,0 +1,27 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "topicId": "0.0.9865212",
+  "memo": "RouteGuard operations demo",
+  "submitKeyType": "ECDSA_SECP256K1",
+  "submitKeyBoundToOperator": true,
+  "adminKeyPresent": true,
+  "adminKeyBoundToOperator": true,
+  "autoRenewAccount": "0.0.9197513",
+  "autoRenewPeriod": 7776000,
+  "sequenceNumber": 0,
+  "transaction": {
+    "transactionId": "0.0.9197513@1785552109.715069253",
+    "mirrorTransactionId": "0.0.9197513-1785552109-715069253",
+    "result": "SUCCESS",
+    "consensusTimestamp": "1785552114.425366104",
+    "entityId": "0.0.9865212",
+    "childTransactionCount": 0,
+    "logs": [],
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552109.715069253",
+    "mirrorStatus": "SUCCESS",
+    "step": "topic_create",
+    "receiptStatus": "SUCCESS"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "contractId": "0.0.9865209",
+  "contractEvmAddress": "0x00000000000000000000000000000000009687f9",
+  "exists": true,
+  "runtimeMatchesCompletedProof": true,
+  "owner": "0xf49C1fB196ffBBFb6a2EF35485Ce7F8bbEE3d622",
+  "escrowToken": "0x0000000000000000000000000000000000068cDa",
+  "totalEscrowedAtomic": "0",
+  "usdcBalanceAtomic": "0",
+  "usdcAssociated": true,
+  "unusedTenderKeys": [
+    {
+      "tenderKey": "0xfc81fada795bc043751b966914f70460271e20a55c0d39333ad99a6b194838f0",
+      "state": "UNREGISTERED",
+      "balanceAtomic": "0"
+    },
+    {
+      "tenderKey": "0xd3e5fb085eac26a77e9396704967df740de09bf3875647cad8a0260b8dd69dd6",
+      "state": "UNREGISTERED",
+      "balanceAtomic": "0"
+    }
+  ],
+  "noTenderFunded": true,
+  "noCarrierAllocated": true,
+  "noFreightReleaseOccurred": true
+}

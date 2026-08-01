@@ -1,13 +1,89 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.12.0
+**Version:** 0.12.1
 **Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-operations-demo` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `ca6700be31080ea620a99e87af81580ded05ef17` (v0.10.1 Phase D2 live POD acceptance)
+**Branch:** `feat/routeguard-v2-operations-demo-infra` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `388907131ccb34bb85396265d5de9750f45033e1` (v0.12.0 Operations Demo backend)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Phase F5 Operations Demo infrastructure (v0.12.1)
+
+The dedicated reusable Operations Demo infrastructure is deployed and verified on
+Hedera testnet. Public live mode remains disabled by default; no interactive demo
+session was executed.
+
+| Fact | Value |
+|---|---|
+| Run ID | `v2demo-infra-20260801-2a4cfe09` |
+| Bytecode file | `0.0.9865206` |
+| Demo contract | `0.0.9865209` |
+| Demo EVM address | `0x00000000000000000000000000000000009687f9` |
+| Demo HCS topic | `0.0.9865212` |
+| HTS USDC | `0.0.429274` |
+| Bytecode SHA-256 | `584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5` |
+| Association transaction | `0.0.9197513@1785552102.225517962` |
+| Topic-create transaction | `0.0.9197513@1785552109.715069253` |
+| Application state-changing writes | **7** |
+| Query-payment transactions | **0** |
+
+Write accounting is exactly one file create, three file appends, one contract
+create, one `associateEscrowToken()` call, and one topic create. There were zero
+x402 writes, HCS message submissions, and tender/escrow demo-session writes.
+
+Mirror verification proves the new contract uses the completed Phase C production
+runtime bytecode, is owned by `0.0.9197513`, is bound and associated to USDC, holds
+zero token balance, has `totalEscrowedAmount=0`, and returns `UNREGISTERED` for two
+unused tender keys. Topic `0.0.9865212` has sequence zero and no messages. Immutable
+proof contract `0.0.9861047`, proof topic `0.0.9862010`, all v1 evidence, and prior
+v2 access/escrow/POD/release evidence remain unchanged.
+
+### Changed files (v0.12.1)
+
+- Runtime/config: `.env.example`, `package.json`,
+  `src/operations-demo/constants.ts`, `src/operations-demo/config.ts`.
+- Guarded runner/tests: `scripts/run-v2-demo-infrastructure-live.ts`,
+  `scripts/operations-demo-smoke.ts`,
+  `test/demo-infrastructure-runner.test.ts`, `test/operations-demo-core.test.ts`.
+- Evidence: `evidence/v2/demo-infrastructure/README.md`,
+  `bytecode-file-appends.json`, `bytecode-file-create.json`,
+  `contract-association.json`, `contract-create.json`,
+  `contract-verification.json`, `live-progress.json`,
+  `mirror-verification.json`, `preflight.json`, `run-summary.json`,
+  `topic-create.json`, `topic-verification.json`, and
+  `write-accounting.json`.
+- Documentation: `README.md`, `docs/operations-demo-backend.md`,
+  `PROJECT_STATUS.md`.
+
+### Validation (v0.12.1)
+
+- build/typecheck: **PASS**.
+- focused Operations Demo: **62 passed / 0 failed**.
+- Solidity compile: **10 contracts / 0 blockers**; tests: **60 / 0 failed**.
+- full `npm test`: **75 files / 996 passed / 0 failed**.
+- secret scan: **PASS** (371 files); `git diff --check`: **PASS**.
+- evidence JSON validation and immutable replay validation: **PASS**.
+- health, replay, simulation, and capabilities smoke: **PASS** with zero writes.
+- v1 and pre-existing v2 access/escrow/POD/release evidence: **byte-identical
+  to baseline**.
+
+### Current state
+
+`LIVE_MODE_DEFAULT=DISABLED` and
+`LIVE_INFRASTRUCTURE_STATUS=READY_DISABLED_BY_DEFAULT`. The dedicated contract
+contains no tender or funds, the dedicated topic contains no message, and the
+completed proof infrastructure remains replay-only and unchanged.
+
+### Next step
+
+One supervised full 12-write Operations Demo session at fixed
+`20000 / 15000 / 5000` atomic economics, followed by frontend integration.
+
+**NETWORK_WRITES=7** (this checkpoint).
 
 ---
 

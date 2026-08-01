@@ -13,6 +13,21 @@ if (replay.status !== 200) fail(`replay returned ${replay.status}`);
 const replayBody = await replay.json() as { networkWrites?: number; finalState?: string };
 if (replayBody.networkWrites !== 0 || replayBody.finalState !== "RELEASED") fail("replay validation failed");
 
+const capabilities = await app.request("/api/operations-demo/capabilities");
+if (capabilities.status !== 200) fail(`capabilities returned ${capabilities.status}`);
+const capabilitiesBody = await capabilities.json() as {
+  contractConfigured?: boolean;
+  topicConfigured?: boolean;
+  liveModeEnabled?: boolean;
+  liveModeReason?: string;
+};
+if (
+  capabilitiesBody.contractConfigured !== true ||
+  capabilitiesBody.topicConfigured !== true ||
+  capabilitiesBody.liveModeEnabled !== false ||
+  capabilitiesBody.liveModeReason !== "DEMO_LIVE_DISABLED"
+) fail("capabilities must report configured infrastructure with live mode disabled");
+
 const created = await app.request("/api/operations-demo/sessions", {
   method: "POST",
   headers: { "content-type": "application/json", "x-forwarded-for": "operations-smoke" },
@@ -33,5 +48,6 @@ if (actionBody.workflowState !== "ACCESS_ACTIVATED") fail("simulation action sta
 
 console.log("HEALTH_SMOKE=PASS");
 console.log("REPLAY_SMOKE=PASS");
+console.log("CAPABILITIES_SMOKE=PASS");
 console.log("SIMULATION_SMOKE=PASS");
 console.log("NETWORK_WRITES=0");

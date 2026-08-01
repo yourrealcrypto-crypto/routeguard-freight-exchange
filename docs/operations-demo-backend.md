@@ -14,8 +14,18 @@ The backend exposes one public workflow through three deliberately distinct mode
    labels every transaction reference `sim:`. Canonical hashing and deterministic
    local evidence remain real; business data is synthetic.
 3. **LIVE** is a server-signed Hedera testnet boundary. It is disabled by default and
-   remains `DISABLED_DEMO_INFRASTRUCTURE_PENDING` until a dedicated reusable demo
-   contract and one reusable run-separated HCS topic are deployed and configured.
+   uses a dedicated reusable demo contract and one reusable run-separated HCS topic.
+   The infrastructure is ready, but `ROUTEGUARD_OPERATIONS_LIVE_ENABLED=false`
+   remains the committed default and capabilities report `DEMO_LIVE_DISABLED`.
+
+Dedicated Operations Demo infrastructure:
+
+- escrow contract `0.0.9865209` /
+  `0x00000000000000000000000000000000009687f9`;
+- reusable HCS topic `0.0.9865212`;
+- HTS USDC `0.0.429274` (six decimals);
+- production escrow bytecode SHA-256
+  `584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5`.
 
 The immutable proof contract `0.0.9861047`
 (`0x00000000000000000000000000000000009677b7`) and proof topic `0.0.9862010`
@@ -154,13 +164,26 @@ dedicated infrastructure is invalid.
 `/health` is fast and makes zero Mirror calls. It validates immutable replay,
 configuration coherence, and—only when LIVE is enabled—volume round trip plus local
 key material. Deep network/balance/contract/topic readiness belongs to capabilities;
-when LIVE infrastructure is absent, replay and simulation stay healthy.
+when LIVE is disabled, replay and simulation stay healthy.
 
 Rate limits assume this documented single-replica topology: public reads 60/min/IP,
 session creation 1/min/IP, LIVE creation 10/hour globally, and actions 20/min/IP.
 
 ## Deployment state
 
-This phase performs no deployment and no external state change. The dedicated demo
-contract is not deployed, the reusable demo topic is not created, LIVE remains
-disabled, and validation performs `NETWORK_WRITES=0`.
+Phase F5 deployed the dedicated demo infrastructure with exactly seven application
+state-changing Hedera testnet writes: one bytecode file create, three file appends,
+one contract create, one HTS association, and one topic create. All seven are
+Mirror-confirmed SUCCESS; query-payment transactions, x402 writes, HCS message
+submissions, and demo-session writes are zero.
+
+The contract uses the proven Phase C production bytecode, is associated with HTS
+USDC, holds zero USDC, has `totalEscrowedAmount=0`, and returns `UNREGISTERED` for
+unused tender keys. Topic `0.0.9865212` has the operator-bound submit/admin keys,
+the operator auto-renew account, sequence zero, and no messages. The completed proof
+contract `0.0.9861047` and topic `0.0.9862010` remain separate and unchanged.
+
+Public LIVE mode remains disabled. Railway will later need the three public
+`ROUTEGUARD_DEMO_*` IDs plus the existing server-only secrets and `/data` volume
+configuration before the one supervised 12-write session at fixed
+`20000 / 15000 / 5000` atomic economics.

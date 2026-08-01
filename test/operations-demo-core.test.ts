@@ -14,6 +14,9 @@ import { createOperationsDemoApp, fastHealth, publicSession } from "../src/opera
 import { hashAdminToken, resolveOperationsDemoConfig, type OperationsDemoConfig } from "../src/operations-demo/config";
 import {
   DEMO_EXCESS_REFUND_ATOMIC,
+  DEMO_CONTRACT_EVM_ADDRESS,
+  DEMO_CONTRACT_ID,
+  DEMO_HCS_TOPIC_ID,
   DEMO_MAX_BUDGET_ATOMIC,
   DEMO_TOKEN_ID,
   DEMO_WINNING_AMOUNT_ATOMIC,
@@ -100,10 +103,13 @@ describe("Operations Demo fixed safety contract", () => {
   it("pins excess refund to 5000 atomic", () => expect(DEMO_EXCESS_REFUND_ATOMIC).toBe("5000"));
   it("pins both access fees to 1000 atomic", () => expect(DEMO_X402_ACCESS_FEE_ATOMIC).toBe("1000"));
   it("pins Testnet USDC", () => expect(DEMO_TOKEN_ID).toBe("0.0.429274"));
-  it("live mode defaults disabled with infrastructure pending", () => {
+  it("pins dedicated infrastructure while live mode remains disabled", () => {
     const { config } = setup();
     expect(config.liveEnabled).toBe(false);
-    expect(config.liveReason).toBe("DISABLED_DEMO_INFRASTRUCTURE_PENDING");
+    expect(config.liveReason).toBe("DEMO_LIVE_DISABLED");
+    expect(config.contractId).toBe(DEMO_CONTRACT_ID);
+    expect(config.contractEvmAddress).toBe(DEMO_CONTRACT_EVM_ADDRESS);
+    expect(config.topicId).toBe(DEMO_HCS_TOPIC_ID);
   });
   it("rejects the immutable proof contract", () => {
     expect(() => resolveOperationsDemoConfig({ ...liveEnv(), ROUTEGUARD_DEMO_CONTRACT_ID: IMMUTABLE_PROOF_CONTRACT_ID }, root())).not.toThrow();
@@ -342,7 +348,7 @@ describe("Mirror, replay, API and privacy", () => {
   it("capabilities, replay, create, get and action endpoints work", async () => {
     const { config, orchestrator } = setup(); const app = createOperationsDemoApp({ orchestrator, config });
     expect((await app.request("/api/operations-demo/capabilities")).status).toBe(200);
-    expect(await (await app.request("/api/operations-demo/capabilities")).json()).toMatchObject({ replayAvailable: true, simulationAvailable: true, liveModeReason: "DISABLED_DEMO_INFRASTRUCTURE_PENDING" });
+    expect(await (await app.request("/api/operations-demo/capabilities")).json()).toMatchObject({ replayAvailable: true, simulationAvailable: true, contractConfigured: true, topicConfigured: true, liveModeReason: "DEMO_LIVE_DISABLED" });
     expect((await app.request("/api/operations-demo/replay")).status).toBe(200);
     const created = await app.request("/api/operations-demo/sessions", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "create-1" }, body: JSON.stringify({ mode: "SIMULATION" }) });
     expect(created.status).toBe(201); const session = await created.json() as { sessionId: string };

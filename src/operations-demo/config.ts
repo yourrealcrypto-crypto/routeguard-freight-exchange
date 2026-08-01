@@ -3,6 +3,9 @@ import path from "node:path";
 
 import {
   DEMO_CARRIER_TREASURY_ACCOUNT_ID,
+  DEMO_CONTRACT_EVM_ADDRESS,
+  DEMO_CONTRACT_ID,
+  DEMO_HCS_TOPIC_ID,
   DEMO_OPERATOR_ACCOUNT_ID,
   DEMO_TOKEN_ID,
   IMMUTABLE_PROOF_CONTRACT_EVM,
@@ -71,9 +74,9 @@ export function resolveOperationsDemoConfig(
 
   const demoDataDir = env.ROUTEGUARD_DEMO_DATA_DIR?.trim() || path.join(cwd, "data", "demo-sessions");
   const v2DataDir = env.ROUTEGUARD_V2_DATA_DIR?.trim() || path.join(cwd, "data", "v2");
-  const contractId = env.ROUTEGUARD_DEMO_CONTRACT_ID?.trim() || null;
-  const contractEvmAddress = env.ROUTEGUARD_DEMO_CONTRACT_EVM_ADDRESS?.trim() || null;
-  const topicId = env.ROUTEGUARD_DEMO_HCS_TOPIC_ID?.trim() || null;
+  const contractId = env.ROUTEGUARD_DEMO_CONTRACT_ID?.trim() || DEMO_CONTRACT_ID;
+  const contractEvmAddress = env.ROUTEGUARD_DEMO_CONTRACT_EVM_ADDRESS?.trim() || DEMO_CONTRACT_EVM_ADDRESS;
+  const topicId = env.ROUTEGUARD_DEMO_HCS_TOPIC_ID?.trim() || DEMO_HCS_TOPIC_ID;
   const rawAdmin = env.ROUTEGUARD_DEMO_ADMIN_TOKEN?.trim() || null;
   const operatorPrivateKey = env.ROUTEGUARD_OPERATOR_PRIVATE_KEY?.trim() || null;
   const carrierPrivateKey = env.ROUTEGUARD_CARRIER_PRIVATE_KEY?.trim() || null;

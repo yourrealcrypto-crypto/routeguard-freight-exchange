@@ -30,6 +30,7 @@
     "demo:v2-escrow-live": "tsx scripts/run-v2-escrow-live.ts",
     "demo:v2-pod-live": "tsx scripts/run-v2-pod-live.ts",
     "demo:v2-release-live": "tsx scripts/run-v2-release-live.ts",
+    "demo:v2-infrastructure-live": "tsx scripts/run-v2-demo-infrastructure-live.ts",
     "reconcile:payment": "tsx scripts/reconcile-payment.ts",
     "check:secrets": "tsx scripts/check-secrets.ts",
     "report:final-demo": "tsx scripts/render-final-demo-report.ts",

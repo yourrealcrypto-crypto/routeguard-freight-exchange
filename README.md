@@ -10,7 +10,8 @@ Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestrat
 
 The Operations Demo backend now provides immutable completed-proof replay,
 restart-safe local UI simulation, and a guarded server-only Hedera testnet boundary.
-LIVE is disabled until separate reusable demo infrastructure is deployed. See
+Dedicated reusable infrastructure is live on testnet (escrow `0.0.9865209`, topic
+`0.0.9865212`) but public LIVE remains disabled by default. See
 [`docs/operations-demo-backend.md`](docs/operations-demo-backend.md) for the API,
 SSE, persistence, fixed economics, 12-write plan, and Railway one-replica contract.
 

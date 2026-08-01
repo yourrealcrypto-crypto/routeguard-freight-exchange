@@ -1,0 +1,40 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "contractId": "0.0.9865209",
+  "contractEvmAddress": "0x00000000000000000000000000000000009687f9",
+  "memo": "RouteGuard Operations Demo Escrow",
+  "constructorArguments": {
+    "escrowToken": "0x0000000000000000000000000000000000068cda",
+    "owner": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622"
+  },
+  "bytecodeSha256": "584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5",
+  "runtimeBytecodeSha256": "d52878b038bb478fdcd7fc7647581d946c2ed1bde93a392f9b6c0ed2aa101b54",
+  "runtimeMatchesCompletedProof": true,
+  "expirationTimestamp": "1793328104.266503541",
+  "autoRenewAccount": null,
+  "autoRenewPeriod": 7776000,
+  "transaction": {
+    "transactionId": "0.0.9197513@1785552096.820457500",
+    "mirrorTransactionId": "0.0.9197513-1785552096-820457500",
+    "result": "SUCCESS",
+    "consensusTimestamp": "1785552104.266503541",
+    "entityId": "0.0.9865209",
+    "childTransactionCount": 0,
+    "logs": [
+      {
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x000000000000000000000000f49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622"
+        ],
+        "data": "0x"
+      }
+    ],
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552096.820457500",
+    "mirrorStatus": "SUCCESS",
+    "step": "contract_create",
+    "receiptStatus": "SUCCESS"
+  }
+}
