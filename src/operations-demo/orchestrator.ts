@@ -85,7 +85,7 @@ export class OperationsDemoOrchestrator {
         maximumBudgetAtomic: DEMO_MAX_BUDGET_ATOMIC, winningAmountAtomic: DEMO_WINNING_AMOUNT_ATOMIC,
         excessRefundAtomic: DEMO_EXCESS_REFUND_ATOMIC, accessFeeAtomic: DEMO_X402_ACCESS_FEE_ATOMIC,
       },
-      availableActions: ["OPEN_TENDER"], transactions: [],
+      availableActions: ["FUND_ESCROW"], transactions: [],
       contractId: mode === "LIVE" ? this.config.contractId : null,
       topicId: mode === "LIVE" ? this.config.topicId : null,
       hcsSequences: [], escrowState: "UNFUNDED", lockedAmountAtomic: "0",

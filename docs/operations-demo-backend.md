@@ -51,7 +51,7 @@ Actions use:
 
 ```json
 {
-  "action": "OPEN_TENDER",
+  "action": "FUND_ESCROW",
   "actionId": "stable-client-action-id",
   "idempotencyKey": "stable-client-idempotency-key",
   "payload": {}
@@ -66,7 +66,23 @@ facts are server configuration, never browser input.
 
 The successful transition chain is:
 
-`CREATED → ACCESS_ACTIVATED → OFFER_ACCEPTED → ESCROW_FUNDED → WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED → COMPLETED`.
+`CREATED → ESCROW_FUNDED → ACCESS_ACTIVATED → OFFER_ACCEPTED → WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED → COMPLETED`.
+
+The UI and backend use the same funded-first operator sequence:
+
+1. Define the shipment and secure the maximum freight budget with
+   `FUND_ESCROW` (register tender, approve the exact allowance, then fund).
+2. Activate the tender through the first x402 access settlement with
+   `OPEN_TENDER`.
+3. Submit the carrier offer through the second x402 access settlement with
+   `SUBMIT_OFFER`.
+4. Select the winner with `SELECT_WINNER`, allocating the winning amount and
+   refunding the excess.
+5. Submit proof of delivery with `SUBMIT_POD`.
+6. Anchor the non-binding advisory with `RUN_ADVISORY`.
+7. Record shipper acceptance with `ACCEPT_POD`.
+8. Release the freight payment and complete the lifecycle with
+   `RELEASE_FREIGHT`.
 
 Transitions are forward-only and `COMPLETED`, `EXPIRED`, and `ABORTED` are terminal.
 Each session derives a unique tender id, tender key, POD id, shipper action id, and
@@ -105,8 +121,8 @@ logistics data. It is never a transfer amount and is displayed separately from:
 - carrier-offer access fee: **1,000 atomic / 0.001000 USDC**;
 - Hedera network and facilitator fees.
 
-The minimal successful LIVE flow projects exactly 12 application writes: two x402
-settlements; register, exact allowance and fund; allocate/refund excess; three POD
+The minimal successful LIVE flow projects exactly 12 application writes: register,
+exact allowance and fund; two x402 settlements; allocate/refund excess; three POD
 HCS anchors; `releaseFull`; and two completion HCS anchors. Optional
 `TENDER_OPENED` / `BID_COMMITMENT` HCS messages cannot enter this path. The session
 ceiling is 12 and the UTC daily ceiling is 50. The next submission is refused before

@@ -1,13 +1,72 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.12.1
+**Version:** 0.12.2
 **Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-operations-demo-infra` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `388907131ccb34bb85396265d5de9750f45033e1` (v0.12.0 Operations Demo backend)
+**Branch:** `fix/routeguard-v2-demo-sequence` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `144a1e308294d04f499b5dd4542b93c946008c04` (v0.12.1 Operations Demo infrastructure)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Operations Demo funded-first lifecycle alignment (v0.12.2)
+
+The Operations Demo state machine, API surface, SSE sequence, smoke coverage, and
+operator documentation now share one funded-first lifecycle:
+
+`CREATED → ESCROW_FUNDED → ACCESS_ACTIVATED → OFFER_ACCEPTED →
+WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED →
+COMPLETED`.
+
+The eight actions are `FUND_ESCROW`, `OPEN_TENDER`, `SUBMIT_OFFER`,
+`SELECT_WINNER`, `SUBMIT_POD`, `RUN_ADVISORY`, `ACCEPT_POD`, and
+`RELEASE_FREIGHT`. Funding remains three separately journaled writes—tender
+registration, exact allowance, and escrow funding—and exposes `OPEN_TENDER` only
+after all three are confirmed. Tender activation then exposes offer submission;
+winner selection remains unavailable until an offer is accepted.
+
+The fixed `20000 / 15000 / 5000` atomic economics and exact 12-write ceiling are
+unchanged. Dedicated contract `0.0.9865209`, EVM address
+`0x00000000000000000000000000000000009687f9`, topic `0.0.9865212`, HTS USDC
+`0.0.429274`, immutable replay evidence, and all prior evidence are unchanged.
+Public LIVE remains disabled by default.
+
+### Changed files (v0.12.2)
+
+- State/order: `src/operations-demo/state-machine.ts`,
+  `src/operations-demo/orchestrator.ts`, `src/operations-demo/constants.ts`, and
+  `src/operations-demo/types.ts`.
+- Regression/smoke coverage: `test/operations-demo-core.test.ts` and
+  `scripts/operations-demo-smoke.ts`.
+- Documentation: `README.md`, `docs/operations-demo-backend.md`, and
+  `PROJECT_STATUS.md`.
+
+### Validation (v0.12.2)
+
+- Focused Operations Demo: **65 passed / 0 failed**.
+- build/typecheck: **PASS**.
+- Solidity compile: **10 contracts / 0 blockers**; tests: **60 / 0 failed**.
+- full `npm test`: **75 files / 1003 passed / 0 failed**.
+- health, replay, capabilities, and full funded-first simulation smoke: **PASS**
+  with `NETWORK_WRITES=0`.
+- secret scan: **PASS** (371 files); `git diff --check`: **PASS**.
+- all `evidence/`, contract sources, committed environment defaults, and
+  Operations Demo configuration: **unchanged from `144a1e3`**.
+
+### Current state
+
+The offline simulation is UI-ready for the funded-first progression. Live mode is
+still explicitly disabled, and this checkpoint performed no Hedera write, x402
+settlement, HCS submission, contract call, deployment, or external deployment.
+
+### Next step
+
+Frontend integration followed by one explicitly authorized, supervised 12-write
+Operations Demo session using the already deployed dedicated testnet infrastructure.
+
+**NETWORK_WRITES=0** (this checkpoint).
 
 ---
 
@@ -145,7 +204,7 @@ independently covered while legacy Phase A–E/runner regressions remain green.
 
 ### Sessions, economics, POD and persistence
 
-- State chain: `CREATED → ACCESS_ACTIVATED → OFFER_ACCEPTED → ESCROW_FUNDED →
+- State chain (corrected in v0.12.2): `CREATED → ESCROW_FUNDED → ACCESS_ACTIVATED → OFFER_ACCEPTED →
   WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED →
   COMPLETED`, plus `FAILED`, `EXPIRED`, and `ABORTED`.
 - Sessions derive unique tender ID/version/key, POD ID, shipper action ID, and

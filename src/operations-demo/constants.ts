@@ -28,7 +28,7 @@ export const LIVE_SUCCESSFUL_PATH_WRITES = Object.freeze({
   RELEASE_FREIGHT: 3,
 } as const);
 export const LIVE_SUCCESSFUL_PATH = Object.freeze([
-  "OPEN_TENDER", "SUBMIT_OFFER", "FUND_ESCROW", "SELECT_WINNER",
+  "FUND_ESCROW", "OPEN_TENDER", "SUBMIT_OFFER", "SELECT_WINNER",
   "SUBMIT_POD", "RUN_ADVISORY", "ACCEPT_POD", "RELEASE_FREIGHT",
 ] as const);
 export const LIVE_PROJECTED_WRITES = Object.values(LIVE_SUCCESSFUL_PATH_WRITES).reduce((a, b) => a + b, 0);

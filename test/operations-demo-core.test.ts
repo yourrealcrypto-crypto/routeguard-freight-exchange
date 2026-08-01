@@ -23,6 +23,7 @@ import {
   DEMO_X402_ACCESS_FEE_ATOMIC,
   IMMUTABLE_PROOF_CONTRACT_ID,
   IMMUTABLE_PROOF_TOPIC_ID,
+  LIVE_SUCCESSFUL_PATH,
   LIVE_PROJECTED_WRITES,
 } from "../src/operations-demo/constants";
 import { DemoError } from "../src/operations-demo/errors";
@@ -88,7 +89,7 @@ function setupLive(now = NOW) {
 }
 
 const actionOrder: readonly DemoAction[] = [
-  "OPEN_TENDER", "SUBMIT_OFFER", "FUND_ESCROW", "SELECT_WINNER",
+  "FUND_ESCROW", "OPEN_TENDER", "SUBMIT_OFFER", "SELECT_WINNER",
   "SUBMIT_POD", "RUN_ADVISORY", "ACCEPT_POD", "RELEASE_FREIGHT",
 ];
 
@@ -98,6 +99,7 @@ function request(action: DemoAction, index = 1, payload: Record<string, unknown>
 
 describe("Operations Demo fixed safety contract", () => {
   it("projects exactly twelve live writes", () => expect(LIVE_PROJECTED_WRITES).toBe(12));
+  it("pins the successful live path to funded-first order", () => expect(LIVE_SUCCESSFUL_PATH).toEqual(actionOrder));
   it("pins maximum budget to 20000 atomic", () => expect(DEMO_MAX_BUDGET_ATOMIC).toBe("20000"));
   it("pins winning amount to 15000 atomic", () => expect(DEMO_WINNING_AMOUNT_ATOMIC).toBe("15000"));
   it("pins excess refund to 5000 atomic", () => expect(DEMO_EXCESS_REFUND_ATOMIC).toBe("5000"));
@@ -169,12 +171,29 @@ describe("request allowlist and authorization identity", () => {
 });
 
 describe("state, idempotency, persistence and expiry", () => {
+  it("new sessions offer only FUND_ESCROW", async () => {
+    const { orchestrator } = setup();
+    const session = await orchestrator.createSession("SIMULATION");
+    expect(session.availableActions).toEqual(["FUND_ESCROW"]);
+  });
   it("has the exact successful progression", () => {
     let state: DemoWorkflowState = "CREATED";
-    const expected: DemoWorkflowState[] = ["ACCESS_ACTIVATED", "OFFER_ACCEPTED", "ESCROW_FUNDED", "WINNER_ALLOCATED", "POD_SUBMITTED", "ADVISORY_ANCHORED", "POD_ACCEPTED", "COMPLETED"];
+    const expected: DemoWorkflowState[] = ["ESCROW_FUNDED", "ACCESS_ACTIVATED", "OFFER_ACCEPTED", "WINNER_ALLOCATED", "POD_SUBMITTED", "ADVISORY_ANCHORED", "POD_ACCEPTED", "COMPLETED"];
     for (let i = 0; i < actionOrder.length; i++) { state = transitionFor(state, actionOrder[i]!); expect(state).toBe(expected[i]); }
   });
-  it("fails illegal transitions", () => expect(() => transitionFor("CREATED", "FUND_ESCROW")).toThrowError(/not allowed/));
+  it("blocks OPEN_TENDER before funding", () => expect(() => transitionFor("CREATED", "OPEN_TENDER")).toThrowError(/not allowed/));
+  it("blocks SUBMIT_OFFER before activation", () => expect(() => transitionFor("ESCROW_FUNDED", "SUBMIT_OFFER")).toThrowError(/not allowed/));
+  it("blocks SELECT_WINNER before an accepted offer", () => expect(() => transitionFor("ACCESS_ACTIVATED", "SELECT_WINNER")).toThrowError(/not allowed/));
+  it("funding exposes OPEN_TENDER and activation exposes SUBMIT_OFFER", async () => {
+    const { orchestrator } = setup();
+    const session = await orchestrator.createSession("SIMULATION");
+    const funded = await orchestrator.act(session.sessionId, request("FUND_ESCROW"));
+    expect(funded.workflowState).toBe("ESCROW_FUNDED");
+    expect((await orchestrator.getSession(session.sessionId)).availableActions).toEqual(["OPEN_TENDER"]);
+    const activated = await orchestrator.act(session.sessionId, request("OPEN_TENDER", 2));
+    expect(activated.workflowState).toBe("ACCESS_ACTIVATED");
+    expect((await orchestrator.getSession(session.sessionId)).availableActions).toEqual(["SUBMIT_OFFER"]);
+  });
   it("completed is terminal", () => expect(() => transitionFor("COMPLETED", "OPEN_TENDER")).toThrowError(/terminal/));
   it("full simulation completes with zero egress and simulated references", async () => {
     const network = vi.spyOn(globalThis, "fetch");
@@ -200,15 +219,15 @@ describe("state, idempotency, persistence and expiry", () => {
   });
   it("conflicting action identity fails", async () => {
     const { orchestrator } = setup(); const session = await orchestrator.createSession("SIMULATION");
-    await orchestrator.act(session.sessionId, request("OPEN_TENDER"));
-    await expect(orchestrator.act(session.sessionId, request("OPEN_TENDER", 1, { note: "conflict" }))).rejects.toMatchObject({ code: "DEMO_ACTION_CONFLICT" });
+    await orchestrator.act(session.sessionId, request("FUND_ESCROW"));
+    await expect(orchestrator.act(session.sessionId, request("FUND_ESCROW", 1, { note: "conflict" }))).rejects.toMatchObject({ code: "DEMO_ACTION_CONFLICT" });
   });
   it("persistent session survives a store restart", async () => {
     const { config, store, orchestrator } = setup();
     const session = await orchestrator.createSession("SIMULATION");
-    await orchestrator.act(session.sessionId, request("OPEN_TENDER"));
+    await orchestrator.act(session.sessionId, request("FUND_ESCROW"));
     const restarted = new OperationsDemoStore(config.demoDataDir, () => Date.parse(NOW));
-    expect(restarted.get(session.sessionId)?.workflowState).toBe("ACCESS_ACTIVATED");
+    expect(restarted.get(session.sessionId)?.workflowState).toBe("ESCROW_FUNDED");
   });
   it("one active live session is enforced", async () => {
     const { config, store, replay } = setupLive();
@@ -234,9 +253,9 @@ describe("state, idempotency, persistence and expiry", () => {
     const { config, store, replay } = setup();
     const orchestrator = new OperationsDemoOrchestrator(config, store, replay, adapter, null, () => NOW);
     const session = await orchestrator.createSession("SIMULATION");
-    const first = orchestrator.act(session.sessionId, request("OPEN_TENDER"));
+    const first = orchestrator.act(session.sessionId, request("FUND_ESCROW"));
     await vi.waitFor(() => expect(store.get(session.sessionId)?.inFlightActionId).toBeTruthy());
-    await expect(orchestrator.act(session.sessionId, request("OPEN_TENDER", 2))).rejects.toMatchObject({ code: "DEMO_ACTION_IN_PROGRESS" });
+    await expect(orchestrator.act(session.sessionId, request("FUND_ESCROW", 2))).rejects.toMatchObject({ code: "DEMO_ACTION_IN_PROGRESS" });
     release(); await first;
   });
   it("expired funded live session requires operator recovery and never refunds", async () => {
@@ -279,12 +298,58 @@ describe("state, idempotency, persistence and expiry", () => {
     };
     const orchestrator = new OperationsDemoOrchestrator(config, store, replay, new SimulationAdapter(), adapter, () => NOW);
     const session = await orchestrator.createSession("LIVE", "SHIPPER", "correct-horse-battery-staple");
+    await store.mutate(session.sessionId, (current) => ({
+      ...current, recordVersion: current.recordVersion + 1,
+      workflowState: "ESCROW_FUNDED", lastConfirmedState: "ESCROW_FUNDED",
+      availableActions: ["OPEN_TENDER"], escrowState: "FUNDED", lockedAmountAtomic: "20000",
+    }));
     await expect(orchestrator.act(session.sessionId, request("OPEN_TENDER"))).rejects.toMatchObject({ code: "DEMO_MIRROR_UNAVAILABLE" });
     expect((await orchestrator.getSession(session.sessionId)).progress).toBe("RECOVERABLE");
     const recovered = await orchestrator.act(session.sessionId, request("OPEN_TENDER"));
     expect(recovered.workflowState).toBe("ACCESS_ACTIVATED");
     expect(submissions).toBe(1);
     expect((await orchestrator.getSession(session.sessionId)).writesUsed).toBe(1);
+  });
+  it("funding recovery resumes register, allowance and fund without resubmission", async () => {
+    const { config, store, replay } = setupLive();
+    const journal = new TransactionReceiptJournal(store, () => NOW);
+    const subSteps = ["register-tender", "approve-exact-allowance", "fund-escrow"] as const;
+    const submissions = new Map(subSteps.map((subStep) => [subStep, 0]));
+    const adapter = {
+      execute: async (session: any, req: DemoActionRequest, intended: DemoWorkflowState) => {
+        for (const [index, subStep] of subSteps.entries()) {
+          const prior = journal.findSuccessfulReceipt(store.get(session.sessionId)!, req.actionId, subStep);
+          if (!prior) {
+            await journal.plan({
+              sessionId: session.sessionId, action: req.action, actionId: req.actionId,
+              idempotencyKeyHash: canonicalSha256(req.idempotencyKey), payloadHash: canonicalSha256(req.payload),
+              expectedPreviousState: session.lastConfirmedState, intendedNextState: intended, subStep,
+            });
+            submissions.set(subStep, submissions.get(subStep)! + 1);
+            await journal.receipt({ sessionId: session.sessionId, actionId: req.actionId, subStep, transactionId: `0.0.9197513@200.${index + 1}` });
+            throw new DemoError("DEMO_MIRROR_UNAVAILABLE", "Mirror delayed", 503);
+          }
+          if (prior.verificationStatus !== "VERIFIED") {
+            await journal.verify({ sessionId: session.sessionId, actionId: req.actionId, subStep, evidenceHash: canonicalSha256({ verified: prior.publicTransactionId }) });
+          }
+        }
+        return {
+          steps: [], hcsSequences: [], evidenceHashes: [canonicalSha256({ funded: true })], writes: 0,
+          transactions: subSteps.map((subStep, index) => ({ action: req.action, transactionId: `0.0.9197513@200.${index + 1}`, hashScanUrl: `https://hashscan.io/testnet/transaction/0.0.9197513@200.${index + 1}`, simulated: false, receiptStatus: "SUCCESS" as const, mirrorVerified: true })),
+        };
+      },
+    };
+    const orchestrator = new OperationsDemoOrchestrator(config, store, replay, new SimulationAdapter(), adapter, () => NOW);
+    const session = await orchestrator.createSession("LIVE", "SHIPPER", "correct-horse-battery-staple");
+    const funding = request("FUND_ESCROW");
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await expect(orchestrator.act(session.sessionId, funding)).rejects.toMatchObject({ code: "DEMO_MIRROR_UNAVAILABLE" });
+      expect((await orchestrator.getSession(session.sessionId)).progress).toBe("RECOVERABLE");
+    }
+    const recovered = await orchestrator.act(session.sessionId, funding);
+    expect(recovered).toMatchObject({ workflowState: "ESCROW_FUNDED", writesUsed: 3 });
+    expect(Object.fromEntries(submissions)).toEqual({ "register-tender": 1, "approve-exact-allowance": 1, "fund-escrow": 1 });
+    expect((await orchestrator.getSession(session.sessionId))).toMatchObject({ escrowState: "FUNDED", lockedAmountAtomic: "20000", availableActions: ["OPEN_TENDER"] });
   });
   it("receipt journal refuses a changed transaction identity", async () => {
     const { config, store, replay } = setupLive();
@@ -351,10 +416,12 @@ describe("Mirror, replay, API and privacy", () => {
     expect(await (await app.request("/api/operations-demo/capabilities")).json()).toMatchObject({ replayAvailable: true, simulationAvailable: true, contractConfigured: true, topicConfigured: true, liveModeReason: "DEMO_LIVE_DISABLED" });
     expect((await app.request("/api/operations-demo/replay")).status).toBe(200);
     const created = await app.request("/api/operations-demo/sessions", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "create-1" }, body: JSON.stringify({ mode: "SIMULATION" }) });
-    expect(created.status).toBe(201); const session = await created.json() as { sessionId: string };
+    expect(created.status).toBe(201); const session = await created.json() as { sessionId: string; availableActions: DemoAction[] };
+    expect(session.availableActions).toEqual(["FUND_ESCROW"]);
     expect((await app.request(`/api/operations-demo/sessions/${session.sessionId}`)).status).toBe(200);
-    const action = await app.request(`/api/operations-demo/sessions/${session.sessionId}/actions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request("OPEN_TENDER")) });
+    const action = await app.request(`/api/operations-demo/sessions/${session.sessionId}/actions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request("FUND_ESCROW")) });
     expect(action.status).toBe(200);
+    expect(await action.json()).toMatchObject({ workflowState: "ESCROW_FUNDED" });
   });
   it("SSE resumes after Last-Event-ID without duplicates", async () => {
     const { config, orchestrator } = setup(); const app = createOperationsDemoApp({ orchestrator, config });
@@ -363,6 +430,19 @@ describe("Mirror, replay, API and privacy", () => {
     const text = await response.text();
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     expect((text.match(/id: 1/g) ?? [])).toHaveLength(1);
+  });
+  it("SSE confirmed-state events preserve funded-first order", async () => {
+    const { config, orchestrator } = setup(); const app = createOperationsDemoApp({ orchestrator, config });
+    const session = await orchestrator.createSession("SIMULATION");
+    for (let i = 0; i < actionOrder.length; i++) await orchestrator.act(session.sessionId, request(actionOrder[i]!, i + 1));
+    const response = await app.request(`/api/operations-demo/sessions/${session.sessionId}/events`, { headers: { "last-event-id": "0" } });
+    const text = await response.text();
+    const funded = text.indexOf('"action":"FUND_ESCROW"');
+    const activated = text.indexOf('"action":"OPEN_TENDER"');
+    const offered = text.indexOf('"action":"SUBMIT_OFFER"');
+    expect(funded).toBeGreaterThan(-1);
+    expect(funded).toBeLessThan(activated);
+    expect(activated).toBeLessThan(offered);
   });
   it("live session requires admin authorization", async () => {
     const { config, store, replay } = setupLive();
@@ -387,9 +467,9 @@ describe("Mirror, replay, API and privacy", () => {
   });
   it("persisted files contain no supplied idempotency key", async () => {
     const { config, orchestrator } = setup(); const session = await orchestrator.createSession("SIMULATION");
-    await orchestrator.act(session.sessionId, request("OPEN_TENDER"));
+    await orchestrator.act(session.sessionId, request("FUND_ESCROW"));
     const raw = readFileSync(path.join(config.demoDataDir, "sessions", `${session.sessionId}.json`), "utf8");
-    expect(raw).not.toContain("idempotency-1-OPEN_TENDER");
+    expect(raw).not.toContain("idempotency-1-FUND_ESCROW");
     expect(existsSync(path.join(config.demoDataDir, "sessions", `${session.sessionId}.json`))).toBe(true);
   });
 });

@@ -14,6 +14,9 @@ Dedicated reusable infrastructure is live on testnet (escrow `0.0.9865209`, topi
 `0.0.9865212`) but public LIVE remains disabled by default. See
 [`docs/operations-demo-backend.md`](docs/operations-demo-backend.md) for the API,
 SSE, persistence, fixed economics, 12-write plan, and Railway one-replica contract.
+Its successful operator lifecycle is funded-first: fund escrow, activate the
+tender, accept the offer, allocate the winner, process POD and advisory review,
+accept POD, then release freight.
 
 Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. **No further live Hedera execution should be performed** for this submission; the successful live proof is already recorded.
 

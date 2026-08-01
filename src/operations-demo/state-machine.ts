@@ -3,10 +3,10 @@ import { DemoError } from "./errors";
 import type { DemoAction, DemoActionRequest, DemoWorkflowState } from "./types";
 
 export const ACTION_TRANSITIONS: Readonly<Record<DemoAction, readonly [DemoWorkflowState, DemoWorkflowState] | null>> = Object.freeze({
-  OPEN_TENDER: ["CREATED", "ACCESS_ACTIVATED"],
+  FUND_ESCROW: ["CREATED", "ESCROW_FUNDED"],
+  OPEN_TENDER: ["ESCROW_FUNDED", "ACCESS_ACTIVATED"],
   SUBMIT_OFFER: ["ACCESS_ACTIVATED", "OFFER_ACCEPTED"],
-  FUND_ESCROW: ["OFFER_ACCEPTED", "ESCROW_FUNDED"],
-  SELECT_WINNER: ["ESCROW_FUNDED", "WINNER_ALLOCATED"],
+  SELECT_WINNER: ["OFFER_ACCEPTED", "WINNER_ALLOCATED"],
   SUBMIT_POD: ["WINNER_ALLOCATED", "POD_SUBMITTED"],
   RUN_ADVISORY: ["POD_SUBMITTED", "ADVISORY_ANCHORED"],
   ACCEPT_POD: ["ADVISORY_ANCHORED", "POD_ACCEPTED"],

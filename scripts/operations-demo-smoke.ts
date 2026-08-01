@@ -37,14 +37,26 @@ if (created.status !== 201) fail(`simulation create returned ${created.status}`)
 const session = await created.json() as { sessionId?: string };
 if (!session.sessionId) fail("simulation create omitted sessionId");
 
-const action = await app.request(`/api/operations-demo/sessions/${session.sessionId}/actions`, {
-  method: "POST",
-  headers: { "content-type": "application/json", "x-forwarded-for": "operations-smoke" },
-  body: JSON.stringify({ action: "OPEN_TENDER", actionId: "smoke-open-tender", idempotencyKey: "smoke-open-tender-idempotency", payload: {} }),
-});
-if (action.status !== 200) fail(`simulation action returned ${action.status}`);
-const actionBody = await action.json() as { workflowState?: string };
-if (actionBody.workflowState !== "ACCESS_ACTIVATED") fail("simulation action state mismatch");
+const successfulPath = [
+  ["FUND_ESCROW", "ESCROW_FUNDED"],
+  ["OPEN_TENDER", "ACCESS_ACTIVATED"],
+  ["SUBMIT_OFFER", "OFFER_ACCEPTED"],
+  ["SELECT_WINNER", "WINNER_ALLOCATED"],
+  ["SUBMIT_POD", "POD_SUBMITTED"],
+  ["RUN_ADVISORY", "ADVISORY_ANCHORED"],
+  ["ACCEPT_POD", "POD_ACCEPTED"],
+  ["RELEASE_FREIGHT", "COMPLETED"],
+] as const;
+for (const [index, [actionName, expectedState]] of successfulPath.entries()) {
+  const action = await app.request(`/api/operations-demo/sessions/${session.sessionId}/actions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": "operations-smoke" },
+    body: JSON.stringify({ action: actionName, actionId: `smoke-${index + 1}-${actionName.toLowerCase()}`, idempotencyKey: `smoke-idempotency-${index + 1}-${actionName.toLowerCase()}`, payload: {} }),
+  });
+  if (action.status !== 200) fail(`${actionName} returned ${action.status}`);
+  const actionBody = await action.json() as { workflowState?: string };
+  if (actionBody.workflowState !== expectedState) fail(`${actionName} state mismatch`);
+}
 
 console.log("HEALTH_SMOKE=PASS");
 console.log("REPLAY_SMOKE=PASS");
