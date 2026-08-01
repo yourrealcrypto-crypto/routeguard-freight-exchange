@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "routeguard-operations-refund-result-1.0",
+  "status": "SUCCESS",
+  "runId": "run-ccf12bb5-bf47-41fd-9e27-8706133e8167",
+  "sessionId": "demo-ccf12bb5-bf47-41fd-9e27-8706133e8167",
+  "tenderId": "RG-DEMO-ccf12bb5-bf47-41fd-9e27-8706133e8167",
+  "tenderKey": "0xd4d5843c443923812c40875fcab192b07026515169a5f1ac7fcbe8ee5affaf32",
+  "operation": "refundNoQualifiedBid",
+  "transactionId": "0.0.9197513@1785555797.105426636",
+  "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785555797.105426636",
+  "consensusTimestamp": "1785555804.016670104",
+  "refundedAmountAtomic": "20000",
+  "recipientAccountId": "0.0.9197513",
+  "authorizationHash": "0xb8b275437bc337206f5568aa1152f7150059fd2e5c182ecd828c70ef70b6c661",
+  "authorizationHashConsumed": true,
+  "finalContractState": "REFUNDED",
+  "finalTenderBalanceAtomic": "0",
+  "finalContractBalanceAtomic": "0",
+  "additionalApplicationWrites": 1,
+  "otherRecoveryWrites": 0
+}

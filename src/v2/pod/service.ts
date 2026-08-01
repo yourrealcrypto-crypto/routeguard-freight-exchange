@@ -538,7 +538,9 @@ export class PodService {
     eventTime?: string;
   }): Promise<PodReviewStartResult> {
     const record = await this.requireRecord(input.tenderId, input.tenderVersion);
-    if (record.state !== "POD_SUBMITTED" && record.state !== "POD_RESUBMITTED") {
+    const priorReview = record.processedActions[input.actionId];
+    const replaying = Boolean(priorReview && record.state === "POD_UNDER_REVIEW");
+    if (!replaying && record.state !== "POD_SUBMITTED" && record.state !== "POD_RESUBMITTED") {
       throw new PodError("POD_REVIEW_NOT_ALLOWED", "review start not allowed");
     }
     if (!record.podId || record.podVersion == null) {
@@ -560,7 +562,7 @@ export class PodService {
       keyProtector: this.deps.keyProtector,
     });
     const decoded = decodePlaintextPackage(plaintext);
-    const eventTime = input.eventTime ?? this.deps.now();
+    const eventTime = priorReview?.at ?? input.eventTime ?? this.deps.now();
 
     const reportId = deterministicReportId(
       `${record.tenderId}|${record.podId}|v${record.podVersion}|${stored.envelope.plaintextPackageHash}`,
@@ -588,21 +590,23 @@ export class PodService {
       await this.advisoryStore.put(advisory);
     }
 
-    const reviewEvent: LifecycleEvent = {
-      type: "POD_REVIEW_STARTED",
-      actionId: input.actionId,
-      eventTime,
-    };
-    await this.deps.lifecycle.apply(input.tenderId, reviewEvent);
+    if (!replaying) {
+      const reviewEvent: LifecycleEvent = {
+        type: "POD_REVIEW_STARTED",
+        actionId: input.actionId,
+        eventTime,
+      };
+      await this.deps.lifecycle.apply(input.tenderId, reviewEvent);
 
-    const advisoryEvent: LifecycleEvent = {
-      type: "POD_ADVISORY_ANCHORED",
-      actionId: `${input.actionId}:advisory`,
-      eventTime,
-      reportHash: advisory.reportHash,
-      binding: "NON_BINDING_ADVISORY",
-    };
-    await this.deps.lifecycle.apply(input.tenderId, advisoryEvent);
+      const advisoryEvent: LifecycleEvent = {
+        type: "POD_ADVISORY_ANCHORED",
+        actionId: `${input.actionId}:advisory`,
+        eventTime,
+        reportHash: advisory.reportHash,
+        binding: "NON_BINDING_ADVISORY",
+      };
+      await this.deps.lifecycle.apply(input.tenderId, advisoryEvent);
+    }
 
     const next = (await this.deps.lifecycle.get(input.tenderId))!;
     return {
@@ -698,15 +702,40 @@ export class PodService {
     const record = await this.requireRecord(input.tenderId, input.tenderVersion);
     const prior = record.processedActions[input.actionId];
     if (prior) {
-      const escrowPlan =
-        this.releasePlans.get(`${input.tenderId}|${input.actionId}`) ??
-        this.disputePlans.get(`${input.tenderId}|${input.actionId}`) ??
-        null;
+      let escrowPlan = this.releasePlans.get(`${input.tenderId}|${input.actionId}`) ??
+        this.disputePlans.get(`${input.tenderId}|${input.actionId}`) ?? null;
+      if (!escrowPlan && input.action === "ACCEPT" && record.podId && record.podContentHash) {
+        const authorizationHash = shipperAcceptanceAuthorizationHash({
+          runOrTenderId: record.tenderId,
+          podId: record.podId,
+          podVersion: record.podVersion ?? 1,
+          actionId: input.actionId,
+          contentHash: record.podContentHash,
+        });
+        escrowPlan = buildBoundReleaseFullPlan({
+          tenderId: record.tenderId,
+          tenderVersion: record.tenderVersion,
+          tenderKey: escrowTenderKey(record.tenderId, record.tenderVersion),
+          podId: record.podId,
+          podVersion: record.podVersion ?? 1,
+          lockedAmountAtomic: record.lockedAmountAtomic ?? "0",
+          authorizationHash,
+          contractId: this.deps.escrowContractId ?? "0.0.0",
+          contractEvmAddress: this.deps.escrowContractEvm ?? "0x0000000000000000000000000000000000000001",
+        });
+        this.releasePlans.set(`${input.tenderId}|${input.actionId}`, escrowPlan);
+      }
       return {
         record,
         action: input.action,
         escrowPlan,
-        outbox: [],
+        outbox: record.podId && record.reviewDeadlineAt ? [{
+          kind: "POD_REVIEW_ACTION",
+          envelope: buildPodReviewActionEnvelope(record, {
+            action: input.action,
+            reviewDeadlineAt: record.reviewDeadlineAt,
+          }),
+        }] : [],
         outcome: "REPLAYED",
       };
     }

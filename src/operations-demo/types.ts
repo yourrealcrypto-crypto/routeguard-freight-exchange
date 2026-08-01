@@ -62,9 +62,16 @@ export type OperationsDemoSession = {
   readonly mode: DemoMode;
   readonly role: DemoRole;
   readonly scenario: {
-    readonly label: string;
+    readonly label: "Synthetic Los Angeles to Phoenix freight delivery";
     readonly syntheticData: true;
     readonly illustrativeCommercialQuoteUsdc: "1850";
+    readonly origin: "Los Angeles";
+    readonly destination: "Phoenix";
+    readonly transportMode: "Truck";
+    readonly equipment: "Dry Van";
+    readonly weightKg: 12500;
+    readonly pickupWindow: "2026-08-05/2026-08-06";
+    readonly deliveryDeadline: "2026-08-08";
     readonly tenderId: string;
     readonly tenderVersion: number;
     readonly tenderKey: string;

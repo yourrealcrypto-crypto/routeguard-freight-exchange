@@ -31,6 +31,8 @@
     "demo:v2-pod-live": "tsx scripts/run-v2-pod-live.ts",
     "demo:v2-release-live": "tsx scripts/run-v2-release-live.ts",
     "demo:v2-infrastructure-live": "tsx scripts/run-v2-demo-infrastructure-live.ts",
+    "demo:v2-operations-session-live": "tsx scripts/run-v2-operations-demo-session-live.ts",
+    "demo:v2-operations-session-refund": "tsx scripts/recover-v2-operations-demo-refund.ts",
     "reconcile:payment": "tsx scripts/reconcile-payment.ts",
     "check:secrets": "tsx scripts/check-secrets.ts",
     "report:final-demo": "tsx scripts/render-final-demo-report.ts",

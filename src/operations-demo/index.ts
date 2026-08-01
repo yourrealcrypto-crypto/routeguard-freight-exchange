@@ -3,6 +3,8 @@ export * from "./api";
 export * from "./config";
 export * from "./constants";
 export * from "./errors";
+export * from "./live-composition";
+export * from "./live-preflight";
 export * from "./orchestrator";
 export * from "./rate-limit";
 export * from "./receipt-journal";

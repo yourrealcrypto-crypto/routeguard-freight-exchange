@@ -64,6 +64,32 @@ facts are server configuration, never browser input.
 
 ## Workflow and recovery
 
+### Recovered supervised attempt (2026-08-01)
+
+The first controlled Operations Demo attempt did **not** complete and is not a
+live proof. It confirmed tender registration, the exact 20,000-atomic allowance,
+escrow funding, and tender x402 access. Its four-minute auction window then
+expired while the process was recovering from delayed Mirror reconciliation.
+The production bid route rejected the late carrier offer before payment, so no
+second x402 fee, allocation, POD, HCS message, or freight release occurred.
+
+A separately authorized `refundNoQualifiedBid` call returned the complete
+20,000 atomic balance to original shipper `0.0.9197513`. The recovered tender is
+`REFUNDED`, its attributable contract balance is zero, and demo topic
+`0.0.9865212` remains at sequence zero. The four partial-session writes plus the
+single recovery write are documented under
+`evidence/v2/demo-session-recovery/`; they must never be presented as the
+successful 12-write flow.
+
+Future supervised runs create and persist their deadline before the first
+write. The auction window is at least 30 minutes and reloads byte-identically
+after restart. The controlled local process uses a 45-minute idle limit and a
+60-minute absolute limit so bounded facilitator latency, Mirror polling, and
+process recovery cannot consume the auction/session window. Existing registered
+tender manifests are immutable; a failed or recovered session is never reused.
+The original completed RouteGuard proof remains the submission authority, so a
+new live rehearsal is optional rather than a frontend prerequisite.
+
 The successful transition chain is:
 
 `CREATED → ESCROW_FUNDED → ACCESS_ACTIVATED → OFFER_ACCEPTED → WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED → COMPLETED`.
@@ -104,7 +130,9 @@ Registration, allowance, funding, allocation, HCS messages and `releaseFull` use
 same rule. The extracted SDK services require a receipt-journal callback, ensuring
 the receipt is durable before a caller may start Mirror verification.
 
-Sessions idle-expire after 15 minutes and absolutely expire after 30 minutes.
+Ordinary sessions idle-expire after 15 minutes and absolutely expire after 30
+minutes. A guarded supervised-local runner uses 45/60 minutes to contain its
+persisted 30-minute auction window.
 Expiry releases the global live-session record and never initiates a refund. An
 expired session at or beyond `ESCROW_FUNDED` is retained with
 `DEMO_OPERATOR_RECOVERY_REQUIRED`; financial state is not deleted or abandoned.

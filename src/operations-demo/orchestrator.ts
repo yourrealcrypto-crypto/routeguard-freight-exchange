@@ -1,6 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { canonicalSha256 } from "../domain/canonical-hash";
+import { escrowTenderKey } from "../v2/escrow/tender-key";
 import { WriteBudget } from "../v2/live/write-budget";
 import type { PodService } from "../v2/pod/service";
 import type { OperationsDemoConfig } from "./config";
@@ -20,13 +21,30 @@ import type {
 } from "./types";
 
 function addMinutes(iso: string, minutes: number): string { return new Date(Date.parse(iso) + minutes * 60_000).toISOString(); }
-function hexHash(value: unknown): string { return `0x${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`; }
+
+export type OperationsDemoSessionIdentity = {
+  readonly sessionId: string;
+  readonly runId: string;
+  readonly tenderId: string;
+  readonly podId: string;
+  readonly shipperActionId: string;
+};
+
+function randomIdentity(): OperationsDemoSessionIdentity {
+  return {
+    sessionId: `demo-${randomUUID()}`,
+    runId: `run-${randomUUID()}`,
+    tenderId: `RG-DEMO-${randomUUID()}`,
+    podId: `POD-${randomUUID()}`,
+    shipperActionId: `shipper-${randomUUID()}`,
+  };
+}
 
 export type OperationsPodWorkflow = {
   readonly service: Pick<PodService, "submitPod" | "startReview" | "shipperReview">;
-  readonly buildSubmission: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["submitPod"]>[0];
-  readonly buildReview: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["startReview"]>[0];
-  readonly buildAcceptance: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["shipperReview"]>[0];
+  readonly buildSubmission: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["submitPod"]>[0] | Promise<Parameters<PodService["submitPod"]>[0]>;
+  readonly buildReview: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["startReview"]>[0] | Promise<Parameters<PodService["startReview"]>[0]>;
+  readonly buildAcceptance: (session: OperationsDemoSession, request: DemoActionRequest) => Parameters<PodService["shipperReview"]>[0] | Promise<Parameters<PodService["shipperReview"]>[0]>;
 };
 
 export class OperationsDemoOrchestrator {
@@ -40,6 +58,7 @@ export class OperationsDemoOrchestrator {
     private readonly live: OperationsModeAdapter | null = null,
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly podWorkflow: OperationsPodWorkflow | null = null,
+    private readonly identityFactory: () => OperationsDemoSessionIdentity = randomIdentity,
   ) { this.simulation = simulation; }
 
   get liveAdapterReady(): boolean { return this.live !== null; }
@@ -52,11 +71,10 @@ export class OperationsDemoOrchestrator {
 
   private initialSession(mode: DemoMode, role: DemoRole): OperationsDemoSession {
     const now = this.now();
-    const sessionId = `demo-${randomUUID()}`;
-    const runId = `run-${randomUUID()}`;
-    const tenderId = `RG-DEMO-${randomUUID()}`;
+    const identity = this.identityFactory();
+    const { sessionId, runId, tenderId } = identity;
     const tenderVersion = 1;
-    const tenderKey = hexHash({ tenderId, tenderVersion });
+    const tenderKey = escrowTenderKey(tenderId, tenderVersion);
     const evidenceHashes = [
       canonicalSha256({ domain: "ROUTEGUARD_DEMO_CREATION", sessionId, tenderId, tenderVersion }),
       canonicalSha256({ domain: "ROUTEGUARD_DEMO_ALLOCATION", sessionId, tenderId, tenderVersion }),
@@ -68,12 +86,15 @@ export class OperationsDemoOrchestrator {
       recordVersion: 1,
       sessionId, runId, mode, role,
       scenario: {
-        label: "Synthetic Munich freight delivery",
+        label: "Synthetic Los Angeles to Phoenix freight delivery",
         syntheticData: true,
         illustrativeCommercialQuoteUsdc: "1850",
+        origin: "Los Angeles", destination: "Phoenix", transportMode: "Truck",
+        equipment: "Dry Van", weightKg: 12500,
+        pickupWindow: "2026-08-05/2026-08-06", deliveryDeadline: "2026-08-08",
         tenderId, tenderVersion, tenderKey,
-        podId: `POD-${randomUUID()}`,
-        shipperActionId: `shipper-${randomUUID()}`,
+        podId: identity.podId,
+        shipperActionId: identity.shipperActionId,
       },
       workflowState: "CREATED", lastConfirmedState: "CREATED", progress: "READY",
       createdAt: now, updatedAt: now,
@@ -169,9 +190,9 @@ export class OperationsDemoOrchestrator {
       let podResult: unknown;
       if (session.mode === "LIVE" && ["SUBMIT_POD", "RUN_ADVISORY", "ACCEPT_POD"].includes(request.action)) {
         if (!this.podWorkflow) throw new DemoError("DEMO_INFRASTRUCTURE_PENDING", "direct POD service composition is pending", 503);
-        if (request.action === "SUBMIT_POD") podResult = await this.podWorkflow.service.submitPod(this.podWorkflow.buildSubmission(session, request));
-        else if (request.action === "RUN_ADVISORY") podResult = await this.podWorkflow.service.startReview(this.podWorkflow.buildReview(session, request));
-        else podResult = await this.podWorkflow.service.shipperReview(this.podWorkflow.buildAcceptance(session, request));
+        if (request.action === "SUBMIT_POD") podResult = await this.podWorkflow.service.submitPod(await this.podWorkflow.buildSubmission(session, request));
+        else if (request.action === "RUN_ADVISORY") podResult = await this.podWorkflow.service.startReview(await this.podWorkflow.buildReview(session, request));
+        else podResult = await this.podWorkflow.service.shipperReview(await this.podWorkflow.buildAcceptance(session, request));
       }
       const executed = await adapter.execute(session, request, intendedState, podResult === undefined ? undefined : { podResult });
       const committed = await this.store.mutate(sessionId, (current) => {

@@ -66,17 +66,21 @@ export class X402Payer {
   constructor(private readonly config: X402PayerConfig, private readonly fetchImpl: typeof fetch = globalThis.fetch) {}
 
   async pay(input: {
+    /** Canonical relative protected resource bound into the x402 payload. */
     readonly resourceUrl: string;
+    /** Loopback HTTP endpoint; defaults to resourceUrl outside supervised composition. */
+    readonly requestUrl?: string;
     readonly body: Readonly<Record<string, unknown>>;
     readonly journalReceipt: (result: X402PaymentResult) => Promise<void> | void;
   }): Promise<X402PaymentResult> {
-    const unpaid = await this.fetchImpl(input.resourceUrl, {
+    const requestUrl = input.requestUrl ?? input.resourceUrl;
+    const unpaid = await this.fetchImpl(requestUrl, {
       method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(input.body),
     });
     if (unpaid.status !== 402) throw new Error("protected resource did not return x402 challenge");
     const required = (await unpaid.json()) as PaymentRequired;
     const signed = await createSignedX402Request({ config: this.config, paymentRequired: required, resourceUrl: input.resourceUrl });
-    const paid = await this.fetchImpl(input.resourceUrl, {
+    const paid = await this.fetchImpl(requestUrl, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json", "payment-signature": signed.header },
       body: JSON.stringify(input.body),
@@ -84,7 +88,10 @@ export class X402Payer {
     if (!paid.ok) throw new Error(`x402 protected action failed with HTTP ${paid.status}`);
     const body = (await paid.json()) as Record<string, unknown>;
     const payment = body.payment as Record<string, unknown> | undefined;
-    const transactionId = typeof payment?.transactionId === "string" ? payment.transactionId : null;
+    const accessPayment = body.accessPayment as Record<string, unknown> | undefined;
+    const transactionId = typeof accessPayment?.transactionId === "string"
+      ? accessPayment.transactionId
+      : typeof payment?.transactionId === "string" ? payment.transactionId : null;
     if (!transactionId) throw new Error("x402 response omitted settlement transaction id");
     const result: X402PaymentResult = { transactionId, payloadHash: signed.payloadHash, receiptStatus: "SUCCESS", responseBody: body };
     await input.journalReceipt(result);

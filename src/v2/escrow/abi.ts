@@ -13,6 +13,7 @@ export const ROUTEGUARD_FREIGHT_ESCROW_ABI = [
   "function totalEscrowedAmount() view returns (uint256)",
   "function authorizationHashUsed(bytes32) view returns (bool)",
   "function computeTenderKey(bytes32 tenderIdHash, uint32 tenderVersion) pure returns (bytes32)",
+  "function getTender(bytes32 tenderKey) view returns (tuple(uint8 state,uint32 tenderVersion,address shipper,address winner,uint64 maxBudget,uint64 fundedAmount,uint64 lockedAmount,uint64 excessRefunded,bytes32 tenderIdHash,bytes32 manifestHash,bytes32 creationAuthHash,bytes32 decisionManifestHash,bytes32 disputeAuthHash,bytes32 settlementAuthHash))",
   "function getState(bytes32 tenderKey) view returns (uint8)",
   "function tenderBalance(bytes32 tenderKey) view returns (uint64)",
 

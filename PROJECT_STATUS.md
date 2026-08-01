@@ -1,13 +1,93 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.12.2
+**Version:** 0.12.3
 **Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `fix/routeguard-v2-demo-sequence` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `144a1e308294d04f499b5dd4542b93c946008c04` (v0.12.1 Operations Demo infrastructure)
+**Branch:** `testnet/routeguard-v2-operations-demo-session` (local only; do not push during this checkpoint)
+**Prior checkpoint HEAD:** `b105809ec8730e39e277621726f140f0138f815e` (v0.12.2 funded-first Operations Demo)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Failed Operations Demo session recovery (v0.12.3)
+
+**FAILED SESSION RECOVERY COMPLETE. SUCCESSFUL SUPERVISED SESSION STILL
+PENDING.** The first supervised Operations Demo attempt did not complete and is
+not presented as a successful live proof. Its four confirmed writes were:
+
+1. tender registration `0.0.9197513@1785555065.000595423`;
+2. exact allowance `0.0.9197513@1785555070.754529710`;
+3. 20,000-atomic escrow funding `0.0.9197513@1785555075.840919217`;
+4. tender x402 access `0.0.7162784@1785555355.269796925`.
+
+The generated auction deadline expired during recovery from testnet/Mirror
+delay. The production carrier-offer route rejected the late offer before
+charging it. No carrier-offer payment, winner allocation, POD, HCS message, or
+freight release occurred, and no second session was created.
+
+A separately authorized one-write `refundNoQualifiedBid` recovery succeeded as
+`0.0.9197513@1785555797.105426636`. It returned the full **20,000 atomic USDC**
+to original shipper `0.0.9197513`. The tender is `REFUNDED`; its balance and the
+attributable contract balance are both zero; demo topic `0.0.9865212` remains at
+sequence zero. Total write accounting for the failed attempt is four partial
+session writes plus one recovery write: **5**, not 12.
+
+Future supervised runs persist a minimum 30-minute auction window before the
+first write and reuse it unchanged after restart. The supervised-local process
+uses 45-minute idle and 60-minute absolute limits; normal committed defaults
+remain 15/30 and public LIVE remains disabled. The failed tender manifest was
+not modified and the failed session must not be reused.
+
+The original completed RouteGuard live proof remains authoritative for product
+and submission work. Another live rehearsal is optional, not required for the
+frontend or submission.
+
+### Changed files (v0.12.3)
+
+- Status/docs/package: `PROJECT_STATUS.md`, `docs/operations-demo-backend.md`,
+  `package.json`.
+- Operations Demo: `src/operations-demo/config.ts`, `index.ts`,
+  `live-composition.ts`, `live-preflight.ts`, `orchestrator.ts`,
+  `receipt-journal.ts`, and `types.ts`.
+- Reused production boundaries: `src/v2/escrow/abi.ts`,
+  `src/v2/live/x402-payer.ts`, and `src/v2/pod/service.ts`.
+- Guarded runners: `scripts/run-v2-operations-demo-session-live.ts` and
+  `scripts/recover-v2-operations-demo-refund.ts`.
+- Tests: `test/operations-demo-live-session.test.ts` and
+  `test/operations-demo-recovery.test.ts`.
+- Sanitized recovery evidence: `evidence/v2/demo-session-recovery/README.md`,
+  `final-contract-state.json`, `partial-session-writes.json`,
+  `refund-preflight.json`, `refund-result.json`, `run-summary.json`, and
+  `write-accounting.json`.
+
+### Validation (v0.12.3)
+
+- Focused recovery/Operations Demo/escrow: **137 passed / 0 failed**.
+- Full repository: **77 files / 1,014 passed / 0 failed**.
+- Solidity: **10 contracts / 0 blockers**; **60 passed / 0 failed**.
+- Build/typecheck, secret scan, and `git diff --check`: **PASS**.
+- Health, replay, capabilities, and funded-first simulation smoke: **PASS**.
+- Immutable v1, v2 access/escrow/POD/release, final-demo, proof, and
+  infrastructure evidence: **unchanged**.
+
+### Current state
+
+The stranded principal is fully recovered and the dedicated contract is safe
+at zero attributable balance. The recovered attempt remains a failed-session
+record only. Public LIVE is disabled and this documentation/commit-finalization
+phase made no network writes.
+
+### Next step
+
+Integrate the approved final frontend with the production API and original
+immutable completed proof. If desired later, start one fresh supervised session
+with new session/tender/action/authorization identifiers, the persisted
+30-minute deadline, and the exact 12-write ceiling.
+
+**NETWORK_WRITES=0** (this closeout phase). Historical failed attempt: 4;
+historical recovery: 1.
 
 ---
 

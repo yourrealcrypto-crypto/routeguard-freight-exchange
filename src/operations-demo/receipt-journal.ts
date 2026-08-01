@@ -2,10 +2,36 @@ import { canonicalSha256 } from "../domain/canonical-hash";
 import { hashScanTransactionUrl } from "../v2/access/mirror-reconcile";
 import { DemoError } from "./errors";
 import { OperationsDemoStore } from "./store";
-import type { DemoAction, DemoStepRecord, DemoWorkflowState, OperationsDemoSession } from "./types";
+import type { DemoAction, DemoProgress, DemoStepRecord, DemoWorkflowState, OperationsDemoSession } from "./types";
 
 export class TransactionReceiptJournal {
   constructor(private readonly store: OperationsDemoStore, private readonly now: () => string = () => new Date().toISOString()) {}
+
+  async progress(input: {
+    sessionId: string;
+    actionId: string;
+    progress: Exclude<DemoProgress, "READY" | "FAILED" | "RECOVERABLE" | "CONFIRMED">;
+  }): Promise<void> {
+    await this.store.mutate(input.sessionId, (session) => {
+      if (session.inFlightActionId !== input.actionId) {
+        throw new DemoError("DEMO_PERSISTENCE_CONFLICT", "progress action ownership changed", 409);
+      }
+      const at = this.now();
+      const eventId = (session.events.at(-1)?.id ?? 0) + 1;
+      return {
+        ...session,
+        recordVersion: session.recordVersion + 1,
+        updatedAt: at,
+        progress: input.progress,
+        events: [...session.events, {
+          id: eventId,
+          type: "PROGRESS_CHANGE" as const,
+          at,
+          data: { actionId: input.actionId, progress: input.progress },
+        }],
+      };
+    });
+  }
 
   findSuccessfulReceipt(session: OperationsDemoSession, actionId: string, subStep: string): DemoStepRecord | null {
     return session.steps.find((step) => step.actionId === actionId && step.subStep === subStep && step.receiptStatus === "SUCCESS") ?? null;

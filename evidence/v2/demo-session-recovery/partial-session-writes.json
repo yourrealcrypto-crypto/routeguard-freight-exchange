@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "routeguard-operations-partial-writes-1.0",
+  "runId": "run-ccf12bb5-bf47-41fd-9e27-8706133e8167",
+  "sessionId": "demo-ccf12bb5-bf47-41fd-9e27-8706133e8167",
+  "writeCount": 4,
+  "writes": [
+    {
+      "ordinal": 1,
+      "operation": "REGISTER_TENDER",
+      "transactionId": "0.0.9197513@1785555065.000595423"
+    },
+    {
+      "ordinal": 2,
+      "operation": "APPROVE_EXACT_ALLOWANCE",
+      "amountAtomic": "20000",
+      "transactionId": "0.0.9197513@1785555070.754529710"
+    },
+    {
+      "ordinal": 3,
+      "operation": "FUND_ESCROW",
+      "amountAtomic": "20000",
+      "transactionId": "0.0.9197513@1785555075.840919217"
+    },
+    {
+      "ordinal": 4,
+      "operation": "TENDER_X402_ACCESS",
+      "amountAtomic": "1000",
+      "transactionId": "0.0.7162784@1785555355.269796925"
+    }
+  ],
+  "finalApiStateBeforeRecovery": "ACCESS_ACTIVATED",
+  "contractStateBeforeRecovery": "FUNDED",
+  "contractBalanceBeforeRecoveryAtomic": "20000",
+  "offerPaymentSubmitted": false,
+  "winnerAllocationSubmitted": false,
+  "demoTopicSequence": 0
+}

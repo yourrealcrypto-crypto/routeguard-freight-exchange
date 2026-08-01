@@ -23,8 +23,8 @@ export type OperationsDemoConfig = {
   readonly liveReason: "LIVE_ENABLED" | "DEMO_LIVE_DISABLED" | "DISABLED_DEMO_INFRASTRUCTURE_PENDING" | "DEMO_CONFIG_INVALID";
   readonly adminTokenHash: Buffer | null;
   readonly maxActiveLiveSessions: 1;
-  readonly idleTtlMinutes: 15;
-  readonly absoluteTtlMinutes: 30;
+  readonly idleTtlMinutes: number;
+  readonly absoluteTtlMinutes: number;
   readonly maxWritesPerSession: 12;
   readonly maxWritesPerDay: 50;
   readonly demoDataDir: string;
@@ -50,6 +50,12 @@ function exactInt(env: Readonly<Record<string, string | undefined>>, name: strin
   return value;
 }
 
+function supervisedTtl(env: Readonly<Record<string, string | undefined>>, name: string, fallback: number, minimum: number): number {
+  const value = Number.parseInt(env[name] ?? String(fallback), 10);
+  if (!Number.isSafeInteger(value) || value < minimum) throw new Error(`${name} must be at least ${minimum}`);
+  return value;
+}
+
 export function hashAdminToken(token: string): Buffer {
   return createHash("sha256").update(token, "utf8").digest();
 }
@@ -65,9 +71,14 @@ export function resolveOperationsDemoConfig(
   cwd = process.cwd(),
 ): OperationsDemoConfig {
   const liveRequested = env.ROUTEGUARD_OPERATIONS_LIVE_ENABLED === "true";
+  const supervisedLocal = env.ROUTEGUARD_OPERATIONS_SUPERVISED_LOCAL === "true";
   exactInt(env, "ROUTEGUARD_OPERATIONS_MAX_ACTIVE_LIVE_SESSIONS", 1);
-  exactInt(env, "ROUTEGUARD_OPERATIONS_SESSION_IDLE_TTL_MINUTES", SESSION_IDLE_TTL_MINUTES);
-  exactInt(env, "ROUTEGUARD_OPERATIONS_SESSION_ABSOLUTE_TTL_MINUTES", SESSION_ABSOLUTE_TTL_MINUTES);
+  const idleTtlMinutes = supervisedLocal
+    ? supervisedTtl(env, "ROUTEGUARD_OPERATIONS_SESSION_IDLE_TTL_MINUTES", 45, 31)
+    : exactInt(env, "ROUTEGUARD_OPERATIONS_SESSION_IDLE_TTL_MINUTES", SESSION_IDLE_TTL_MINUTES);
+  const absoluteTtlMinutes = supervisedLocal
+    ? supervisedTtl(env, "ROUTEGUARD_OPERATIONS_SESSION_ABSOLUTE_TTL_MINUTES", 60, idleTtlMinutes + 1)
+    : exactInt(env, "ROUTEGUARD_OPERATIONS_SESSION_ABSOLUTE_TTL_MINUTES", SESSION_ABSOLUTE_TTL_MINUTES);
   exactInt(env, "ROUTEGUARD_OPERATIONS_MAX_WRITES_PER_SESSION", MAX_STATE_CHANGING_WRITES_PER_SESSION);
   exactInt(env, "ROUTEGUARD_OPERATIONS_MAX_WRITES_PER_DAY", MAX_STATE_CHANGING_WRITES_PER_DAY);
   exactInt(env, "RAILWAY_REPLICA_COUNT", 1);
@@ -85,9 +96,10 @@ export function resolveOperationsDemoConfig(
   const carrierPublicKey = env.ROUTEGUARD_CARRIER_PUBLIC_KEY?.trim() || null;
   const podDataDir = path.join(path.dirname(v2DataDir), "v2-pods");
   const infrastructureConfigured = Boolean(contractId && contractEvmAddress && topicId);
-  const persistentVolumeConfigured =
+  const persistentVolumeConfigured = supervisedLocal || (
     demoDataDir.replaceAll("\\", "/").startsWith("/data/") &&
-    v2DataDir.replaceAll("\\", "/").startsWith("/data/");
+    v2DataDir.replaceAll("\\", "/").startsWith("/data/")
+  );
   const secretsConfigured = Boolean(
     rawAdmin && operatorPrivateKey && carrierPrivateKey && operatorPublicKey && carrierPublicKey && podMasterKeyBase64 &&
     Buffer.from(podMasterKeyBase64 ?? "", "base64").length === 32,
@@ -105,8 +117,8 @@ export function resolveOperationsDemoConfig(
     liveReason,
     adminTokenHash: rawAdmin ? hashAdminToken(rawAdmin) : null,
     maxActiveLiveSessions: 1,
-    idleTtlMinutes: SESSION_IDLE_TTL_MINUTES,
-    absoluteTtlMinutes: SESSION_ABSOLUTE_TTL_MINUTES,
+    idleTtlMinutes,
+    absoluteTtlMinutes,
     maxWritesPerSession: MAX_STATE_CHANGING_WRITES_PER_SESSION,
     maxWritesPerDay: MAX_STATE_CHANGING_WRITES_PER_DAY,
     demoDataDir,
