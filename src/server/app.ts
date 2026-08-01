@@ -24,7 +24,7 @@ import { registerUsdcSmokeRoute } from "../x402/usdc-smoke";
 import { renderDevelopmentPage } from "./page";
 
 const app = new Hono();
-const DEMO_VIDEO_URL = "https://streamable.com/clnr7b";
+const DEMO_VIDEO_URL = "https://youtu.be/rAkAmfSSVn8?si=P8QuQIVgHLXmxBdg";
 
 app.get("/freight-exchange/demovideo", (c) => {
   return c.redirect(DEMO_VIDEO_URL, 302);
