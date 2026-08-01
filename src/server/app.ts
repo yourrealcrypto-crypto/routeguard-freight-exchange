@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
 
@@ -55,16 +58,17 @@ app.onError((error, context) => {
   );
 });
 
-app.get("/", (context) => {
-  return context.html(renderDevelopmentPage());
-});
-
 // Locked production brand assets (RouteGuard + Hedera). Read-only static files.
 app.use(
   "/brand/*",
   serveStatic({
     root: "./public",
   }),
+);
+
+app.use(
+  "/assets/*",
+  serveStatic({ root: "./dist/web" }),
 );
 
 function operationsHealth(context: Context): Response {
@@ -104,5 +108,23 @@ if (v2Access.enabled) {
   app.post(V2_TENDER_ACTIVATE_PATH, v2AccessDisabled);
   app.post(V2_BID_SUBMIT_PATH, v2AccessDisabled);
 }
+
+const webIndexPath = path.resolve("dist", "web", "index.html");
+function frontend(context: Context): Response {
+  if (!existsSync(webIndexPath)) return context.html(renderDevelopmentPage());
+  return context.html(readFileSync(webIndexPath, "utf8"));
+}
+
+app.get("/operations-demo", (context) => context.redirect("/control", 308));
+for (const route of ["/", "/proof", "/control", "/judge", "/pod-review"]) app.get(route, frontend);
+
+// Client-side navigation fallback. API and health paths always remain JSON.
+app.get("*", (context) => {
+  const requestPath = context.req.path;
+  if (requestPath === "/health" || requestPath.startsWith("/api/")) {
+    return context.json({ error: "NOT_FOUND", message: "Route not found" }, 404);
+  }
+  return frontend(context);
+});
 
 export default app;

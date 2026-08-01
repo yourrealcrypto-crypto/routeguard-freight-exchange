@@ -1,13 +1,65 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.12.3
+**Version:** 0.13.0
 **Date:** 2026-08-01
-**Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `testnet/routeguard-v2-operations-demo-session` (local only; do not push during this checkpoint)
-**Prior checkpoint HEAD:** `b105809ec8730e39e277621726f140f0138f815e` (v0.12.2 funded-first Operations Demo)
+**Project:** `routeguard-freight-exchange@0.13.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
+**Branch:** `feat/routeguard-v2-final-product` (local only; not pushed)
+**Prior checkpoint HEAD:** `fc2b0920997f415f3ba998cbb74634a22105906b` (v0.12.3 recovered Operations Demo attempt)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Production experience complete (v0.13.0)
+
+**FINAL PRODUCT IMPLEMENTED. NO NEW HEDERA SESSION OR NETWORK WRITE WAS
+PERFORMED.** The approved RouteGuard visual system is now integrated into the
+production repository and served by the existing Hono service. The product
+routes are `/`, `/proof`, `/control`, `/judge`, and `/pod-review`; the former
+`/operations-demo` path permanently redirects to `/control`; `/health` remains
+the fast Railway health endpoint. Static assets and SPA navigation exclude API
+and health fallbacks.
+
+The Operations Demo exposes three deliberately separate modes:
+
+1. immutable completed-proof replay loaded from the server evidence adapter,
+   with `networkWrites=0` for the replay itself;
+2. fully interactive local simulation through the production state machine,
+   using only `sim:` references and zero state-changing network writes;
+3. controlled Hedera testnet capability, disabled by default, server-signed,
+   testnet-only, protected by a session-only operator authorization, and never
+   permitted to fall back to simulation.
+
+One centralized frontend evidence adapter contains the exact public identifiers
+for the canonical HTTP 402 proof, final reservation payment and topic, v2 access
+payments, freight escrow, POD topic, and final release. Placeholder design
+hashes were replaced with authoritative repository evidence. The original
+immutable registered tender manifest and all existing evidence remain
+unchanged. A root ISC license now names RouteGuard as the 2026 copyright holder.
+
+### Validation (v0.13.0)
+
+- TypeScript and production Vite build: **PASS**; 1,701 web modules transformed.
+- Full repository: **77 files / 1,016 passed / 0 failed**.
+- Server product-route tests: **6 passed / 0 failed**.
+- Solidity: **10 contracts / 0 blockers**; **60 passed / 0 failed**.
+- Secret scan: **PASS** (430 public-path files scanned).
+- Runtime product/API smoke: all five product routes **200**; replay immutable
+  with zero writes; LIVE disabled as `DEMO_LIVE_DISABLED`; full simulation
+  reached `COMPLETED` with `writesUsed=0` and only `sim:` references.
+- Responsive browser and automated accessibility inspection: **NOT AVAILABLE**
+  in this run because the configured browser runtime reported no available
+  browser backend. No substitute browser automation was used.
+- `git diff --check`: **PASS**.
+
+### Deployment contract
+
+One Railway service, one replica, root Dockerfile, `/health`, `PORT`, and one
+persistent `/data` volume. Public LIVE remains disabled. No deployment or push
+was performed.
+
+**NETWORK_WRITES=0** for all v0.13.0 implementation and validation work.
 
 ---
 

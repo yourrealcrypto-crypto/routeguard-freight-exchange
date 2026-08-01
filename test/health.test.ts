@@ -48,15 +48,24 @@ describe("RouteGuard server", () => {
     });
   });
 
-  it("serves the initial development page", async () => {
-    const response = await app.request("/");
+  it("serves every production product route as HTML", async () => {
+    for (const path of ["/", "/proof", "/control", "/judge", "/pod-review"]) {
+      const response = await app.request(path);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/html");
+      expect(await response.text()).toContain("RouteGuard Freight Exchange");
+    }
+  });
 
-    expect(response.status).toBe(200);
+  it("keeps the legacy Operations Demo route as a permanent alias", async () => {
+    const response = await app.request("/operations-demo");
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("/control");
+  });
 
-    const html = await response.text();
-
-    expect(html).toContain("RouteGuard Freight Exchange");
-    expect(html).toContain("DEVELOPMENT SHELL");
-    expect(html).toContain("LIVE PAYMENTS DISABLED");
+  it("does not let the SPA fallback consume unknown API routes", async () => {
+    const response = await app.request("/api/not-a-route");
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "NOT_FOUND", message: "Route not found" });
   });
 });

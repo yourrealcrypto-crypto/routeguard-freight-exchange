@@ -1,17 +1,19 @@
 {
   "name": "routeguard-freight-exchange",
-  "version": "0.1.0",
+  "version": "0.13.0",
   "description": "**Software-to-software freight-capacity reservation through x402 and Hedera.**",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "build": "npm run typecheck",
+    "build": "npm run typecheck && npm run build:web",
+    "build:web": "vite build",
     "test": "vitest run",
     "dev": "tsx watch src/server/index.ts",
+    "dev:web": "vite",
     "start": "tsx src/server/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web/tsconfig.json",
     "contracts:compile": "tsx scripts/compile-contracts.ts",
     "contracts:test": "vitest run test/escrow-contract-registration.test.ts test/escrow-contract-settlement.test.ts test/escrow-contract-security.test.ts",
     "preflight": "tsx scripts/preflight.ts",
@@ -60,6 +62,9 @@
     "dotenv": "^16.4.0",
     "ethers": "6.16.0",
     "hono": "^4.6.0",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -67,9 +72,15 @@
     "@ethereumjs/util": "9.1.0",
     "@openzeppelin/contracts": "5.1.0",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
     "solc": "0.8.28",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
+    "tailwindcss": "^4.1.14",
+    "vite": "^6.2.3",
     "vitest": "^2.1.9"
   }
 }
