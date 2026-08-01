@@ -1,13 +1,90 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.13.0
+**Version:** 0.13.1
 **Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.13.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-final-product` (local only; not pushed)
-**Prior checkpoint HEAD:** `fc2b0920997f415f3ba998cbb74634a22105906b` (v0.12.3 recovered Operations Demo attempt)
+**Branch:** `fix/railway-frontend-data-build` (local only; not pushed)
+**Prior checkpoint HEAD:** `18c661809699776c99b58a611eab8ae689912981` (v0.13.0 merged final product)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## Railway frontend data build hotfix (v0.13.1)
+
+The Railway build failure was caused by overlapping Git and Docker ignore
+rules. The broad `data/` Git rule left the authoritative production modules
+under `web/src/data/` untracked, while the broad Docker `data` rule excluded
+the same source directory from the build context. There was no filename or
+import case mismatch.
+
+The smallest explicit `web/src/data/` exceptions now follow the broad rules in
+both ignore files. Runtime `/data` persistence, `.env` files, private material,
+`node_modules`, generated artifacts, and build output remain excluded. The
+following seven existing production modules are now tracked and included in
+the Docker context without recreating or changing their content:
+
+- `web/src/data/demoProofReport.ts`
+- `web/src/data/demoRoleActionResolver.ts`
+- `web/src/data/demoSessionGateway.ts`
+- `web/src/data/demoSessionTypes.ts`
+- `web/src/data/operationsConfig.ts`
+- `web/src/data/operationsState.ts`
+- `web/src/data/routeguardEvidence.ts`
+
+### Changed files (v0.13.1)
+
+- `.dockerignore`
+- `.gitignore`
+- `PROJECT_STATUS.md`
+- `web/src/data/demoProofReport.ts`
+- `web/src/data/demoRoleActionResolver.ts`
+- `web/src/data/demoSessionGateway.ts`
+- `web/src/data/demoSessionTypes.ts`
+- `web/src/data/operationsConfig.ts`
+- `web/src/data/operationsState.ts`
+- `web/src/data/routeguardEvidence.ts`
+
+UI content, layout, styling, routes, and functionality are unchanged. Backend
+behavior is unchanged. Contracts, immutable evidence, public proof data,
+completed live transaction references, and the registered tender manifest are
+unchanged.
+
+### Validation (v0.13.1)
+
+- Clean dependency install with development dependencies: **PASS**.
+- Git tracking and staged-index integrity: **PASS**; 7 required modules tracked
+  with 0 index/worktree mismatches.
+- Linux case-sensitive relative-import resolution: **PASS**; 83 imports checked
+  with 0 failures.
+- Docker-context rule validation: **PASS**; all 7 source modules are explicitly
+  re-included after the broad exclusion while runtime and generated data remain
+  excluded.
+- TypeScript and production Vite build: **PASS**; 1,701 web modules transformed.
+- Full repository: **77 files / 1,016 passed / 0 failed**.
+- Solidity: **10 contracts / 0 blockers**; **60 passed / 0 failed**.
+- Secret scan: **PASS** (437 public-path files scanned).
+- Actual clean Docker build: **UNAVAILABLE**. A no-cache build was started, but
+  did not complete within the user-requested bounded Docker window and was
+  stopped; no Docker-build success is claimed. The tracked-file, staged-index,
+  ignore-order, typecheck, and production-build checks above are the strongest
+  completed alternatives.
+- `git diff --check`: **PASS**.
+
+**NETWORK_WRITES=0.** No Hedera transaction, live-mode application run,
+deployment, push, or other external write was performed.
+
+### Current state
+
+The local hotfix branch contains the authoritative frontend data modules that
+Railway was missing, with no application-behavior change. It is validated and
+ready for review and publication; this session did not deploy or push it.
+
+### Next step
+
+Push the hotfix branch, merge it into main, allow Railway to rebuild, generate
+the public Railway domain, and perform online acceptance.
 
 ---
 
