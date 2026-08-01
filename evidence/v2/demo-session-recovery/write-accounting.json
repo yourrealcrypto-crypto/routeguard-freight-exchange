@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "routeguard-operations-recovery-write-accounting-1.0",
+  "partialSessionWrites": 4,
+  "recoveryWrites": 1,
+  "totalFailedAttemptWrites": 5,
+  "successfulDemoSession": false,
+  "expectedSuccessfulDemoWrites": 12,
+  "offerX402Writes": 0,
+  "winnerAllocationWrites": 0,
+  "podHcsWrites": 0,
+  "freightReleaseWrites": 0,
+  "completionHcsWrites": 0,
+  "queryPaymentTransactions": 0,
+  "networkWritesDuringCloseout": 0
+}

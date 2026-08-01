@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "routeguard-operations-recovery-final-state-1.0",
+  "contractId": "0.0.9865209",
+  "contractEvmAddress": "0x00000000000000000000000000000000009687f9",
+  "tokenId": "0.0.429274",
+  "tenderKey": "0xd4d5843c443923812c40875fcab192b07026515169a5f1ac7fcbe8ee5affaf32",
+  "state": "REFUNDED",
+  "tenderBalanceAtomic": "0",
+  "attributableContractBalanceAtomic": "0",
+  "demoTopicId": "0.0.9865212",
+  "demoTopicSequence": 0,
+  "offerPaymentOccurred": false,
+  "allocationOccurred": false,
+  "podOccurred": false,
+  "freightReleaseOccurred": false
+}

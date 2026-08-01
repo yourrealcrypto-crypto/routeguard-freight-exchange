@@ -1,0 +1,56 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "before": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "ALLOCATED",
+    "tenderBalanceAtomic": "750000",
+    "totalEscrowedAtomic": "750000",
+    "carrierUsdcAtomic": "22000",
+    "contractUsdcAtomic": "750000",
+    "releaseAuthorizationHashUsed": null,
+    "readAt": "2026-07-31T21:46:37.764Z"
+  },
+  "after": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "ALLOCATED",
+    "tenderBalanceAtomic": "750000",
+    "totalEscrowedAtomic": "750000",
+    "carrierUsdcAtomic": "22000",
+    "contractUsdcAtomic": "750000",
+    "releaseAuthorizationHashUsed": false,
+    "readAt": "2026-07-31T21:46:57.604Z"
+  },
+  "stateUnchanged": true,
+  "lockedAmountUnchanged": true,
+  "carrierFreightReceivedAtomic": "0",
+  "carrierUsdcUnchanged": true,
+  "releaseAuthorizationSubmitted": false,
+  "releaseFullCalled": false,
+  "openDisputeCalled": false,
+  "contractNetworkWrites": 0,
+  "independentMirrorRecheck": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "ALLOCATED",
+    "tenderBalanceAtomic": "750000",
+    "totalEscrowedAtomic": "750000",
+    "carrierUsdcAtomic": "22000",
+    "contractUsdcAtomic": "750000",
+    "releaseAuthorizationHashUsed": false,
+    "readAt": "2026-07-31T21:58:54.419Z"
+  },
+  "recheckAgreesWithAfter": true,
+  "ledgerFootprint": {
+    "note": "State-changing writes are the four authorized HCS transactions. The read-only escrow verification additionally produced Hedera query-payment CryptoTransfers (HBAR fees to consensus nodes) while the SDK ContractCallQuery path was in use; those move no USDC and change no RouteGuard state. The runner now reads contract state through the free Mirror Node contracts/call endpoint.",
+    "authorizedStateChangingWrites": 4,
+    "queryPaymentCryptoTransfers": 7,
+    "usdcMovedByThisRun": "0",
+    "contractStateMutations": 0
+  },
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

@@ -1,0 +1,54 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "fileId": "0.0.9865206",
+  "appendCount": 3,
+  "transactions": [
+    {
+      "transactionId": "0.0.9197513@1785552085.091931677",
+      "mirrorTransactionId": "0.0.9197513-1785552085-091931677",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1785552091.954441164",
+      "entityId": "0.0.9865206",
+      "childTransactionCount": 0,
+      "logs": [],
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552085.091931677",
+      "mirrorStatus": "SUCCESS",
+      "step": "bytecode_file_append_1",
+      "receiptStatus": "SUCCESS"
+    },
+    {
+      "transactionId": "0.0.9197513@1785552092.471249211",
+      "mirrorTransactionId": "0.0.9197513-1785552092-471249211",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1785552095.902179625",
+      "entityId": "0.0.9865206",
+      "childTransactionCount": 0,
+      "logs": [],
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552092.471249211",
+      "mirrorStatus": "SUCCESS",
+      "step": "bytecode_file_append_2",
+      "receiptStatus": "SUCCESS"
+    },
+    {
+      "transactionId": "0.0.9197513@1785552097.656296675",
+      "mirrorTransactionId": "0.0.9197513-1785552097-656296675",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1785552100.329565930",
+      "entityId": "0.0.9865206",
+      "childTransactionCount": 0,
+      "logs": [],
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552097.656296675",
+      "mirrorStatus": "SUCCESS",
+      "step": "bytecode_file_append_3",
+      "receiptStatus": "SUCCESS"
+    }
+  ],
+  "finalFileLength": 15278,
+  "finalFileSha256": "a07f1bad9e2c06bc19aaaba29b16fd47be29f9f348d6c2c20867775b647b3b88",
+  "intendedFileSha256": "a07f1bad9e2c06bc19aaaba29b16fd47be29f9f348d6c2c20867775b647b3b88",
+  "matchesIntendedBytecode": true,
+  "consensusOrderVerified": true,
+  "verificationMethod": "accepted local bytecode chunks plus four Mirror SUCCESS file transactions plus matching deployed runtime bytecode; free Mirror REST exposes no file-content endpoint"
+}

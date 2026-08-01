@@ -1,0 +1,17 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "fileCreateWrites": 1,
+  "fileAppendWrites": 3,
+  "contractCreateWrites": 1,
+  "contractAssociationWrites": 1,
+  "hcsTopicCreateWrites": 1,
+  "x402Writes": 0,
+  "hcsMessageWrites": 0,
+  "demoSessionWrites": 0,
+  "queryPaymentTransactions": 0,
+  "totalStateChangingWrites": 7,
+  "childTransactionCount": 1,
+  "childTransactionsCountedAsApplicationWrites": false
+}

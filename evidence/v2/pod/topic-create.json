@@ -1,0 +1,28 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "topicId": "0.0.9862010",
+  "topicMemo": "RouteGuard v2 POD evidence",
+  "v1TopicReused": false,
+  "immutableV1TopicId": "0.0.9794225",
+  "submitKey": "OPERATOR_ECDSA_PUBLIC_KEY",
+  "adminKey": "OPERATOR_ECDSA_PUBLIC_KEY",
+  "autoRenewAccountId": "0.0.9197513",
+  "transaction": {
+    "step": "topic_create",
+    "messageType": null,
+    "transactionId": "0.0.9197513@1785534392.284127053",
+    "mirrorTransactionId": "0.0.9197513-1785534392-284127053",
+    "consensusTimestamp": "1785534397.730888884",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785534392.284127053",
+    "mirrorStatus": "SUCCESS",
+    "sequenceNumber": null,
+    "messageBytes": null,
+    "localMessageSha256": null,
+    "mirrorMessageSha256": null,
+    "bytesMatch": true,
+    "payloadHash": null
+  },
+  "hashScanTopicUrl": "https://hashscan.io/testnet/topic/0.0.9862010",
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

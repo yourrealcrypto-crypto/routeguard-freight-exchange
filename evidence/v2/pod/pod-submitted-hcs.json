@@ -1,0 +1,37 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "topicId": "0.0.9862010",
+  "envelope": {
+    "schemaVersion": "routeguard-hcs-2.0",
+    "messageType": "POD_SUBMITTED",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderHash": "sha256:4101718151f98f051dc73724b73dd8a7606695895e81441863aaec607707ab52",
+    "createdAt": "2026-07-31T21:46:35.884Z",
+    "payloadHash": "sha256:c733b89e704b6178c390088a26127e849314376a257e8be8471d7aedd2df5c3d",
+    "payload": {
+      "podId": "POD-v2pod-20260731-4b203b9c",
+      "podVersion": 1,
+      "contentHash": "sha256:696f18c52dfd6ee78c966474b8b6bb6cf96016fd620c22517aa727cb66231697",
+      "ciphertextHash": "sha256:8cf571af5e3475f9e3672d552ddd6b9976a51b532df0b6678b5a43614eda7f68",
+      "sizeBytes": 3469
+    }
+  },
+  "transaction": {
+    "step": "pod_submitted",
+    "messageType": "POD_SUBMITTED",
+    "transactionId": "0.0.9197513@1785534396.504175067",
+    "mirrorTransactionId": "0.0.9197513-1785534396-504175067",
+    "consensusTimestamp": "1785534402.627198807",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785534396.504175067",
+    "mirrorStatus": "SUCCESS",
+    "sequenceNumber": 1,
+    "messageBytes": 616,
+    "localMessageSha256": "4eb9d14cdb0f008d3f377c59f19d8f9fe635f1c2e0c1a2dd1ea7a14874958466",
+    "mirrorMessageSha256": "4eb9d14cdb0f008d3f377c59f19d8f9fe635f1c2e0c1a2dd1ea7a14874958466",
+    "bytesMatch": true,
+    "payloadHash": "sha256:c733b89e704b6178c390088a26127e849314376a257e8be8471d7aedd2df5c3d"
+  },
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

@@ -1,0 +1,159 @@
+{
+  "status": "SUCCESS",
+  "runId": "v2rel-20260731-b4c817df",
+  "phase": "E1",
+  "completedAt": "2026-07-31T22:29:16.902Z",
+  "network": "hedera:testnet",
+  "labels": {
+    "X402_ACCESS_PAYMENTS_REAL": "YES",
+    "HTS_USDC_FREIGHT_ESCROW_REAL": "YES",
+    "MAX_SYNTHETIC_BUDGET_FUNDED": "YES",
+    "WINNING_AMOUNT_LOCKED_AND_EXCESS_REFUNDED": "YES",
+    "POD_SYNTHETIC": "YES",
+    "POD_ENCRYPTED_AND_SIGNED": "YES",
+    "POD_AND_ACCEPTANCE_ANCHORED_ON_HCS": "YES",
+    "SHIPPER_ACCEPTANCE_CAUSED_RELEASE": "YES",
+    "CARRIER_RECEIVED_750000_ATOMIC_TESTNET_USDC": "YES",
+    "EVIDENCE_SEQUENCE_ORDERED_ON_HEDERA": "YES",
+    "ADVISER_NON_BINDING": "YES",
+    "LIVE_AI_MODEL": "NO",
+    "LIVE_PHYSICAL_DELIVERY": "NO",
+    "REAL_COMMERCIAL_FREIGHT": "NO",
+    "NETWORK": "hedera:testnet"
+  },
+  "lineage": {
+    "accessRunId": "v2access-20260731-918f5748",
+    "escrowRunId": "v2escrow-20260731-88bbd727",
+    "podRunId": "v2pod-20260731-4b203b9c",
+    "releaseRunId": "v2rel-20260731-b4c817df",
+    "evidenceChainHash": "sha256:975b152ec9352c493091e22962bdc9ae1e4319a1713178cc5ec86420790f7042"
+  },
+  "tender": {
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "podId": "POD-v2pod-20260731-4b203b9c",
+    "podVersion": 1,
+    "shipperAccountId": "0.0.9197513",
+    "carrierAccountId": "0.0.9215954",
+    "tokenId": "0.0.429274"
+  },
+  "acceptance": {
+    "signPayloadHash": "sha256:2b42460cbde64f591c40c4b5e74fea712a16c5d27be954e883d3a719993dbd38",
+    "matchesPodEvidence": true,
+    "matchesDurableRecord": true,
+    "signatureVerified": true,
+    "eventPayloadHashReproduced": true,
+    "shipperKeyFingerprint": "703dc4a2681750541ec4405f9f28903c4c30023a9da38177764b23027bf64c5b",
+    "bindsTenderIdVersion": true,
+    "bindsPodIdVersion": true,
+    "bindsManifestAndPackageHashes": true,
+    "bindsReviewAction": true,
+    "bindsActionId": true,
+    "bindsReviewDeadline": true,
+    "authorizationHashRederived": true
+  },
+  "release": {
+    "transactionId": "0.0.9197513@1785536472.599444485",
+    "consensusTimestamp": "1785536478.673166614",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536472.599444485",
+    "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+    "releasePlanHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+    "releasedAmountAtomic": "750000",
+    "releasedAmountUsdc": "0.75",
+    "carrierBalanceDeltaAtomic": "750000",
+    "shipperBalanceDeltaAtomic": "0",
+    "escrowContractBalanceDeltaAtomic": "-750000",
+    "contractFinalState": "RELEASED",
+    "contractLockedBalanceAtomic": "0",
+    "authorizationHashUsed": true
+  },
+  "hcs": {
+    "topicId": "0.0.9862010",
+    "messages": [
+      {
+        "messageType": "ESCROW_RELEASED",
+        "transactionId": "0.0.9197513@1785536865.385875442",
+        "sequenceNumber": 4,
+        "consensusTimestamp": "1785536869.745154483",
+        "payloadHash": "sha256:eafe743ed1cd68fbbaa8ec16f4197dc7ab9aa542241eacf1e282d04800b75352",
+        "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536865.385875442"
+      },
+      {
+        "messageType": "TENDER_COMPLETED",
+        "transactionId": "0.0.9197513@1785536867.228168869",
+        "sequenceNumber": 5,
+        "consensusTimestamp": "1785536874.302742976",
+        "payloadHash": "sha256:302cd21ca9d7548f537530def985cafd589b8f797cf2258dffdcbfe0b6afac10",
+        "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536867.228168869"
+      }
+    ],
+    "completeSequence": [
+      {
+        "sequenceNumber": 1,
+        "messageType": "POD_SUBMITTED",
+        "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+        "consensusTimestamp": "1785534402.627198807",
+        "payloadHash": "sha256:c733b89e704b6178c390088a26127e849314376a257e8be8471d7aedd2df5c3d",
+        "messageSha256": "4eb9d14cdb0f008d3f377c59f19d8f9fe635f1c2e0c1a2dd1ea7a14874958466"
+      },
+      {
+        "sequenceNumber": 2,
+        "messageType": "POD_ADVISORY_ANCHORED",
+        "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+        "consensusTimestamp": "1785534407.116885660",
+        "payloadHash": "sha256:37fe616033fcc1e053671cb72abc10b4e9399a079876c186039782f18d0013c4",
+        "messageSha256": "9a95db289f6d4a8227421eb7c1019e35d9a90664b7513dc2c9d47d7cc64fa334"
+      },
+      {
+        "sequenceNumber": 3,
+        "messageType": "POD_REVIEW_ACTION",
+        "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+        "consensusTimestamp": "1785534411.170948313",
+        "payloadHash": "sha256:7254f085c81eaf421233af20c1d23e5410d2222fc58a4e8ac58b6299f0ff8139",
+        "messageSha256": "09e6372b60a0337b0fe052905787e424d0bed998a839b348f9578e827d32a99a"
+      },
+      {
+        "sequenceNumber": 4,
+        "messageType": "ESCROW_RELEASED",
+        "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+        "consensusTimestamp": "1785536869.745154483",
+        "payloadHash": "sha256:eafe743ed1cd68fbbaa8ec16f4197dc7ab9aa542241eacf1e282d04800b75352",
+        "messageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51"
+      },
+      {
+        "sequenceNumber": 5,
+        "messageType": "TENDER_COMPLETED",
+        "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+        "consensusTimestamp": "1785536874.302742976",
+        "payloadHash": "sha256:302cd21ca9d7548f537530def985cafd589b8f797cf2258dffdcbfe0b6afac10",
+        "messageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63"
+      }
+    ]
+  },
+  "writeCounts": {
+    "CONTRACT_WRITES": 1,
+    "HCS_MESSAGE_WRITES": 2,
+    "X402_WRITES": 0,
+    "OTHER_STATE_CHANGING_WRITES": 0,
+    "STATE_CHANGING_NETWORK_WRITES": 3,
+    "QUERY_PAYMENT_TRANSACTIONS": 0,
+    "queryPaymentNote": "All escrow state reads use the free Mirror Node contracts/call endpoint, so this phase bills no Hedera query payment. Counted, not assumed."
+  },
+  "claims": {
+    "x402AccessPaymentsWereRealTestnetTransactions": true,
+    "htsUsdcFreightEscrowWasReal": true,
+    "maximumSyntheticFreightBudgetFunded": true,
+    "winningAmountLockedAndExcessRefunded": true,
+    "podWasSyntheticEncryptedAndSigned": true,
+    "podIntegrityAndAcceptanceAnchoredOnHcs": true,
+    "shipperAcceptanceCausedTheRealRelease": true,
+    "carrierReceivedExactly750000AtomicTestnetUsdc": true,
+    "evidenceSequenceOrderedOnHedera": true,
+    "deterministicAdviserWasNonBinding": true,
+    "liveAiModelInvoked": false,
+    "physicalDeliveryProven": false,
+    "realWorldCommercialFreightClaimed": false
+  },
+  "nextPhase": "F"
+}

@@ -1,0 +1,30 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "contractId": "0.0.9865209",
+  "associated": true,
+  "responseCode": "22",
+  "tokenBalanceAtomic": "0",
+  "transaction": {
+    "transactionId": "0.0.9197513@1785552102.225517962",
+    "mirrorTransactionId": "0.0.9197513-1785552102-225517962",
+    "result": "SUCCESS",
+    "consensusTimestamp": "1785552109.135046391",
+    "entityId": "0.0.9865209",
+    "childTransactionCount": 1,
+    "logs": [
+      {
+        "topics": [
+          "0x122ed36639b203274c06a936324e29515d0fbe64e4b65f066e868ecfc07897e4",
+          "0x0000000000000000000000000000000000000000000000000000000000068cda"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000016"
+      }
+    ],
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552102.225517962",
+    "mirrorStatus": "SUCCESS",
+    "step": "contract_association",
+    "receiptStatus": "SUCCESS"
+  }
+}

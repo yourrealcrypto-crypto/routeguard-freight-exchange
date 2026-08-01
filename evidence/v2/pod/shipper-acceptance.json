@@ -1,0 +1,22 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "tenderVersion": 1,
+  "podId": "POD-v2pod-20260731-4b203b9c",
+  "podVersion": 1,
+  "action": "ACCEPT",
+  "actionId": "act-v2pod-20260731-4b203b9c-accept",
+  "signedAt": "2026-07-31T21:46:35.884Z",
+  "reviewDeadlineAt": "2026-08-02T21:46:35.884Z",
+  "shipperKeyFingerprint": "703dc4a2681750541ec4405f9f28903c4c30023a9da38177764b23027bf64c5b",
+  "authPayloadHash": "sha256:2b42460cbde64f591c40c4b5e74fea712a16c5d27be954e883d3a719993dbd38",
+  "reviewActionHash": "sha256:7254f085c81eaf421233af20c1d23e5410d2222fc58a4e8ac58b6299f0ff8139",
+  "signatureVerified": true,
+  "lifecycleStateBefore": "POD_UNDER_REVIEW",
+  "lifecycleStateAfter": "POD_ACCEPTED",
+  "shipperAccountId": "0.0.9197513",
+  "signatureAlgorithm": "ECDSA_SECP256K1_HIERO",
+  "signaturePurpose": "ROUTEGUARD_V2_SHIPPER_POD_REVIEW",
+  "rawSignaturePublished": false,
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

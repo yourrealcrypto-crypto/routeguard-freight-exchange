@@ -1,6 +1,9 @@
 node_modules/
 dist/
 coverage/
+
+# Generated Solidity build output (recreate with npm run contracts:compile)
+artifacts/
 *.log
 
 .env

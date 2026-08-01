@@ -1,0 +1,40 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "contractId": "0.0.9861047",
+  "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+  "fileId": "0.0.9861046",
+  "bytecodeSha256": "584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5",
+  "bytecodeBytes": 7639,
+  "operatorAccountId": "0.0.9197513",
+  "operatorEvmAddress": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622",
+  "tokenId": "0.0.429274",
+  "tokenEvmAddress": "0x0000000000000000000000000000000000068cda",
+  "fileCreate": {
+    "step": "deployment_file_create",
+    "transactionId": "0.0.9197513@1785528439.471076750",
+    "mirrorTransactionId": "0.0.9197513-1785528439-471076750",
+    "consensusTimestamp": "1785528447.465586920",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528439.471076750",
+    "mirrorStatus": "SUCCESS"
+  },
+  "fileAppend": {
+    "step": "deployment_file_append",
+    "transactionId": "0.0.9197513@1785528444.730665937",
+    "mirrorTransactionId": "0.0.9197513-1785528444-730665937",
+    "consensusTimestamp": "1785528452.145613346",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528444.730665937",
+    "mirrorStatus": "SUCCESS"
+  },
+  "contractCreate": {
+    "step": "deployment_contract_create",
+    "transactionId": "0.0.9197513@1785528457.557374203",
+    "mirrorTransactionId": "0.0.9197513-1785528457-557374203",
+    "consensusTimestamp": "1785528463.361966096",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528457.557374203",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.606Z"
+}

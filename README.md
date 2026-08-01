@@ -6,7 +6,49 @@ Carrier systems submit signed freight-capacity bids. Hedera Consensus Service es
 
 ## Current status
 
-Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, offline dry-run, and the **completed live final demonstration** are implemented.
+Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, offline dry-run, the **completed live final demonstration**, and the production web experience are implemented.
+
+### Production experience (v0.13.0)
+
+The Hono service now serves the React/Vite product and API from one origin:
+
+- `/` product narrative and completed outcome;
+- `/proof` authoritative public proof registry and HashScan links;
+- `/control` immutable replay, zero-write simulation, and guarded testnet control;
+- `/operations-demo` permanent redirect to `/control`;
+- `/judge` manual judge walkthrough;
+- `/pod-review` encrypted POD, signature, advisory, and HCS chronology review;
+- `/health` fast service health JSON.
+
+The default control mode fetches the immutable completed proof without creating a
+session. The local simulation uses the production state machine, emits only
+`sim:` transaction references, and reports zero network writes. Controlled
+testnet mode is visibly disabled unless the server capability and a session-only
+operator authorization are both present; signers and Hedera submission stay on
+the server, credentials are never persisted in the browser, and failures never
+fall back to simulation.
+
+```bash
+npm install
+npm run build
+npm run start
+# open http://localhost:3000
+```
+
+Railway uses the root Dockerfile, one service and one replica, health check
+`/health`, `PORT`, and one persistent volume mounted at `/data`. Keep
+`ROUTEGUARD_OPERATIONS_LIVE_ENABLED=false` for the public product unless a
+separately supervised testnet session is explicitly authorized.
+
+The Operations Demo backend now provides immutable completed-proof replay,
+restart-safe local UI simulation, and a guarded server-only Hedera testnet boundary.
+Dedicated reusable infrastructure is live on testnet (escrow `0.0.9865209`, topic
+`0.0.9865212`) but public LIVE remains disabled by default. See
+[`docs/operations-demo-backend.md`](docs/operations-demo-backend.md) for the API,
+SSE, persistence, fixed economics, 12-write plan, and Railway one-replica contract.
+Its successful operator lifecycle is funded-first: fund escrow, activate the
+tender, accept the offer, allocate the winner, process POD and advisory review,
+accept POD, then release freight.
 
 Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. **No further live Hedera execution should be performed** for this submission; the successful live proof is already recorded.
 
@@ -88,7 +130,7 @@ All auction and carrier data in the final demonstration is deliberately syntheti
 
 ## License
 
-ISC — see root `LICENSE` (Copyright 2026 yourrealcrypto-crypto).
+ISC — see root `LICENSE` (Copyright 2026 RouteGuard).
 
 ## Target network
 

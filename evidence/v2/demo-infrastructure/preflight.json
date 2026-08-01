@@ -1,0 +1,23 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "branch": "feat/routeguard-v2-operations-demo-infra",
+  "baseline": "388907131ccb34bb85396265d5de9750f45033e1",
+  "bytecodeSha256": "584bf3710a13fb798f73734a2afea5213afda437d672ee91078a72315c30abe5",
+  "bytecodeBytes": 7639,
+  "bytecodeHexChars": 15278,
+  "solcVersion": "0.8.28+commit.7893614a.Emscripten.clang",
+  "sourceUnchangedFromBaseline": true,
+  "operatorAccountId": "0.0.9197513",
+  "operatorEvmAddress": "0xf49c1fb196ffbbfb6a2ef35485ce7f8bbee3d622",
+  "operatorHbarTinybarsBefore": "73760588478",
+  "tokenDecimals": 6,
+  "projectedWrites": 7,
+  "fileCreateWrites": 1,
+  "fileAppendWrites": 3,
+  "contractCreateWrites": 1,
+  "contractAssociationWrites": 1,
+  "topicCreateWrites": 1,
+  "queryPaymentTransactions": 0
+}

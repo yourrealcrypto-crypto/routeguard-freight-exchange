@@ -6,6 +6,7 @@ serve(
   {
     fetch: app.fetch,
     port: config.port,
+    hostname: "0.0.0.0",
   },
   (info) => {
     console.log(

@@ -1,0 +1,53 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "topicId": "0.0.9862010",
+  "expectedSequence": 4,
+  "envelope": {
+    "schemaVersion": "routeguard-hcs-2.0",
+    "messageType": "ESCROW_RELEASED",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderHash": "sha256:4101718151f98f051dc73724b73dd8a7606695895e81441863aaec607707ab52",
+    "createdAt": "2026-07-31T22:27:49.705Z",
+    "payloadHash": "sha256:eafe743ed1cd68fbbaa8ec16f4197dc7ab9aa542241eacf1e282d04800b75352",
+    "payload": {
+      "releaseTxId": "0.0.9197513@1785536472.599444485",
+      "amountAtomic": "750000",
+      "winnerAccount": "0.0.9215954"
+    }
+  },
+  "transaction": {
+    "step": "escrow_released",
+    "kind": "HCS_MESSAGE",
+    "messageType": "ESCROW_RELEASED",
+    "transactionId": "0.0.9197513@1785536865.385875442",
+    "mirrorTransactionId": "0.0.9197513-1785536865-385875442",
+    "consensusTimestamp": "1785536869.745154483",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536865.385875442",
+    "mirrorStatus": "SUCCESS",
+    "sequenceNumber": 4,
+    "messageBytes": 472,
+    "localMessageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51",
+    "mirrorMessageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51",
+    "bytesMatch": true,
+    "payloadHash": "sha256:eafe743ed1cd68fbbaa8ec16f4197dc7ab9aa542241eacf1e282d04800b75352"
+  },
+  "boundContext": {
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "podId": "POD-v2pod-20260731-4b203b9c",
+    "podVersion": 1,
+    "contractId": "0.0.9861047",
+    "tokenId": "0.0.429274",
+    "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+    "releasePlanHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+    "releaseTransactionId": "0.0.9197513@1785536472.599444485",
+    "releasedAmountAtomic": "750000",
+    "winnerAccountId": "0.0.9215954"
+  },
+  "rawSignaturesPublished": false,
+  "podContentsPublished": false,
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}

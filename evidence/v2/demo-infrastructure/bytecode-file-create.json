@@ -1,0 +1,20 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "fileId": "0.0.9865206",
+  "byteCount": 2048,
+  "transaction": {
+    "transactionId": "0.0.9197513@1785552083.340060866",
+    "mirrorTransactionId": "0.0.9197513-1785552083-340060866",
+    "result": "SUCCESS",
+    "consensusTimestamp": "1785552088.013184104",
+    "entityId": "0.0.9865206",
+    "childTransactionCount": 0,
+    "logs": [],
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785552083.340060866",
+    "mirrorStatus": "SUCCESS",
+    "step": "bytecode_file_create",
+    "receiptStatus": "SUCCESS"
+  }
+}

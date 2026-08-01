@@ -1,0 +1,19 @@
+{
+  "runId": "v2access-20260731-918f5748",
+  "actionType": "BID_SUBMIT",
+  "actionId": "act-bid-v2access-20260731-918f5748",
+  "bidId": "bid-v2access-20260731-918f5748",
+  "httpStatus": 402,
+  "x402Version": 2,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "hedera:testnet",
+      "asset": "0.0.429274",
+      "amount": "1000",
+      "payTo": "0.0.9215954",
+      "maxTimeoutSeconds": 180
+    }
+  ],
+  "note": "Sanitized 402 challenge — private bid body not included"
+}

@@ -1,0 +1,34 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "winnerAccountId": "0.0.9215954",
+  "winnerEvmAddress": "0xebdcc03bb53d87795f6cb16a49067ab44db17b19",
+  "winningAmountAtomic": "750000",
+  "excessRefundAtomic": "250000",
+  "displayWinningUsdc": "0.75",
+  "displayExcessUsdc": "0.25",
+  "decisionManifestHash": "0xe2f44963cbfa19b412882b874bf323d61433845bf40729737687e7242c19f5b8",
+  "allocationAuthorizationHash": "0x3a2fbbadb8a2ee01e49d0a39e2dc0202b0b98965e255cae054bfe379b7b74630",
+  "balances": {
+    "beforeShipperUsdcAtomic": "18978000",
+    "afterShipperUsdcAtomic": "19228000",
+    "beforeCarrierUsdcAtomic": "22000",
+    "afterCarrierUsdcAtomic": "22000",
+    "beforeContractUsdcAtomic": "1000000",
+    "afterContractUsdcAtomic": "750000",
+    "shipperDeltaAtomic": "250000",
+    "carrierDeltaAtomic": "0",
+    "contractDeltaAtomic": "-250000",
+    "tenderBalanceAtomic": "750000"
+  },
+  "transaction": {
+    "step": "allocation",
+    "transactionId": "0.0.9197513@1785528486.479519241",
+    "mirrorTransactionId": "0.0.9197513-1785528486-479519241",
+    "consensusTimestamp": "1785528489.705736458",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528486.479519241",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.608Z"
+}

@@ -1,0 +1,32 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "reportId": "adv-967a3992d9cd6d40",
+  "reportHash": "sha256:6edfe3bf04345b162c6a35b547fe0d5d1ed441323bf03fa1b64939233fce5a6b",
+  "engine": "routeguard-deterministic-pod-assurance-v1",
+  "binding": "NON_BINDING_ADVISORY",
+  "recommendation": "ACCEPT",
+  "findingCodes": [
+    "COMPLETE"
+  ],
+  "findingSeverities": [
+    "INFO"
+  ],
+  "findingCodeHashes": [
+    "sha256:add7dec7854efed7f17fdfc6779ffe28911092930223a2db895102cc7d3f7ba4"
+  ],
+  "createdAt": "2026-07-31T21:46:35.884Z",
+  "implementation": "DETERMINISTIC_STUB",
+  "liveAiModel": false,
+  "findings": [
+    {
+      "code": "COMPLETE",
+      "severity": "INFO",
+      "codeHash": "sha256:add7dec7854efed7f17fdfc6779ffe28911092930223a2db895102cc7d3f7ba4"
+    }
+  ],
+  "nonBinding": true,
+  "performedLifecycleAcceptance": false,
+  "constructedEscrowAuthorization": false,
+  "note": "Deterministic rules-based adviser. No live AI model was called. The private advisory report body is not published.",
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

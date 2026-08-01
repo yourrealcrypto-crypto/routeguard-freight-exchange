@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t d">
+  <title id="t">RouteGuard favicon</title>
+  <desc id="d">Favicon mark derived from the small-size symbol: gateway and verification checkmark only, squared and optically sized for 16, 32 and 48 px. Transparent background.</desc>
+  <g id="routeguard-favicon-mark" transform="translate(-131.68,26) scale(1.402)">
+  <g id="routeguard-gateway" fill="none" stroke="#0E243A" stroke-width="32" stroke-linecap="butt">
+    <path d="M130 135 L130 58 A42 42 0 0 1 172 16 L381 16 A42 42 0 0 1 423 58 L423 155"></path>
+    <path d="M130 218 L130 270 A42 42 0 0 0 172 312 L381 312 A42 42 0 0 0 423 270 L423 213"></path>
+  </g>
+  <path id="routeguard-check" fill="none" stroke="#0A9F4D" stroke-width="29" stroke-linecap="round" stroke-linejoin="round" d="M219 172 L258 213 L366 98"></path>
+  </g>
+</svg>

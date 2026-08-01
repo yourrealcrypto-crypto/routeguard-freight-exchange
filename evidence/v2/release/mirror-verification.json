@@ -1,0 +1,56 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "network": "hedera:testnet",
+  "mirrorNode": "https://testnet.mirrornode.hedera.com",
+  "rows": [
+    {
+      "step": "release_full",
+      "kind": "CONTRACT_EXECUTE",
+      "messageType": null,
+      "transactionId": "0.0.9197513@1785536472.599444485",
+      "mirrorTransactionId": "0.0.9197513-1785536472-599444485",
+      "mirrorStatus": "SUCCESS",
+      "consensusTimestamp": "1785536478.673166614",
+      "sequenceNumber": null,
+      "localMessageSha256": null,
+      "mirrorMessageSha256": null,
+      "bytesMatch": true,
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536472.599444485"
+    },
+    {
+      "step": "escrow_released",
+      "kind": "HCS_MESSAGE",
+      "messageType": "ESCROW_RELEASED",
+      "transactionId": "0.0.9197513@1785536865.385875442",
+      "mirrorTransactionId": "0.0.9197513-1785536865-385875442",
+      "mirrorStatus": "SUCCESS",
+      "consensusTimestamp": "1785536869.745154483",
+      "sequenceNumber": 4,
+      "localMessageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51",
+      "mirrorMessageSha256": "fd600647b1c6a919aeaa1a5f9709b05e8bc18531635da2e02326fb36199e7c51",
+      "bytesMatch": true,
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536865.385875442"
+    },
+    {
+      "step": "tender_completed",
+      "kind": "HCS_MESSAGE",
+      "messageType": "TENDER_COMPLETED",
+      "transactionId": "0.0.9197513@1785536867.228168869",
+      "mirrorTransactionId": "0.0.9197513-1785536867-228168869",
+      "mirrorStatus": "SUCCESS",
+      "consensusTimestamp": "1785536874.302742976",
+      "sequenceNumber": 5,
+      "localMessageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63",
+      "mirrorMessageSha256": "f6be14eb988302d9d72adb962643aeca9dd6752d5ba1b6e6242c3d6b98ac9a63",
+      "bytesMatch": true,
+      "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785536867.228168869"
+    }
+  ],
+  "allSuccess": true,
+  "uniqueTransactionIds": true,
+  "messageBytesMatchLocalEnvelopes": true,
+  "tokenTransferVerified": true,
+  "freightReleasedEventVerified": true,
+  "contractStateVerified": true,
+  "generatedAt": "2026-07-31T22:29:16.902Z"
+}

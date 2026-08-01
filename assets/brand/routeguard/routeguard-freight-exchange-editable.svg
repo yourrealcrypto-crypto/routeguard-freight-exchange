@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1305 329" role="img" aria-labelledby="title description" shape-rendering="geometricPrecision">
+  <title id="title">RouteGuard Freight Exchange editable master</title>
+  <desc id="description">RouteGuard Freight Exchange lockup: inbound route, controlled gateway, verification check, confirmed route, primary wordmark, and product descriptor.</desc>
+  <g id="routeguard-gateway" fill="none" stroke="#11151D" stroke-width="32" stroke-linecap="butt" stroke-linejoin="round">
+    <path d="M130 119 V62 A46 46 0 0 1 176 16 H376 A46 46 0 0 1 422 62 V139" />
+    <path d="M130 234 V267 A45 45 0 0 0 175 312 H377 A45 45 0 0 0 422 267 V228" />
+  </g>
+  <g id="routeguard-inbound" fill="#11151D">
+    <circle cx="26" cy="184" r="26" />
+    <circle cx="82" cy="184" r="11" />
+    <circle cx="126" cy="184" r="11" />
+    <circle cx="170" cy="184" r="11" />
+  </g>
+  <g id="routeguard-check" fill="none" stroke="#10B981" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M219 173 L258 214 L365 98" />
+  </g>
+  <g id="routeguard-verified-route" fill="#10B981" stroke="#10B981">
+    <path d="M321 184 H1284" fill="none" stroke-width="20" stroke-linecap="butt" />
+    <circle cx="1284" cy="184" r="21" stroke="none" />
+  </g>
+  <g id="routeguard-wordmark" fill="#11151D" aria-label="RouteGuard">
+    <text x="468.37" y="136.12" font-family="Poppins" font-size="138" font-weight="500" letter-spacing="-4.9">RouteGuard</text>
+  </g>
+  <g id="routeguard-descriptor" fill="#60646C" aria-label="FREIGHT EXCHANGE">
+    <text x="475.15" y="267" font-family="Poppins" font-size="63" font-weight="400" letter-spacing="12.57">FREIGHT EXCHANGE</text>
+  </g>
+</svg>

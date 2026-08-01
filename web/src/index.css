@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #F7F8FA;
+    color: #15171A;
+  }
+
+  code, pre, .font-mono, .font-technical {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+}
+
+@utility font-montserrat {
+  font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
+
+@utility font-technical {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+@utility bg-charcoal {
+  background-color: #11151D;
+}
+
+@utility text-charcoal {
+  color: #11151D;
+}
+
+@utility bg-surface-raised {
+  background-color: #F1F3F5;
+}
+
+@utility border-subtle {
+  border-color: #DDE1E6;
+}
+
+@utility text-muted-rg {
+  color: #8A8F98;
+}
+
+@utility text-secondary-rg {
+  color: #60646C;
+}
+
+@utility text-azure {
+  color: #0031FF;
+}
+
+@utility bg-azure {
+  background-color: #0031FF;
+}
+
+@utility text-cobalt {
+  color: #2D84EB;
+}
+
+@utility bg-cobalt {
+  background-color: #2D84EB;
+}
+
+@utility text-success-rg {
+  color: #168A4A;
+}
+
+@utility bg-success-rg {
+  background-color: #168A4A;
+}
+
+@utility gradient-uv-azure {
+  background: linear-gradient(90deg, #8259EF 0%, #0031FF 100%);
+}
+
+@utility gradient-uv-azure-vert {
+  background: linear-gradient(180deg, #8259EF 0%, #0031FF 100%);
+}

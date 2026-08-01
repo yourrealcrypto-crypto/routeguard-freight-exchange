@@ -1,0 +1,25 @@
+{
+  "runId": "v2pod-20260731-4b203b9c",
+  "kind": "RELEASE_FULL",
+  "contractId": "0.0.9861047",
+  "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+  "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+  "tenderVersion": 1,
+  "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+  "lockedAmountAtomic": "750000",
+  "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+  "contractFunction": "releaseFull",
+  "functionSignature": "releaseFull(bytes32,bytes32)",
+  "signerRole": "OPERATOR",
+  "gasLimit": 900000,
+  "argTypes": [
+    "bytes32",
+    "bytes32"
+  ],
+  "planHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+  "submitted": false,
+  "submittedToNetwork": false,
+  "contractNetworkWrites": 0,
+  "note": "Transaction plan only. Phase E1 is responsible for executing releaseFull.",
+  "generatedAt": "2026-07-31T21:58:54.511Z"
+}

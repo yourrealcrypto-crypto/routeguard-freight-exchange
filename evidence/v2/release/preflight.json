@@ -1,0 +1,122 @@
+{
+  "runId": "v2rel-20260731-b4c817df",
+  "phase": "E1",
+  "branch": "feat/routeguard-v2-phase-e",
+  "network": "hedera:testnet",
+  "guards": {
+    "ROUTEGUARD_LIVE_V2_RELEASE_CONFIRM": "PRESENT_AND_EXACT",
+    "ROUTEGUARD_LIVE_V2_RELEASE_MAX_WRITES": "3",
+    "ENABLE_LIVE_HEDERA": "true"
+  },
+  "secrets": {
+    "shipperSigningKey": "PRESENT",
+    "operatorSigningKey": "PRESENT"
+  },
+  "bindings": {
+    "accessRunId": "v2access-20260731-918f5748",
+    "escrowRunId": "v2escrow-20260731-88bbd727",
+    "podRunId": "v2pod-20260731-4b203b9c",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "topicId": "0.0.9862010",
+    "tokenId": "0.0.429274",
+    "shipperAccountId": "0.0.9197513",
+    "carrierAccountId": "0.0.9215954",
+    "carrierEvmAddress": "0xebdcc03bb53d87795f6cb16a49067ab44db17b19",
+    "winningBidId": "act-v2pod-20260731-4b203b9c-accept",
+    "podId": "POD-v2pod-20260731-4b203b9c",
+    "podVersion": 1,
+    "manifestHash": "sha256:169bf54cb487a7ae7248d5f726885e363aacfd29e9a6f140cadd6074102ef582",
+    "packageContentHash": "sha256:696f18c52dfd6ee78c966474b8b6bb6cf96016fd620c22517aa727cb66231697",
+    "ciphertextHash": "sha256:8cf571af5e3475f9e3672d552ddd6b9976a51b532df0b6678b5a43614eda7f68",
+    "advisoryReportHash": "sha256:6edfe3bf04345b162c6a35b547fe0d5d1ed441323bf03fa1b64939233fce5a6b",
+    "acceptanceActionId": "act-v2pod-20260731-4b203b9c-accept",
+    "acceptanceSignedAt": "2026-07-31T21:46:35.884Z",
+    "acceptanceReviewDeadlineAt": "2026-08-02T21:46:35.884Z",
+    "acceptanceAuthPayloadHash": "sha256:2b42460cbde64f591c40c4b5e74fea712a16c5d27be954e883d3a719993dbd38",
+    "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+    "releasePlanHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+    "lockedAmountAtomic": "750000",
+    "gasLimit": 900000,
+    "priorSequences": {
+      "POD_SUBMITTED": 1,
+      "POD_ADVISORY_ANCHORED": 2,
+      "POD_REVIEW_ACTION": 3
+    }
+  },
+  "acceptanceReverification": {
+    "signPayloadHash": "sha256:2b42460cbde64f591c40c4b5e74fea712a16c5d27be954e883d3a719993dbd38",
+    "matchesPodEvidence": true,
+    "matchesDurableRecord": true,
+    "signatureVerified": true,
+    "eventPayloadHashReproduced": true,
+    "shipperKeyFingerprint": "703dc4a2681750541ec4405f9f28903c4c30023a9da38177764b23027bf64c5b",
+    "bindsTenderIdVersion": true,
+    "bindsPodIdVersion": true,
+    "bindsManifestAndPackageHashes": true,
+    "bindsReviewAction": true,
+    "bindsActionId": true,
+    "bindsReviewDeadline": true,
+    "authorizationHashRederived": true
+  },
+  "releasePlanReverification": {
+    "rebuiltWithProductionBuilder": true,
+    "planHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "amountAtomic": "750000",
+    "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+    "phaseC2LiveBindingsEnforced": true
+  },
+  "liveEscrowBefore": {
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "state": "ALLOCATED",
+    "tenderBalanceAtomic": "750000",
+    "totalEscrowedAtomic": "750000",
+    "releaseAuthorizationHashUsed": false,
+    "readAt": "2026-07-31T22:21:18.483Z"
+  },
+  "balancesBefore": {
+    "carrierUsdcAtomic": "22000",
+    "shipperUsdcAtomic": "19228000",
+    "contractUsdcAtomic": "750000",
+    "readAt": "2026-07-31T22:21:18.589Z"
+  },
+  "operator": {
+    "accountId": "0.0.9197513",
+    "hbarTinybars": "77613627153",
+    "minimumRequiredTinybars": "500000000",
+    "sufficient": true
+  },
+  "focusedTests": "PASS",
+  "writePlan": [
+    {
+      "index": 1,
+      "step": "release_full",
+      "kind": "ContractExecuteTransaction",
+      "fn": "releaseFull"
+    },
+    {
+      "index": 2,
+      "step": "escrow_released",
+      "kind": "TopicMessageSubmitTransaction",
+      "expectedSequence": 4
+    },
+    {
+      "index": 3,
+      "step": "tender_completed",
+      "kind": "TopicMessageSubmitTransaction",
+      "expectedSequence": 5
+    }
+  ],
+  "projectedStateChangingWrites": 3,
+  "x402Writes": 0,
+  "stateReadMethod": "Mirror Node contracts/call (free, no query payment)",
+  "generatedAt": "2026-07-31T22:29:16.900Z"
+}

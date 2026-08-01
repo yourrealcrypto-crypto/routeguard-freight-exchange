@@ -1,0 +1,12 @@
+{
+  "runId": "v2demo-infra-20260801-2a4cfe09",
+  "network": "hedera:testnet",
+  "tokenId": "0.0.429274",
+  "topicId": "0.0.9865212",
+  "exists": true,
+  "memo": "RouteGuard operations demo",
+  "sequenceNumber": 0,
+  "messageCount": 0,
+  "submitAuthority": "0.0.9197513",
+  "separateFromImmutableProofTopic": true
+}

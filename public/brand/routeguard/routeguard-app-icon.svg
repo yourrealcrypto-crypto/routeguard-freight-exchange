@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="t d">
+  <title id="t">RouteGuard application icon</title>
+  <desc id="d">Standalone symbol centred on a neutral square application canvas. Content occupies a 720 x 720 safe area (70.3% of the canvas) - 135 px at 192, 360 px at 512, 720 px at 1024. No gradient, shadow or glass effect.</desc>
+  <rect id="routeguard-app-icon-canvas" x="0" y="0" width="1024" height="1024" fill="#F4F4F4"></rect>
+  <g id="routeguard-app-icon-safe-area" display="none">
+    <rect x="152" y="152" width="720" height="720" fill="none" stroke="#E0503A" stroke-width="2"></rect>
+    <rect x="152" y="276.3" width="720" height="471.4" fill="none" stroke="#3A7FE0" stroke-width="2"></rect>
+  </g>
+  <g id="routeguard-symbol" transform="translate(152,276.3) scale(1.437)">
+  <g id="routeguard-gateway" fill="none" stroke="#0E243A" stroke-width="32" stroke-linecap="butt">
+    <path d="M130 135 L130 58 A42 42 0 0 1 172 16 L381 16 A42 42 0 0 1 423 58 L423 155"></path>
+    <path d="M130 218 L130 270 A42 42 0 0 0 172 312 L381 312 A42 42 0 0 0 423 270 L423 213"></path>
+  </g>
+  <g id="routeguard-inbound" fill="#0A9F4D">
+    <circle cx="26" cy="184" r="26"></circle>
+    <circle cx="82" cy="184" r="10.5"></circle>
+    <circle cx="126" cy="184" r="10.5"></circle>
+    <circle cx="170" cy="184" r="10.5"></circle>
+  </g>
+  <g id="routeguard-verified-route" fill="#0A9F4D">
+    <path d="M337 174 L480 174 L480 194 L321 194 Z"></path>
+    <circle id="routeguard-terminal-node" cx="480" cy="184" r="21"></circle>
+  </g>
+  <path id="routeguard-check" fill="none" stroke="#0A9F4D" stroke-width="29" stroke-linecap="round" stroke-linejoin="round" d="M219 172 L258 213 L366 98"></path>
+  </g>
+</svg>

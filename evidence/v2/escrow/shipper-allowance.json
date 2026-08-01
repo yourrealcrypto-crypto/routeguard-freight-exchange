@@ -1,0 +1,18 @@
+{
+  "runId": "v2escrow-20260731-88bbd727",
+  "ownerAccountId": "0.0.9197513",
+  "spenderContractId": "0.0.9861047",
+  "tokenId": "0.0.429274",
+  "amountAtomic": "1000000",
+  "unlimited": false,
+  "transaction": {
+    "step": "allowance",
+    "transactionId": "0.0.9197513@1785528474.333213938",
+    "mirrorTransactionId": "0.0.9197513-1785528474-333213938",
+    "consensusTimestamp": "1785528478.482105751",
+    "result": "SUCCESS",
+    "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785528474.333213938",
+    "mirrorStatus": "SUCCESS"
+  },
+  "generatedAt": "2026-07-31T20:08:18.607Z"
+}

@@ -1,0 +1,13 @@
+{
+  "runId": "v2access-20260731-918f5748",
+  "note": "Original 402 not re-captured on resume; activation already COMMITTED",
+  "actionType": "TENDER_ACTIVATE",
+  "actionId": "act-activate-v2access-20260731-918f5748",
+  "expectedTerms": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "asset": "0.0.429274",
+    "amount": "1000",
+    "payTo": "0.0.9215954"
+  }
+}

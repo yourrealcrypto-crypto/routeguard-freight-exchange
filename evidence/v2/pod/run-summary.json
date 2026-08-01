@@ -1,0 +1,168 @@
+{
+  "status": "SUCCESS",
+  "runId": "v2pod-20260731-4b203b9c",
+  "phase": "D2",
+  "completedAt": "2026-07-31T21:58:54.511Z",
+  "network": "hedera:testnet",
+  "labels": {
+    "SYNTHETIC_BUSINESS_DATA": "YES",
+    "LIVE_POD_CRYPTO": "YES",
+    "LIVE_APPLICATION_SIGNATURES": "YES",
+    "LIVE_HCS_ANCHORS": "YES",
+    "LIVE_AI_MODEL": "NO",
+    "ADVISER_IMPLEMENTATION": "DETERMINISTIC_STUB",
+    "LIVE_PHYSICAL_DELIVERY": "NO",
+    "LIVE_FREIGHT_RELEASE": "NO",
+    "ESCROW_STATE_AFTER_RUN": "ALLOCATED",
+    "LOCKED_AMOUNT_AFTER_RUN": "750000"
+  },
+  "escrow": {
+    "escrowRunId": "v2escrow-20260731-88bbd727",
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "shipperAccountId": "0.0.9197513",
+    "carrierAccountId": "0.0.9215954",
+    "stateBefore": "ALLOCATED",
+    "stateAfter": "ALLOCATED",
+    "lockedAmountAtomic": "750000",
+    "carrierFreightReleasedAtomic": "0"
+  },
+  "pod": {
+    "podId": "POD-v2pod-20260731-4b203b9c",
+    "podVersion": 1,
+    "manifestHash": "sha256:169bf54cb487a7ae7248d5f726885e363aacfd29e9a6f140cadd6074102ef582",
+    "packageContentHash": "sha256:696f18c52dfd6ee78c966474b8b6bb6cf96016fd620c22517aa727cb66231697",
+    "ciphertextHash": "sha256:8cf571af5e3475f9e3672d552ddd6b9976a51b532df0b6678b5a43614eda7f68",
+    "aadHash": "sha256:00935bc7f95e0703a57c302d9992d5b1f27c56ca93c6a02d5ab1b3372881d03a",
+    "encryptionAlg": "AES-256-GCM",
+    "wrapAlg": "AES-256-GCM-WRAP-V1",
+    "documentCount": 3,
+    "totalPlaintextBytes": 3469,
+    "ciphertextBytes": 5981,
+    "plaintextEnvelopeBytes": 5981,
+    "storageSchema": "routeguard-v2-pod-store-1.0",
+    "storagePath": "data\\v2-pods/ (gitignored runtime storage)",
+    "carrierSignatureVerified": true,
+    "carrierAuthPayloadHash": "sha256:578ed2cafa2a6f27e9b31e23be1dd1322b701b9d30a763ba7227252d9ad221b6",
+    "carrierKeyFingerprint": "5c9d890d0c459b44b1fa244691408e26322806fa860b0eecb6ce50461221e81f",
+    "decryptRoundTripVerified": true,
+    "plaintextPersisted": false
+  },
+  "advisory": {
+    "reportId": "adv-967a3992d9cd6d40",
+    "reportHash": "sha256:6edfe3bf04345b162c6a35b547fe0d5d1ed441323bf03fa1b64939233fce5a6b",
+    "engine": "routeguard-deterministic-pod-assurance-v1",
+    "binding": "NON_BINDING_ADVISORY",
+    "recommendation": "ACCEPT",
+    "findingCodes": [
+      "COMPLETE"
+    ],
+    "findingSeverities": [
+      "INFO"
+    ],
+    "findingCodeHashes": [
+      "sha256:add7dec7854efed7f17fdfc6779ffe28911092930223a2db895102cc7d3f7ba4"
+    ],
+    "createdAt": "2026-07-31T21:46:35.884Z",
+    "implementation": "DETERMINISTIC_STUB",
+    "liveAiModel": false
+  },
+  "acceptance": {
+    "actionId": "act-v2pod-20260731-4b203b9c-accept",
+    "action": "ACCEPT",
+    "signedAt": "2026-07-31T21:46:35.884Z",
+    "reviewDeadlineAt": "2026-08-02T21:46:35.884Z",
+    "shipperKeyFingerprint": "703dc4a2681750541ec4405f9f28903c4c30023a9da38177764b23027bf64c5b",
+    "authPayloadHash": "sha256:2b42460cbde64f591c40c4b5e74fea712a16c5d27be954e883d3a719993dbd38",
+    "reviewActionHash": "sha256:7254f085c81eaf421233af20c1d23e5410d2222fc58a4e8ac58b6299f0ff8139",
+    "signatureVerified": true,
+    "lifecycleStateBefore": "POD_UNDER_REVIEW",
+    "lifecycleStateAfter": "POD_ACCEPTED"
+  },
+  "releasePlan": {
+    "kind": "RELEASE_FULL",
+    "contractId": "0.0.9861047",
+    "contractEvmAddress": "0x00000000000000000000000000000000009677b7",
+    "tenderId": "V2-ESCROW-DEMO-v2escrow-20260731-88bbd727",
+    "tenderVersion": 1,
+    "tenderKey": "0x30741f72dc23ac11d4fee37878d9c3fc7fe000377f87cb55ff2196cc82e79f89",
+    "lockedAmountAtomic": "750000",
+    "authorizationHash": "0xc66ae24790348c848c7a8749c444b6947a47bc9760a18d2978c67bdb016c7aeb",
+    "contractFunction": "releaseFull",
+    "functionSignature": "releaseFull(bytes32,bytes32)",
+    "signerRole": "OPERATOR",
+    "gasLimit": 900000,
+    "argTypes": [
+      "bytes32",
+      "bytes32"
+    ],
+    "planHash": "sha256:0a722dd3043830e0d5a7beaef668699abe1c1e431e351d86e4df94d844dacf95",
+    "submitted": false
+  },
+  "hcs": {
+    "topicId": "0.0.9862010",
+    "topicMemo": "RouteGuard v2 POD evidence",
+    "topicCreateTx": "0.0.9197513@1785534392.284127053",
+    "messages": [
+      {
+        "messageType": "POD_SUBMITTED",
+        "transactionId": "0.0.9197513@1785534396.504175067",
+        "sequenceNumber": 1,
+        "consensusTimestamp": "1785534402.627198807",
+        "payloadHash": "sha256:c733b89e704b6178c390088a26127e849314376a257e8be8471d7aedd2df5c3d",
+        "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785534396.504175067"
+      },
+      {
+        "messageType": "POD_ADVISORY_ANCHORED",
+        "transactionId": "0.0.9197513@1785534400.313437789",
+        "sequenceNumber": 2,
+        "consensusTimestamp": "1785534407.116885660",
+        "payloadHash": "sha256:37fe616033fcc1e053671cb72abc10b4e9399a079876c186039782f18d0013c4",
+        "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785534400.313437789"
+      },
+      {
+        "messageType": "POD_REVIEW_ACTION",
+        "transactionId": "0.0.9197513@1785534407.535669507",
+        "sequenceNumber": 3,
+        "consensusTimestamp": "1785534411.170948313",
+        "payloadHash": "sha256:7254f085c81eaf421233af20c1d23e5410d2222fc58a4e8ac58b6299f0ff8139",
+        "hashScanUrl": "https://hashscan.io/testnet/transaction/0.0.9197513@1785534407.535669507"
+      }
+    ]
+  },
+  "writeCounts": {
+    "HCS_TOPIC_CREATIONS": 1,
+    "HCS_MESSAGE_WRITES": 3,
+    "CONTRACT_WRITES": 0,
+    "X402_WRITES": 0,
+    "OTHER_HEDERA_WRITES": 0,
+    "NETWORK_WRITES": 4,
+    "queryPaymentCryptoTransfers": 7,
+    "queryPaymentNote": "Read-only escrow verification via the SDK ContractCallQuery path bills a Hedera query payment per call. These are HBAR node fees, not RouteGuard state changes, and move no USDC."
+  },
+  "claims": {
+    "encryptedPodStoredLocally": true,
+    "podPlaintextPersisted": false,
+    "podPlaintextSubmittedToHedera": false,
+    "carrierSignatureVerified": true,
+    "shipperAcceptanceSigned": true,
+    "shipperSignatureVerified": true,
+    "advisoryIsNonBinding": true,
+    "advisoryIsDeterministicStub": true,
+    "liveAiModelInvoked": false,
+    "physicalDeliveryProven": false,
+    "humanRecipientSignatureProven": false,
+    "releaseFullPlanBuilt": true,
+    "releaseFullSubmitted": false,
+    "freightPrincipalReleased": false,
+    "escrowRemainsAllocated": true,
+    "lockedAmountRemains750000": true,
+    "x402PaymentRepeated": false,
+    "v1TopicUsed": false,
+    "phaseEOwnsRealRelease": true
+  },
+  "nextPhase": "E1"
+}
