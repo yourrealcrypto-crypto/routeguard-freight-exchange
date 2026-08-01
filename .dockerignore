@@ -7,4 +7,6 @@ dist
 coverage
 artifacts
 data
+!web/src/data/
+!web/src/data/**
 *.log

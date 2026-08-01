@@ -11,6 +11,8 @@ artifacts/
 !.env.example
 
 data/
+!web/src/data/
+!web/src/data/**
 evidence/private/
 
 .DS_Store
