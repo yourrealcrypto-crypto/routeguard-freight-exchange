@@ -7,6 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
+    "build": "npm run typecheck",
     "test": "vitest run",
     "dev": "tsx watch src/server/index.ts",
     "start": "tsx src/server/index.ts",
@@ -21,6 +22,7 @@
     "smoke:hbar:challenge": "tsx scripts/hbar-smoke-challenge.ts",
     "smoke:hbar:verify": "tsx scripts/hbar-smoke-verify.ts",
     "smoke:usdc": "tsx scripts/usdc-smoke-client.ts",
+    "smoke:operations-demo": "tsx scripts/operations-demo-smoke.ts",
     "demo:hcs-auction": "tsx scripts/hcs-auction-demo.ts",
     "demo:phase6b-reservation": "tsx scripts/phase6b-live-reservation.ts",
     "demo:final-auction": "tsx scripts/final-auction-demo.ts",

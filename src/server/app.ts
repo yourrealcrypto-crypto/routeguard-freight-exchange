@@ -2,6 +2,14 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
 
 import { config } from "../config";
+import {
+  createOperationsDemoApp,
+  fastHealth,
+  OperationsDemoOrchestrator,
+  OperationsDemoStore,
+  resolveOperationsDemoConfig,
+} from "../operations-demo";
+import { MirrorReader } from "../v2/live/mirror-reader";
 import { resolveV2AccessConfig } from "../v2/config";
 import { createConfiguredV2AccessApp } from "../v2/http/app";
 import {
@@ -13,6 +21,18 @@ import { registerUsdcSmokeRoute } from "../x402/usdc-smoke";
 import { renderDevelopmentPage } from "./page";
 
 const app = new Hono();
+const operationsConfig = resolveOperationsDemoConfig(process.env);
+const operationsStore = new OperationsDemoStore(operationsConfig.demoDataDir);
+const operationsOrchestrator = new OperationsDemoOrchestrator(
+  operationsConfig,
+  operationsStore,
+);
+operationsOrchestrator.initialize();
+const operationsApp = createOperationsDemoApp({
+  orchestrator: operationsOrchestrator,
+  config: operationsConfig,
+  mirror: new MirrorReader(),
+});
 
 function v2AccessDisabled(context: Context): Response {
   return context.json(
@@ -47,20 +67,29 @@ app.use(
   }),
 );
 
+function operationsHealth(context: Context): Response {
+  const result = fastHealth(operationsConfig, operationsOrchestrator);
+  return context.json({
+    ...result.body,
+    livePaymentsEnabled:
+      config.liveHederaEnabled &&
+      (config.liveHbarPaymentsEnabled || config.liveUsdcPaymentsEnabled),
+  }, result.ok ? 200 : 503);
+}
+
+app.get("/health", operationsHealth);
 app.get("/api/health", (context) => {
   return context.json({
     status: "ok",
     service: "routeguard-freight-exchange",
     network: config.network,
-
     livePaymentsEnabled:
       config.liveHederaEnabled &&
-      (
-        config.liveHbarPaymentsEnabled ||
-        config.liveUsdcPaymentsEnabled
-      ),
+      (config.liveHbarPaymentsEnabled || config.liveUsdcPaymentsEnabled),
   });
 });
+
+app.route("/", operationsApp);
 
 registerHbarSmokeRoute(app);
 registerUsdcSmokeRoute(app);

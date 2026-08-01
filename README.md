@@ -8,6 +8,12 @@ Carrier systems submit signed freight-capacity bids. Hedera Consensus Service es
 
 Core auction, HCS evidence, dual-asset reservation, shared final-demo orchestration, offline dry-run, and the **completed live final demonstration** are implemented.
 
+The Operations Demo backend now provides immutable completed-proof replay,
+restart-safe local UI simulation, and a guarded server-only Hedera testnet boundary.
+LIVE is disabled until separate reusable demo infrastructure is deployed. See
+[`docs/operations-demo-backend.md`](docs/operations-demo-backend.md) for the API,
+SSE, persistence, fixed economics, 12-write plan, and Railway one-replica contract.
+
 Live final demonstration is **guarded** (multiple independent env flags + confirmation phrase + production transports). Default CLI modes perform **zero** network writes. **No further live Hedera execution should be performed** for this submission; the successful live proof is already recorded.
 
 ### Live proof (Hedera testnet — completed 2026-07-27)

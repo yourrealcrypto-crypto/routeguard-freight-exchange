@@ -1,13 +1,151 @@
 # RouteGuard Freight Exchange — PROJECT STATUS
 
-**Version:** 0.11.0
+**Version:** 0.12.0
 **Date:** 2026-08-01
 **Project:** `routeguard-freight-exchange@0.1.0` — deterministic freight-capacity reservation over x402 and Hedera Testnet
-**Branch:** `feat/routeguard-v2-phase-e` (local only; do not push during this checkpoint)
+**Branch:** `feat/routeguard-v2-operations-demo` (local only; do not push during this checkpoint)
 **Prior checkpoint HEAD:** `ca6700be31080ea620a99e87af81580ded05ef17` (v0.10.1 Phase D2 live POD acceptance)
 **Authoritative plan (v1):** `RouteGuard_Freight_Exchange_Final_Project_Plan_v1.5.md`
 **Authoritative plan (v2):** `docs/plans/routeguard-v2-architecture-migration-plan.md`
 **Winning Demo blueprint:** `F:\x402\crqitiques\RouteGuard_Claude_Winning_Demo_Design_2026-07-19.md`
+
+---
+
+## RouteGuard Operations Demo backend (v0.12.0)
+
+The online-ready Operations Demo server boundary is implemented offline with
+immutable completed-proof `REPLAY`, persistent zero-egress `SIMULATION`, and
+guarded server-signed Hedera testnet `LIVE`. LIVE is disabled by default and
+truthfully reports `DISABLED_DEMO_INFRASTRUCTURE_PENDING`; no demo contract was
+deployed and no demo HCS topic was created.
+
+**NETWORK_WRITES=0.** No x402 payment, HCS message, contract call, contract
+deployment, topic creation, supervised live session, external deployment, or
+evidence mutation occurred in this phase.
+
+### Backend and public API
+
+- Shared types define modes/roles/actions, the forward-only state machine,
+  recovery states, public references, versioned journals, events, capabilities,
+  and public-safe sessions.
+- Routes: `GET /api/operations-demo/capabilities`,
+  `GET /api/operations-demo/replay`, `POST /api/operations-demo/sessions`,
+  `GET /api/operations-demo/sessions/:sessionId`,
+  `POST /api/operations-demo/sessions/:sessionId/actions`, and resumable SSE at
+  `GET /api/operations-demo/sessions/:sessionId/events`.
+- SSE emits ordered snapshot, progress, transaction, Mirror, confirmed,
+  recoverable, terminal, and expiry events with `Last-Event-ID`, heartbeat,
+  clean terminal disconnect, and polling fallback.
+- Limits: 60/min/IP for capabilities/replay, 1/min/IP for session creation,
+  10/hour globally for LIVE creation, and 20/min/IP for actions.
+- `GET /health` validates replay/configuration with **zero Mirror calls**.
+  Historical `/api/health` remains compatible; capabilities owns deep Mirror,
+  contract/topic, balance, active-session, and write-capacity readiness.
+
+### Extracted live services and recovery
+
+`src/v2/live/` provides the testnet client factory, exact allowance,
+pinned escrow executor, strict v2 HCS submitter, x402 payer/signing client,
+reusable Mirror reader, and write budget.
+
+- Contract execution reuses Phase C ABI/plans, pins contract/token, rejects
+  immutable proof infrastructure, and requires a receipt-journal callback.
+- Allowance is exactly **20,000 atomic** for configured shipper/token/spender;
+  unlimited or browser-supplied allowance is impossible.
+- x402 preserves v2 `exact`, resource/version, token, amount and `payTo`, signs
+  server-side, and uses the existing access route/payment-claim journal.
+- HCS accepts only validated `routeguard-hcs-2.0` envelopes, enforces UTF-8
+  length `< 1024`, pins the demo topic, and journals SUCCESS plus sequence.
+- Mirror aggregates parent and child transactions before HTS reconciliation.
+  Child-only `CRYPTOTRANSFER` legs therefore cannot create false failure.
+  State reads use free Mirror `contracts/call`; reads/children consume no writes.
+- Transaction ID, receipt, submitted sub-step, HCS sequence, and write increment
+  persist before separate Mirror verification. Delay yields `RECOVERABLE`;
+  restart re-verifies and never resubmits merely because Mirror lagged.
+
+Immutable live runners were not rewritten because replacing their evidence-bound
+checkpoint orchestration was not a small safe refactor. Extracted modules are
+independently covered while legacy Phase A–E/runner regressions remain green.
+
+### Sessions, economics, POD and persistence
+
+- State chain: `CREATED → ACCESS_ACTIVATED → OFFER_ACCEPTED → ESCROW_FUNDED →
+  WINNER_ALLOCATED → POD_SUBMITTED → ADVISORY_ANCHORED → POD_ACCEPTED →
+  COMPLETED`, plus `FAILED`, `EXPIRED`, and `ABORTED`.
+- Sessions derive unique tender ID/version/key, POD ID, shipper action ID, and
+  session-scoped creation/allocation/release authorization hashes. Stable action
+  and idempotency identities replay exactly or reject conflicting payloads.
+- Exactly one persistent LIVE session and one in-flight action per session use
+  filesystem locks and compare-and-swap record versions.
+- Idle expiry is **15 minutes** and absolute expiry **30 minutes**. Expiry
+  releases the LIVE lock, never auto-refunds, and retains funded/allocated state
+  as `DEMO_OPERATOR_RECOVERY_REQUIRED`.
+- Economics: maximum **20,000 atomic**, winner **15,000 atomic**, excess refund
+  **5,000 atomic**, and each access fee **1,000 atomic** of six-decimal token
+  `0.0.429274`. The 1,850 USDC quote stays separately labeled synthetic.
+- Minimal LIVE execution is exactly **12 application writes**; ceilings are 12
+  per session and 50 per UTC day. The next write is refused before crossing a
+  ceiling. Optional `TENDER_OPENED`/`BID_COMMITMENT` HCS writes are excluded.
+- Controlled roles remain truthful: operator/shipper/payer `0.0.9197513` and
+  winning carrier/access treasury `0.0.9215954`.
+- POD orchestration calls `PodService` directly. Volume-backed encrypted POD
+  state remains private; the adviser is deterministic/non-binding.
+- Persistent records use exclusive locks, integrity validation, fsync/rename,
+  full validation on read, and corruption fail-closed behavior. Public output
+  excludes POD contents, keys, signatures, ciphertext, env values, paths, and
+  unrestricted errors.
+
+### Modes and Railway
+
+- Replay validates v2 access/escrow/POD/release, HCS sequences 1–5, and final
+  `RELEASED`/zero-lock state, exposes sanitized proof, and never writes or calls
+  a network.
+- Simulation uses the same state/idempotency/persistence API, completes all
+  eight success actions, performs zero SDK/HTTP egress, and uses only `sim:` IDs.
+- The live boundary rejects proof infrastructure and requires derived-hash admin
+  authorization, `/data` persistence, dedicated infrastructure, fixed identities
+  and economics, valid signer/POD keys, balances, locks, and all 12 write slots.
+- Railway is one service, one replica, one process, one `/data` volume, `PORT`
+  with `0.0.0.0`, Docker build, and `/health`. Multi-instance operation requires
+  a transactional database first.
+
+### Changed files (v0.12.0)
+
+- Runtime: `.dockerignore`, `Dockerfile`, `railway.json`, `.env.example`,
+  `package.json`, `src/server/app.ts`, `src/server/index.ts`.
+- Docs: `README.md`, `docs/operations-demo-backend.md`, `PROJECT_STATUS.md`.
+- Smoke: `scripts/operations-demo-smoke.ts`.
+- Demo: `src/operations-demo/adapters.ts`, `api.ts`, `config.ts`, `constants.ts`,
+  `errors.ts`, `index.ts`, `orchestrator.ts`, `rate-limit.ts`,
+  `receipt-journal.ts`, `replay.ts`, `state-machine.ts`, `store.ts`, `types.ts`.
+- Live: `src/v2/live/allowance.ts`, `client.ts`, `contract-executor.ts`,
+  `hcs-submitter.ts`, `mirror-reader.ts`, `write-budget.ts`, `x402-payer.ts`.
+- Tests: `test/operations-demo-core.test.ts`.
+
+### Validation (v0.12.0)
+
+- build/typecheck: **PASS**.
+- focused Operations Demo: **58 passed / 0 failed**.
+- Solidity compile: **10 contracts / 0 blockers**; tests: **60 / 0 failed**.
+- full `npm test`: **74 files / 992 passed / 0 failed**.
+- secret scan, `git diff --check`: **PASS**.
+- health/replay/simulation smoke: **PASS**, `NETWORK_WRITES=0`.
+- v1 and all pre-existing v2 evidence: **byte-identical to baseline**.
+
+### Current state
+
+Backend, API, SSE, persistent simulation, immutable replay, safety config, and
+Railway single-replica preparation are offline-complete. LIVE is disabled; the
+dedicated reusable contract is not deployed, reusable run-separated topic is not
+created, and immutable proof infrastructure cannot be selected.
+
+### Next step
+
+Guarded deployment of one dedicated reusable demo contract and one reusable demo
+HCS topic, followed by one supervised 12-write live session and Operations Demo
+frontend integration.
+
+**NETWORK_WRITES=0** (this checkpoint).
 
 ---
 
